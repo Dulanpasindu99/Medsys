@@ -302,9 +302,9 @@ export default function MedLinkDoctorDashboard() {
   ]);
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900">
+    <div className="flex min-h-screen w-full flex-col bg-slate-50 text-slate-900">
       {/* Top bar */}
-      <header className="sticky top-0 z-50 bg-slate-50/80 px-8 pt-3 pb-3 backdrop-blur-sm">
+      <header className="shrink-0 bg-slate-50/90 px-8 pt-3 pb-3 backdrop-blur-sm">
         <div className="mx-auto max-w-[1680px]">
           <div className="rounded-[56px] bg-white/95 px-6 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] ring-1 ring-slate-200">
             <div className="flex items-center justify-between gap-6">
@@ -394,12 +394,12 @@ export default function MedLinkDoctorDashboard() {
       </header>
 
       {/* Content */}
-      <main className="mx-auto max-w-[1680px] px-8 py-4">
+      <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden px-8 pb-6 pt-4">
         {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
-        <div className="grid h-full grid-cols-12 gap-6">
+        <div className="grid h-full w-full grid-cols-12 gap-6">
           {/* RIGHT: Search + expandable patient list */}
-          <div className="order-2 col-span-4 h-full pl-1">
-            <Card className="flex h-full flex-col p-4">
+          <div className="order-2 col-span-4 flex h-full min-h-0 flex-col overflow-hidden pl-1">
+            <Card className="flex h-full min-h-0 flex-col p-4">
               <SectionTitle title="Search Patients" sub="Name / NIC / Mobile" />
               <div className="mt-3 flex items-center gap-2">
                 <input
@@ -417,10 +417,7 @@ export default function MedLinkDoctorDashboard() {
               </div>
 
               <div className="mt-4 text-sm font-semibold text-slate-900">Patient List</div>
-              <div
-                className="mt-2 space-y-2 overflow-auto pr-1 text-sm leading-tight"
-                style={{ maxHeight: 'calc(100% - 96px)' }}
-              >
+              <div className="mt-2 flex-1 space-y-2 overflow-y-auto pr-1 text-sm leading-tight">
                 {filtered.map((p) => {
                   const isSelected = selectedId === p.id;
                   const isOpen = expandedId === p.id;
@@ -550,8 +547,8 @@ export default function MedLinkDoctorDashboard() {
           </div>
 
           {/* LEFT: Full detailed sheet */}
-          <div className="order-1 col-span-8 h-full overflow-hidden pr-4">
-            <div className="flex h-full flex-col overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
+          <div className="order-1 col-span-8 flex h-full min-h-0 flex-col overflow-hidden pr-4">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
               {/* Top header */}
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -625,9 +622,10 @@ export default function MedLinkDoctorDashboard() {
               </div>
 
               {/* Two-column canvas */}
-              <div className="mt-2 flex-1 space-y-4 overflow-hidden">
-                {/* Row 1: Disease + Regular / Medical Tests */}
-                <div className="grid grid-cols-12 gap-6">
+              <div className="mt-2 flex-1 overflow-hidden">
+                <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-1">
+                  {/* Row 1: Disease + Regular / Medical Tests */}
+                  <div className="grid grid-cols-12 gap-6">
                   {/* Disease side */}
                   <div className="col-span-7">
                     <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-5">
@@ -696,10 +694,10 @@ export default function MedLinkDoctorDashboard() {
                       </div>
                     </div>
                   </div>
-                </div>
+                  </div>
 
-                {/* Row 2: Clinical / Outside tables + mini cards */}
-                <div className="grid grid-cols-12 gap-6 overflow-hidden">
+                  {/* Row 2: Clinical / Outside tables + mini cards */}
+                  <div className="grid grid-cols-12 gap-6 overflow-hidden">
                   {/* Clinical row: table + mini card */}
                   <div className="col-span-8">
                     <div className="h-full rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
@@ -789,40 +787,41 @@ export default function MedLinkDoctorDashboard() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                  </div>
 
-              {/* Next Visit Date bar */}
-              <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[40px] border border-slate-100 bg-white px-6 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
-                <div className="text-2xl font-semibold text-slate-900">Next Visit Date</div>
-                <button
-                  type="button"
-                  onClick={() => setNextVisitOption('TwoWeeks')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    nextVisitOption === 'TwoWeeks'
-                      ? 'bg-sky-500 text-white shadow-sm'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  }`}
-                >
-                  Two Weeks
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNextVisitOption('ThreeWeeks')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    nextVisitOption === 'ThreeWeeks'
-                      ? 'bg-sky-500 text-white shadow-sm'
-                      : 'border border-slate-300 bg-white text-slate-700'
-                  }`}
-                >
-                  Three Weeks
-                </button>
-                <div className="min-w-[220px] rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-800 ring-1 ring-slate-200">
-                  {sheet.nextVisit}
+                  {/* Next Visit Date bar */}
+                  <div className="flex flex-wrap items-center gap-3 rounded-[40px] border border-slate-100 bg-white px-6 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
+                    <div className="text-2xl font-semibold text-slate-900">Next Visit Date</div>
+                    <button
+                      type="button"
+                      onClick={() => setNextVisitOption('TwoWeeks')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        nextVisitOption === 'TwoWeeks'
+                          ? 'bg-sky-500 text-white shadow-sm'
+                          : 'border border-slate-300 bg-white text-slate-700'
+                      }`}
+                    >
+                      Two Weeks
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNextVisitOption('ThreeWeeks')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        nextVisitOption === 'ThreeWeeks'
+                          ? 'bg-sky-500 text-white shadow-sm'
+                          : 'border border-slate-300 bg-white text-slate-700'
+                      }`}
+                    >
+                      Three Weeks
+                    </button>
+                    <div className="min-w-[220px] rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-800 ring-1 ring-slate-200">
+                      {sheet.nextVisit}
+                    </div>
+                    <button className="ml-auto rounded-full bg-sky-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px">
+                      Confirm
+                    </button>
+                  </div>
                 </div>
-                <button className="ml-auto rounded-full bg-sky-500 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px">
-                  Confirm
-                </button>
               </div>
             </div>
           </div>
