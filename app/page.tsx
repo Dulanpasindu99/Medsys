@@ -13,9 +13,22 @@ interface Patient {
   gender: string;
 }
 
+const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <div className={`rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)] ring-1 ring-slate-200 ${className}`}>
+    {children}
+  </div>
+);
+
+const SectionTitle = ({ title, sub }: { title: string; sub?: string }) => (
+  <div className="flex items-end justify-between">
+    <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
+    {sub ? <span className="text-xs text-slate-500">{sub}</span> : null}
+  </div>
+);
+
 export default function MedLinkDoctorDashboard() {
   // ------ Constants ------
-  const DOTS_PER_ROW = 32; // header capacity grid limit per row
+  const CAPACITY = 40; // soft cap used to render the compact capacity meter
 
   // ------ Clock (used only for internal tests, not rendered) ------
   const [now, setNow] = useState<Date>(new Date());
@@ -98,10 +111,6 @@ export default function MedLinkDoctorDashboard() {
   );
 
   const [gender, setGender] = useState<'Male' | 'Female'>(selected.gender as 'Male' | 'Female');
-  useEffect(() => {
-    setGender(selected.gender as 'Male' | 'Female');
-  }, [selected.gender]);
-
   // track expanded patient rows (accordion-style) - only one open at a time
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const toggleExpand = (id: string) => {
@@ -110,6 +119,9 @@ export default function MedLinkDoctorDashboard() {
 
   // keep refs to each patient row so we can scroll into view when expanded
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [statsOpen, setStatsOpen] = useState(false);
+  const statsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const statsPanelRef = useRef<HTMLDivElement | null>(null);
 
   // when a row expands, scroll it into view (inside the list only)
   useEffect(() => {
@@ -119,6 +131,34 @@ export default function MedLinkDoctorDashboard() {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [expandedId]);
+
+  useEffect(() => {
+    if (!statsOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        statsPanelRef.current &&
+        !statsPanelRef.current.contains(target) &&
+        statsButtonRef.current &&
+        !statsButtonRef.current.contains(target)
+      ) {
+        setStatsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [statsOpen]);
+
+  useEffect(() => {
+    if (!statsOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setStatsOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [statsOpen]);
 
   // Right sheet editable state
   const [sheet] = useState({
@@ -166,90 +206,11 @@ export default function MedLinkDoctorDashboard() {
     );
   }, [patients, search]);
 
-  // ------ Small UI helpers ------
-  const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <div
-      className={`rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)] ring-1 ring-slate-200 ${className}`}
-    >
-      {children}
-    </div>
-  );
-
-  const SectionTitle = ({ title, sub }: { title: string; sub?: string }) => (
-    <div className="flex items-end justify-between">
-      <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
-      {sub ? <span className="text-xs text-slate-500">{sub}</span> : null}
-    </div>
-  );
-
-  // colors that should show a hover popup (green & red only)
-  const isPopupColor = (c: string) => c.includes('green') || c.includes('red');
-
-  /**
-   * Small interactive square that opens a floating popup showing patient info.
-   * - Each index maps to a patient (cycled) for demo purposes.
-   * - Popup mimics the uploaded design with green avatar, name, age and "New" pill.
-   */
-  const SquareDot = ({
-    index,
-    color,
-    patients,
-  }: {
-    index: number;
-    color: string;
-    patients: Patient[];
-  }) => {
-    const [open, setOpen] = useState(false);
-    const p = patients[index % patients.length];
-    const isGreen = color.includes('green');
-    const isRed = color.includes('red');
-    const canShow = isGreen || isRed;
-    const shadeGrad = isGreen
-      ? 'from-emerald-200/80 to-emerald-100/80'
-      : 'from-rose-200/80 to-rose-100/80';
-    const avatarColor = isGreen ? 'bg-emerald-400' : 'bg-rose-400';
-
-    return (
-      <div
-        className="relative"
-        onMouseEnter={() => canShow && setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-      >
-        <span className={`inline-block h-4 w-4 rounded-md ${color}`} />
-        {open && (
-          <>
-            {/* soft blurred glow near the hovered square */}
-            <div
-              className={`pointer-events-none absolute -inset-3 rounded-xl blur-md ${
-                isGreen ? 'bg-emerald-200/30' : 'bg-rose-200/30'
-              }`}
-            />
-            {/* info bubble */}
-            <div
-              className={`absolute -top-24 left-1/2 w-56 -translate-x-1/2 rounded-[24px] border border-slate-200 bg-white/90 p-3 shadow-[0_18px_45px_rgba(15,23,42,0.18)] backdrop-blur-sm bg-gradient-to-r ${shadeGrad}`}
-            >
-              <div className="flex items-start gap-3">
-                <div className={`h-8 w-8 rounded-xl ${avatarColor}`} />
-                <div className="min-w-0">
-                  <div className="truncate text-lg font-semibold leading-5 text-slate-900">
-                    {p.name}
-                  </div>
-                  <div className="text-sm text-slate-700">Age {p.age}</div>
-                </div>
-                <span className="shrink-0 rounded-full bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
-                  New
-                </span>
-              </div>
-              {/* tail */}
-              <div
-                className={`absolute -bottom-2 left-6 h-4 w-8 rounded-b-[16px] bg-gradient-to-r ${shadeGrad}`}
-              />
-            </div>
-          </>
-        )}
-      </div>
-    );
-  };
+  // ------ Header derived state ------
+  const occupancy = Math.min(patients.length, CAPACITY);
+  const occupancyPercent = Math.round((occupancy / CAPACITY) * 100);
+  const newPatients = Math.max(1, Math.ceil(patients.length * 0.4));
+  const existingPatients = Math.max(0, patients.length - newPatients);
 
   // ------ Dev Smoke Tests (run once on mount) ------
   useEffect(() => {
@@ -264,23 +225,20 @@ export default function MedLinkDoctorDashboard() {
     s.delete('p1');
     console.assert(!s.has('p1'), 'Set should delete id');
 
-    console.assert(DOTS_PER_ROW === 32, 'Header rows must contain 32 squares');
-    const samplePalette = [
-      ...Array(12).fill('bg-emerald-400'),
-      'bg-rose-500',
-      ...Array(6).fill('bg-emerald-400'),
-      'bg-rose-500',
-      ...Array(12).fill('bg-slate-200'),
-    ];
-    console.assert(samplePalette.length >= DOTS_PER_ROW, 'Palette must cover at least one row');
-
-    console.assert(isPopupColor('bg-emerald-400') && isPopupColor('bg-rose-500'), 'Green/Red should allow popup');
-    console.assert(!isPopupColor('bg-slate-200'), 'Gray should NOT allow popup');
+    console.assert(CAPACITY === 40, 'Header capacity should stay at 40 slots');
+    console.assert(occupancy <= CAPACITY, 'Occupancy cannot exceed capacity');
+    console.assert(
+      occupancyPercent <= 100 && occupancyPercent >= 0,
+      'Occupancy percent should remain within 0-100'
+    );
+    console.assert(
+      newPatients + existingPatients === patients.length,
+      'New + Existing counts should match total patients'
+    );
 
     // visitDateOptions basic tests
     console.assert(visitDateOptions.length >= 5, 'visitDateOptions should contain multiple entries');
     console.assert(visitDateOptions[0] === 'Today', 'First visitDateOptions entry should be Today');
-    console.assert(!isPopupColor('bg-slate-200'), 'Gray should NOT allow popup');
 
     console.assert(typeof timeStr === 'string' && timeStr.length > 0, 'timeStr should be defined');
     console.assert(typeof dateStr === 'string' && dateStr.length > 0, 'dateStr should be defined');
@@ -299,92 +257,32 @@ export default function MedLinkDoctorDashboard() {
     gender,
     filtered.length,
     visitDateOptions,
+    occupancy,
+    occupancyPercent,
+    newPatients,
+    existingPatients,
   ]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-slate-50 text-slate-900">
       {/* Top bar */}
-      <header className="shrink-0 bg-slate-50/90 px-8 pt-3 pb-3 backdrop-blur-sm">
-        <div className="mx-auto max-w-[1680px]">
-          <div className="rounded-[56px] bg-white/95 px-6 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] ring-1 ring-slate-200">
-            <div className="flex items-center justify-between gap-6">
-              {/* LEFT: capacity bar */}
-              <div className="min-w-0">
-                <div className="grid grid-cols-12 items-center gap-3">
-                  <div className="col-span-2 flex items-center gap-3">
-                    {/* Patients icon */}
-                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-sky-50 text-sky-500 ring-1 ring-sky-100">
-                      <div className="relative flex h-6 w-6 items-center justify-center">
-                        <span className="absolute -top-0.5 h-2.5 w-2.5 rounded-full bg-sky-500" />
-                        <span className="absolute left-0 h-2 w-2 rounded-full bg-sky-400/90" />
-                        <span className="absolute right-0 h-2 w-2 rounded-full bg-sky-400/90" />
-                        <span className="absolute -bottom-0.5 h-3 w-5 rounded-full bg-sky-300/80" />
-                      </div>
-                    </div>
-                    {/* Label */}
-                    <div className="text-xl font-semibold leading-5 text-slate-900">
-                      <div>Patients</div>
-                      <div>Amount</div>
-                    </div>
-                  </div>
-                  <div className="col-span-10">
-                    {/* bar rows container with popup */}
-                    <div className="relative select-none">
-                      {/* row 1: interactive DOTS_PER_ROW squares */}
-                      <div className="flex flex-wrap gap-1">
-                        {Array.from({ length: DOTS_PER_ROW }).map((_, i) => {
-                          const palette = [
-                            ...Array(12).fill('bg-emerald-400'),
-                            'bg-rose-500',
-                            ...Array(6).fill('bg-emerald-400'),
-                            'bg-rose-500',
-                            ...Array(12).fill('bg-slate-200'),
-                          ];
-                          const color = palette[i] || 'bg-slate-200';
-                          return <SquareDot key={i} index={i} color={color} patients={patients} />;
-                        })}
-                      </div>
-
-                      {/* row 2: baseline gray DOTS_PER_ROW squares */}
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {Array.from({ length: DOTS_PER_ROW }).map((_, i) => (
-                          <span key={i} className="h-4 w-4 rounded-md bg-slate-200" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      <header className="shrink-0 border-b border-slate-200/60 bg-slate-50/90 px-8 py-4 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">Clinic Overview</p>
+            <div className="text-3xl font-semibold leading-tight text-slate-900">MediHelp - Nugegoda</div>
+            <div className="text-sm text-slate-500">No.10, Abc Street Nugegoda</div>
+            <div className="text-xs text-slate-400">Hotline : +94 11 452 8889</div>
+          </div>
+          <div className="rounded-[999px] bg-gradient-to-r from-white via-slate-50 to-slate-100 p-[1px] shadow-[0_15px_45px_rgba(15,23,42,0.12)]">
+            <div className="flex items-center gap-3 rounded-[999px] border border-white/60 bg-white/95 px-6 py-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">Welcome</div>
+                <div className="text-xl font-semibold leading-5 text-slate-900">Hi Dr. Manjith</div>
+                <div className="text-[11px] text-slate-500">Surgeon / Family Consultant</div>
               </div>
-
-              {/* MIDDLE: Total patients */}
-              <div className="flex items-center justify-center text-sm text-slate-600">
-                <div className="flex items-center justify-center gap-4">
-                  <span>
-                    New
-                    <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1 text-xs font-medium text-slate-800">
-                      5
-                    </span>
-                  </span>
-                  <span>
-                    Existing
-                    <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1 text-xs font-medium text-slate-800">
-                      5
-                    </span>
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-2xl bg-sky-500 px-3 py-1 text-sm font-semibold text-white shadow-sm">
-                    <span className="text-lg font-semibold">{patients.length}</span>
-                    <span className="text-[10px] leading-none opacity-90">Patients</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* RIGHT: Greeting + avatar */}
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-3xl font-semibold leading-6 text-slate-900">Hi Dr. Manjith</div>
-                  <div className="text-xs text-slate-500">Surgeon / Family Consultant</div>
-                </div>
-                <div className="flex size-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700 ring-1 ring-slate-300">
+              <div className="rounded-full bg-slate-900/90 p-0.5 shadow-[0_8px_24px_rgba(15,23,42,0.25)]">
+                <div className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-900 to-slate-600 text-xs font-semibold uppercase tracking-wide text-white">
                   DR
                 </div>
               </div>
@@ -394,7 +292,7 @@ export default function MedLinkDoctorDashboard() {
       </header>
 
       {/* Content */}
-      <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden px-8 pb-6 pt-4">
+      <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden px-8 pb-6 pt-2">
         {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
         <div className="grid h-full w-full grid-cols-12 gap-6">
           {/* RIGHT: Search + expandable patient list */}
@@ -436,6 +334,7 @@ export default function MedLinkDoctorDashboard() {
                         }`}
                         onClick={() => {
                           setSelectedId(p.id);
+                          setGender(p.gender as 'Male' | 'Female');
                           toggleExpand(p.id);
                         }}
                       >
@@ -451,6 +350,7 @@ export default function MedLinkDoctorDashboard() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedId(p.id);
+                              setGender(p.gender as 'Male' | 'Female');
                               toggleExpand(p.id);
                             }}
                             className="grid size-6 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 hover:bg-white"
@@ -550,15 +450,16 @@ export default function MedLinkDoctorDashboard() {
           <div className="order-1 col-span-8 flex h-full min-h-0 flex-col overflow-hidden pr-4">
             <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
               {/* Top header */}
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
-                  <div className="text-3xl font-semibold leading-tight text-slate-900">MediHelp - Nugegoda</div>
-                  <div className="text-sm text-slate-500">No.10, Abc Street Nugegoda</div>
-                  <div className="mt-1 text-xs text-slate-400">Hotline : +94 11 452 8889</div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Active Patient</p>
+                  <div className="text-2xl font-semibold leading-tight text-slate-900">{selected.name}</div>
+                  <div className="text-sm text-slate-500">{selected.nic}</div>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-semibold text-slate-900">Dr. Manjith</div>
-                  <div className="text-sm text-slate-500">Surgeon / Family Consultant</div>
+                <div className="text-right text-sm text-slate-500">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Updated</div>
+                  <div className="text-base font-semibold text-slate-900">{dateStr}</div>
+                  <div>{timeStr}</div>
                 </div>
               </div>
 
@@ -827,6 +728,91 @@ export default function MedLinkDoctorDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Floating stats button + popup */}
+      {statsOpen && (
+        <div
+          ref={statsPanelRef}
+          id="queue-stats-panel"
+          className="fixed bottom-28 right-6 z-40 w-[340px]"
+        >
+          <Card className="relative space-y-5 px-5 py-5">
+            <button
+              type="button"
+              onClick={() => setStatsOpen(false)}
+              aria-label="Hide queue stats"
+              className="absolute right-4 top-4 text-slate-400 transition hover:text-slate-600"
+            >
+              ×
+            </button>
+            <div className="flex items-center gap-4">
+              <div className="rounded-[24px] bg-gradient-to-br from-sky-400 to-sky-600 p-[1px] shadow-inner shadow-sky-200/80">
+                <div className="rounded-[22px] bg-white/95 px-3 py-2 text-slate-900">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Queue</p>
+                  <div className="flex items-baseline gap-1">
+                    <p className="text-2xl font-semibold leading-6">{patients.length}</p>
+                    <span className="text-xs text-slate-500">today</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Capacity {occupancy}/{CAPACITY}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2 text-[11px] font-medium text-slate-600">
+                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> New {newPatients}
+                </span>
+                <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                  <span className="h-2 w-2 rounded-full bg-slate-300" /> Existing {existingPatients}
+                </span>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <span>Patients amount</span>
+                <span className="text-sm text-slate-900">{occupancyPercent}%</span>
+              </div>
+              <div className="relative mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-sky-600 shadow-[0_4px_12px_rgba(14,165,233,0.35)]"
+                  style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
+                />
+                <div className="absolute inset-0 flex justify-between px-2 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                  <span>Calm</span>
+                  <span>Busy</span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm text-slate-600">
+              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center shadow-inner">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Total</span>
+                <span className="text-2xl font-semibold text-slate-900">{patients.length}</span>
+                <span className="block text-[11px]">in queue</span>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center shadow-inner">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">New</span>
+                <span className="text-2xl font-semibold text-slate-900">{newPatients}</span>
+                <span className="block text-[11px]">arrivals</span>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center shadow-inner">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Existing</span>
+                <span className="text-2xl font-semibold text-slate-900">{existingPatients}</span>
+                <span className="block text-[11px]">follow ups</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      <button
+        ref={statsButtonRef}
+        type="button"
+        onClick={() => setStatsOpen((prev) => !prev)}
+        aria-expanded={statsOpen}
+        aria-controls="queue-stats-panel"
+        className="fixed bottom-8 right-6 z-30 flex size-14 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white shadow-[0_25px_65px_rgba(15,23,42,0.45)] transition hover:bg-black"
+      >
+        {statsOpen ? 'Hide' : 'Stats'}
+      </button>
 
     </div>
   );
