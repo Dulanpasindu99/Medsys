@@ -279,14 +279,6 @@ export default function MedLinkDoctorDashboard() {
     console.assert(filtered.length <= patients.length, 'Filtered list cannot be longer than patients');
   }, [patients, sheet.clinical, timeStr, dateStr, selected, selectedId, gender, filtered.length]);
 
-  // ------ Layout ------
-  const footerNav = [
-    { key: 'doctor', label: 'Doctor Screen', icon: '👨‍⚕️', active: true },
-    { key: 'patients', label: 'Patient Management', icon: '👥', active: false },
-    { key: 'inventory', label: 'Inventory Management', icon: '📦', active: false },
-    { key: 'ai', label: 'Ai Informatics', icon: '🤖', active: false },
-  ] as const;
-
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900">
       {/* Top bar */}
@@ -756,32 +748,6 @@ export default function MedLinkDoctorDashboard() {
         </div>
       </main>
 
-      {/* Bottom bar */}
-      <footer className="z-10 px-8 pb-4 pt-4">
-        <div className="mx-auto max-w-[1680px] flex justify-center">
-          <div className="flex items-center justify-between gap-12 rounded-[40px] bg-white px-10 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] ring-1 ring-slate-200">
-            {footerNav.map((item) => (
-              <button
-                key={item.key}
-                className={`flex flex-col items-center gap-2 text-xs font-medium ${
-                  item.active ? 'text-sky-600' : 'text-slate-700'
-                }`}
-              >
-                <div
-                  className={`grid size-14 place-items-center rounded-full border ${
-                    item.active
-                      ? 'border-sky-400 bg-sky-500 text-white shadow-[0_10px_30px_rgba(56,189,248,0.6)]'
-                      : 'border-slate-200 bg-slate-50'
-                  }`}
-                >
-                  <span className="text-2xl">{item.icon}</span>
-                </div>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
