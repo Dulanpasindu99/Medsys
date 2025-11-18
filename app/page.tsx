@@ -128,7 +128,6 @@ export default function MedLinkDoctorDashboard() {
     tests: 'No',
     notes: 'No',
     nextVisit: '05 November 2025',
-    regularDrugs: ['Metformin', 'Atorvastatin', 'Aspirin'],
   });
 
   const [nextVisitOption, setNextVisitOption] = useState<'TwoWeeks' | 'ThreeWeeks'>('TwoWeeks');
@@ -148,11 +147,13 @@ export default function MedLinkDoctorDashboard() {
 
   const medicalTests = useMemo(
     () => [
-      { name: 'Full Blood Count', status: 'Scheduled', note: 'Lab request for tomorrow' },
-      { name: 'Lipid Profile', status: 'Completed', note: 'Reviewed on 05 Oct' },
+      { name: 'F.B.C', status: 'Scheduled', note: 'Collect samples tomorrow morning' },
+      { name: 'ColestarolC', status: 'Completed', note: 'Reviewed on 05 Oct' },
     ],
     []
   );
+
+  const diseaseQuickTags = useMemo(() => ['Feever', 'Headach'], []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -552,67 +553,75 @@ export default function MedLinkDoctorDashboard() {
           <div className="order-1 col-span-8 h-full overflow-hidden pr-4">
             <div className="flex h-full flex-col overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
               {/* Top header */}
-              <div className="flex items-start justify-between">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="text-3xl font-semibold leading-tight text-slate-900">MediHelp - Nugegoda</div>
                   <div className="text-sm text-slate-500">No.10, Abc Street Nugegoda</div>
+                  <div className="mt-1 text-xs text-slate-400">Hotline : +94 11 452 8889</div>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-semibold text-slate-900">Dr. Manjith</div>
                   <div className="text-sm text-slate-500">Surgeon / Family Consultant</div>
-                  <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs text-white">
-                    <span>Previously patient of Dr. Jay</span>
-                    <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px]">10 SEP 25</span>
-                  </div>
                 </div>
               </div>
 
-              {/* Patient line: number + NIC + gender + name + age in one row */}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <div className="text-xs font-medium text-slate-700">Patient No MH0001</div>
+              {/* Patient quick info */}
+              <div className="mt-5 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    className="flex-1 min-w-[220px] rounded-[999px] border border-slate-200 bg-slate-50 px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                    placeholder="Enter Patient Name"
+                    defaultValue={selected.name}
+                  />
 
-                <input
-                  className="w-44 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                  placeholder="Enter NIC No"
-                  defaultValue={selected.nic}
-                />
+                  <input
+                    className="w-24 rounded-[999px] border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                    placeholder="Age"
+                    defaultValue={selected.age}
+                  />
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setGender('Male')}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                      gender === 'Male'
-                        ? 'bg-sky-500 text-white shadow-sm'
-                        : 'border border-slate-300 bg-white text-slate-700'
-                    }`}
-                  >
-                    Male
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGender('Female')}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                      gender === 'Female'
-                        ? 'bg-rose-500 text-white shadow-sm'
-                        : 'border border-slate-300 bg-white text-slate-700'
-                    }`}
-                  >
-                    Female
-                  </button>
+                  <div className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
+                    Patient No : MH0001
+                  </div>
+
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">
+                    <span>Previously patient of Dr. Jay</span>
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
+                  </div>
                 </div>
 
-                <input
-                  className="flex-1 min-w-[220px] rounded-full border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                  placeholder="Enter Patient Name"
-                  defaultValue={selected.name}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    className="w-52 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                    placeholder="Enter NIC No"
+                    defaultValue={selected.nic}
+                  />
 
-                <input
-                  className="w-28 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                  placeholder="Age"
-                  defaultValue={selected.age}
-                />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setGender('Male')}
+                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                        gender === 'Male'
+                          ? 'bg-sky-500 text-white shadow-sm'
+                          : 'border border-slate-300 bg-white text-slate-700'
+                      }`}
+                    >
+                      Male
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGender('Female')}
+                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                        gender === 'Female'
+                          ? 'bg-rose-500 text-white shadow-sm'
+                          : 'border border-slate-300 bg-white text-slate-700'
+                      }`}
+                    >
+                      Female
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Two-column canvas */}
@@ -621,120 +630,111 @@ export default function MedLinkDoctorDashboard() {
                 <div className="grid grid-cols-12 gap-6">
                   {/* Disease side */}
                   <div className="col-span-7">
-                    <div className="text-2xl font-semibold text-slate-900">Disease</div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        className="w-56 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                        placeholder="Search Diseases"
-                      />
-                      <button className="rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px">
-                        Search
-                      </button>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <button className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-800 ring-1 ring-slate-200">
-                        Feever
-                      </button>
-                      <button className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-800 ring-1 ring-slate-200">
-                        Headach
-                      </button>
-                    </div>
-                  </div>
-
-                    {/* Regular / Medical Tests side */}
-                    <div className="col-span-5 space-y-4">
-                      <div className="rounded-2xl bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-200">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold text-slate-900">Medical Tests</div>
-                            <div className="text-xs text-slate-500">Upcoming & completed</div>
-                          </div>
-                          <span className="rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold text-slate-600">
-                            {medicalTests.length} Tests
-                          </span>
+                    <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-2xl font-semibold text-slate-900">Disease</div>
+                          <div className="text-xs text-slate-500">Search and pick existing symptoms</div>
                         </div>
-                        <div className="mt-4 space-y-2">
-                          {medicalTests.map((test) => (
-                            <div
-                              key={test.name}
-                              className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2 text-sm ring-1 ring-slate-100"
-                            >
-                              <div>
-                                <div className="font-semibold text-slate-900">{test.name}</div>
-                                <div className="text-xs text-slate-500">{test.note}</div>
-                              </div>
-                              <span
-                                className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
-                                  test.status === 'Completed'
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : 'bg-amber-100 text-amber-700'
-                                }`}
-                              >
-                                {test.status}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 rounded-2xl bg-slate-900/5 px-4 py-2 text-xs text-slate-600">
-                          Previously patient of Dr. Jay
-                        </div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">History</div>
                       </div>
-
-                      <div className="rounded-2xl bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.08)] ring-1 ring-slate-200">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-slate-900">Regular Drugs</div>
-                            <div className="text-xs text-slate-500">Used during last visit</div>
-                          </div>
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                            History
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <input
+                          className="min-w-[220px] flex-1 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                          placeholder="Search Diseases"
+                        />
+                        <button className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px">
+                          <span role="img" aria-hidden="true">
+                            🔍
                           </span>
-                        </div>
-                        <div className="mt-4 space-y-2 text-sm font-semibold text-slate-900">
-                          {sheet.regularDrugs.map((drug) => (
-                            <div key={drug} className="rounded-2xl bg-slate-50 px-4 py-2 ring-1 ring-slate-100">
-                              {drug}
-                            </div>
-                          ))}
-                        </div>
-                        <button className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                          <span>↪</span> Use same drugs
+                          Search
                         </button>
-                        <p className="mt-2 text-center text-xs text-slate-500">• Clinical Drugs From previous history</p>
                       </div>
-                    </div>
-                  </div>
-
-                {/* Row 2: Clinical / Outside tables + mini cards */}
-                <div className="grid grid-cols-12 gap-6 overflow-hidden">
-                  {/* Clinical row: table + mini card */}
-                  <div className="col-span-8">
-                    <div className="h-full rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-                      <div className="text-2xl font-semibold text-slate-900">Clinical Drugs</div>
-                      <div className="mt-4 grid grid-cols-4 gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <div>Drug Name</div>
-                        <div>Dose</div>
-                        <div>Terms</div>
-                        <div>Amount</div>
-                      </div>
-                      <div className="mt-2 divide-y divide-slate-100 text-sm text-slate-900">
-                        {rxRows.map((r, i) => (
-                          <div key={i} className="grid grid-cols-4 gap-2 py-3">
-                            <div>{r.drug}</div>
-                            <div>{r.dose}</div>
-                            <div>{(r.terms || '').toString()}</div>
-                            <div>{r.amount}</div>
-                          </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {diseaseQuickTags.map((tag) => (
+                          <button
+                            key={tag}
+                            className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                            type="button"
+                          >
+                            {tag}
+                          </button>
                         ))}
                       </div>
                     </div>
                   </div>
 
+                  {/* Medical Tests side */}
+                  <div className="col-span-5">
+                    <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">Medical Tests</div>
+                          <div className="text-xs text-slate-500">Upcoming & completed</div>
+                        </div>
+                        <span className="rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold text-slate-600">
+                          {medicalTests.length} Tests
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {medicalTests.map((test, index) => (
+                          <button
+                            key={test.name}
+                            type="button"
+                            className={`flex-1 min-w-[140px] rounded-[18px] border px-4 py-3 text-sm font-semibold ${
+                              index === 0
+                                ? 'border-sky-500 bg-sky-500 text-white shadow-[0_10px_25px_rgba(14,165,233,0.35)]'
+                                : 'border-slate-200 bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div>{test.name}</div>
+                            <div className="text-[11px] font-medium uppercase tracking-widest opacity-80">
+                              {test.status}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Clinical / Outside tables + mini cards */}
+                <div className="grid grid-cols-12 gap-6 overflow-hidden">
+                  {/* Clinical row: table + mini card */}
+                  <div className="col-span-8">
+                    <div className="h-full rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-2xl font-semibold text-slate-900">Clinical Drugs</div>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">3 items</span>
+                      </div>
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
+                        <div className="grid grid-cols-4 gap-2 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <div>Drug Name</div>
+                          <div>Dose</div>
+                          <div>Terms</div>
+                          <div>Amount</div>
+                        </div>
+                        <div className="divide-y divide-slate-100 text-sm text-slate-900">
+                          {rxRows.map((r, i) => (
+                            <div key={i} className="grid grid-cols-4 gap-2 bg-white/80 px-4 py-3 odd:bg-white even:bg-slate-50/60">
+                              <div>{r.drug}</div>
+                              <div>{r.dose}</div>
+                              <div>{(r.terms || '').toString()}</div>
+                              <div>{r.amount}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="col-span-4">
-                    <div className="flex h-full flex-col justify-between rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-                      <div className="space-y-2 text-base font-medium text-slate-900">
+                    <div className="flex h-full flex-col justify-between rounded-3xl border border-slate-100 bg-slate-50 p-5">
+                      <div className="space-y-2 text-base font-semibold text-slate-900">
                         {sheet.clinical.map((c, i) => (
-                          <div key={i}>{c}</div>
+                          <div key={i} className="rounded-2xl bg-white px-4 py-2 text-slate-700 shadow-sm">
+                            {c}
+                          </div>
                         ))}
                       </div>
                       <div>
@@ -748,28 +748,39 @@ export default function MedLinkDoctorDashboard() {
 
                   {/* Outside row: table + mini card */}
                   <div className="col-span-8">
-                    <div className="h-full rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-                      <div className="text-2xl font-semibold text-slate-900">Outside Drugs</div>
-                      <div className="mt-4 grid grid-cols-4 gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <div>Drug Name</div>
-                        <div>Dose</div>
-                        <div>Terms</div>
-                        <div>Amount</div>
+                    <div className="h-full rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-2xl font-semibold text-slate-900">Outside Drugs</div>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">1 item</span>
                       </div>
-                      <div className="mt-2 divide-y divide-slate-100 text-sm text-slate-900">
-                        <div className="grid grid-cols-4 gap-2 py-3">
-                          <div>{sheet.outside[0]?.name}</div>
-                          <div>{sheet.outside[0]?.dose}</div>
-                          <div>{sheet.outside[0]?.terms}</div>
-                          <div>{sheet.outside[0]?.amount}</div>
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
+                        <div className="grid grid-cols-4 gap-2 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <div>Drug Name</div>
+                          <div>Dose</div>
+                          <div>Terms</div>
+                          <div>Amount</div>
+                        </div>
+                        <div className="divide-y divide-slate-100 text-sm text-slate-900">
+                          <div className="grid grid-cols-4 gap-2 bg-white px-4 py-3">
+                            <div>{sheet.outside[0]?.name}</div>
+                            <div>{sheet.outside[0]?.dose}</div>
+                            <div>{sheet.outside[0]?.terms}</div>
+                            <div>{sheet.outside[0]?.amount}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="col-span-4">
-                    <div className="flex h-full flex-col justify-between rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-                      <div className="text-base font-semibold text-slate-900">{sheet.outside[0]?.name}</div>
+                    <div className="flex h-full flex-col justify-between rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-500">Outside Drugs</div>
+                        <div className="text-2xl font-semibold text-slate-900">{sheet.outside[0]?.name}</div>
+                        <div className="mt-1 text-sm text-slate-500">
+                          {sheet.outside[0]?.dose} · {sheet.outside[0]?.terms}
+                        </div>
+                      </div>
                       <div>
                         <button className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
                           <span>↪</span> Use same drugs
@@ -782,7 +793,7 @@ export default function MedLinkDoctorDashboard() {
               </div>
 
               {/* Next Visit Date bar */}
-              <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[32px] bg-slate-50 px-5 py-3 ring-1 ring-slate-200">
+              <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[40px] border border-slate-100 bg-white px-6 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
                 <div className="text-2xl font-semibold text-slate-900">Next Visit Date</div>
                 <button
                   type="button"
