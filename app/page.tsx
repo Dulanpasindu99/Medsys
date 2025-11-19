@@ -481,22 +481,8 @@ export default function MedLinkDoctorDashboard() {
           {/* LEFT: Full detailed sheet */}
           <div className="order-1 col-span-8 flex h-full min-h-0 flex-col overflow-hidden pr-4">
             <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
-              {/* Top header */}
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Active Patient</p>
-                  <div className="text-2xl font-semibold leading-tight text-slate-900">{selected.name}</div>
-                  <div className="text-sm text-slate-500">{selected.nic}</div>
-                </div>
-                <div className="text-right text-sm text-slate-500">
-                  <div className="text-[10px] uppercase tracking-[0.3em] text-slate-400">Updated</div>
-                  <div className="text-base font-semibold text-slate-900">{dateStr}</div>
-                  <div>{timeStr}</div>
-                </div>
-              </div>
-
               {/* Patient quick info */}
-              <div className="mt-5 space-y-3">
+              <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <input
                     className="flex-1 min-w-[220px] rounded-[999px] border border-slate-200 bg-slate-50 px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
