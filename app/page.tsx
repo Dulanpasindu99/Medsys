@@ -415,10 +415,16 @@ export default function MedLinkDoctorDashboard() {
                       ref={(el) => {
                         rowRefs.current[p.id] = el;
                       }}
-                      className={`w-full rounded-2xl border border-white/70 bg-white/90 shadow-[0_12px_32px_rgba(14,116,144,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(14,116,144,0.12)] ${
-                        isSelected ? 'ring-2 ring-sky-300/70' : 'ring-1 ring-slate-200'
+                      className={`relative w-full overflow-hidden rounded-2xl border border-slate-100/90 bg-white/95 backdrop-blur-sm shadow-[0_14px_34px_rgba(14,116,144,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_46px_rgba(14,116,144,0.18)] ${
+                        isSelected ? 'ring-2 ring-sky-300/70' : 'ring-1 ring-slate-200/90'
                       }`}
                     >
+                      <div
+                        aria-hidden
+                        className={`absolute inset-y-0 left-0 w-1 ${
+                          isSelected ? 'bg-sky-200' : 'bg-slate-100'
+                        }`}
+                      />
                       {/* Row header */}
                       <div
                         className={`flex cursor-pointer items-center justify-between px-4 py-3 transition ${
