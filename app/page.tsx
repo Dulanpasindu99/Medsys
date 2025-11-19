@@ -14,14 +14,19 @@ interface Patient {
 }
 
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-2xl bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)] ring-1 ring-slate-200 ${className}`}>
+  <div
+    className={`rounded-[24px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.08)] ring-1 ring-sky-50/60 backdrop-blur-xl ${className}`}
+  >
     {children}
   </div>
 );
 
 const SectionTitle = ({ title, sub }: { title: string; sub?: string }) => (
   <div className="flex items-end justify-between">
-    <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
+    <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+      <span className="mr-2 inline-block h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.15)]" />
+      {title}
+    </h2>
     {sub ? <span className="text-xs text-slate-500">{sub}</span> : null}
   </div>
 );
@@ -346,32 +351,48 @@ export default function MedLinkDoctorDashboard() {
   ]);
 
   return (
-    <div className="flex min-h-screen w-full bg-slate-50 text-slate-900">
-      <div className="flex min-h-screen flex-1 flex-col">
-        <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden px-8 py-6">
+    <div className="relative flex min-h-screen w-full bg-gradient-to-br from-[#e9f4ff] via-[#f7fbff] to-[#eef3ff] text-slate-900">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.14),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.18),transparent_25%),radial-gradient(circle_at_70%_70%,rgba(14,165,233,0.1),transparent_35%)]" />
+
+      <div className="relative flex min-h-screen flex-1 flex-col px-6 py-6 lg:px-10">
+        <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden">
           {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
           <div className="grid h-full w-full grid-cols-12 gap-6">
           {/* RIGHT: Search + expandable patient list */}
           <div className="order-2 col-span-4 flex h-full min-h-0 flex-col overflow-hidden pl-1">
-            <Card className="flex h-full min-h-0 flex-col p-4">
+            <Card className="flex h-full min-h-0 flex-col p-5">
               <SectionTitle title="Search Patients" sub="Name / NIC / Mobile" />
-              <div className="mt-3 flex items-center gap-2">
-                <input
-                  placeholder="Search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                />
+              <div className="mt-4 flex items-center gap-3 rounded-2xl bg-slate-50/70 px-3 py-3 ring-1 ring-white/60">
+                <div className="relative flex-1">
+                  <svg className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" {...iconProps}>
+                    <circle cx={11} cy={11} r={7} />
+                    <path d="M16.5 16.5L21 21" />
+                  </svg>
+                  <input
+                    placeholder="Search by name, NIC or reason"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full rounded-xl border border-transparent bg-white px-9 py-2.5 text-sm text-slate-900 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                  />
+                </div>
                 <button
-                  className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px"
+                  className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-sky-200 transition hover:bg-sky-600 active:translate-y-px"
                   type="button"
                 >
+                  <svg {...iconProps} className="size-4">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
                   Search
                 </button>
               </div>
 
-              <div className="mt-4 text-sm font-semibold text-slate-900">Patient List</div>
-              <div className="mt-2 flex-1 space-y-2 overflow-y-auto pr-1 text-sm leading-tight">
+              <div className="mt-5 flex items-center justify-between text-sm font-semibold text-slate-900">
+                <span>Patient List</span>
+                <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <span className="inline-flex size-2 rounded-full bg-emerald-400" /> {filtered.length} active
+                </span>
+              </div>
+              <div className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1 text-sm leading-tight">
                 {filtered.map((p) => {
                   const isSelected = selectedId === p.id;
                   const isOpen = expandedId === p.id;
@@ -381,12 +402,14 @@ export default function MedLinkDoctorDashboard() {
                       ref={(el) => {
                         rowRefs.current[p.id] = el;
                       }}
-                      className="w-full rounded-2xl border border-slate-200 bg-white/95 shadow-[0_4px_14px_rgba(15,23,42,0.06)]"
+                      className={`w-full rounded-2xl border border-white/70 bg-white/90 shadow-[0_12px_32px_rgba(14,116,144,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(14,116,144,0.12)] ${
+                        isSelected ? 'ring-2 ring-sky-300/70' : 'ring-1 ring-slate-200'
+                      }`}
                     >
                       {/* Row header */}
                       <div
-                        className={`flex cursor-pointer items-center justify-between px-3 py-2 transition ${
-                          isSelected ? 'bg-sky-50' : 'hover:bg-slate-50'
+                        className={`flex cursor-pointer items-center justify-between px-4 py-3 transition ${
+                          isSelected ? 'bg-sky-50/70' : 'hover:bg-slate-50'
                         }`}
                         onClick={() => {
                           setSelectedId(p.id);
@@ -394,13 +417,18 @@ export default function MedLinkDoctorDashboard() {
                           toggleExpand(p.id);
                         }}
                       >
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-slate-900">{p.name}</div>
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="truncate text-sm font-semibold text-slate-900">{p.name}</div>
                           <div className="truncate text-[11px] text-slate-500">{p.nic}</div>
-                          <div className="mt-1 text-[11px] text-slate-500">{p.reason}</div>
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                            <span className="inline-flex size-2 rounded-full bg-emerald-400" />
+                            <span className="truncate">{p.reason}</span>
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
-                          <div className="text-right text-[11px] text-slate-500">{p.time}</div>
+                          <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-white/70">
+                            {p.time}
+                          </div>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -409,7 +437,7 @@ export default function MedLinkDoctorDashboard() {
                               setGender(p.gender as 'Male' | 'Female');
                               toggleExpand(p.id);
                             }}
-                            className="grid size-6 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 hover:bg-white"
+                            className="grid size-7 place-items-center rounded-full border border-slate-200 bg-white text-xs text-slate-700 shadow-inner shadow-slate-100 transition hover:bg-slate-50"
                             aria-label={isOpen ? 'Collapse' : 'Expand'}
                           >
                             {isOpen ? '–' : '+'}
@@ -419,12 +447,16 @@ export default function MedLinkDoctorDashboard() {
 
                       {/* Expanded preview card */}
                       {isOpen && (
-                        <div className="mx-2 mb-2 rounded-2xl bg-slate-50 px-4 py-4 ring-1 ring-slate-200">
+                        <div className="mx-2 mb-2 rounded-2xl bg-gradient-to-b from-sky-50/90 via-white to-white px-4 py-4 ring-1 ring-sky-100">
                           <div className="flex items-start justify-between">
                             <div>
                               <div className="text-lg font-semibold leading-5 text-slate-900">{p.name}</div>
                               <div className="text-sm text-slate-600">{p.nic}</div>
-                              <span className="mt-2 inline-block rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white">
+                              <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold text-white shadow-md">
+                                <svg {...iconProps} className="size-3">
+                                  <path d="M3 12h18" />
+                                  <path d="M7 5h10l3 7-3 7H7L4 12l3-7z" />
+                                </svg>
                                 Father
                               </span>
                             </div>
@@ -433,7 +465,11 @@ export default function MedLinkDoctorDashboard() {
                                 Age{' '}
                                 <span className="text-xl font-semibold text-slate-900">{p.age}</span>
                               </div>
-                              <span className="mt-1 inline-block rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-500 px-3 py-1 text-[11px] font-semibold text-white shadow-md">
+                                <svg {...iconProps} className="size-3">
+                                  <path d="M12 6v12" />
+                                  <path d="M8 12h8" />
+                                </svg>
                                 {p.gender}
                               </span>
                             </div>
@@ -504,31 +540,31 @@ export default function MedLinkDoctorDashboard() {
 
           {/* LEFT: Full detailed sheet */}
           <div className="order-1 col-span-8 flex h-full min-h-0 flex-col overflow-hidden pr-4">
-            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
-              {/* Patient quick info */}
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    className="flex-1 min-w-[220px] rounded-[999px] border border-slate-200 bg-slate-50 px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                    placeholder="Enter Patient Name"
-                    defaultValue={selected.name}
-                  />
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+                {/* Patient quick info */}
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      className="flex-1 min-w-[220px] rounded-[999px] border border-transparent bg-white px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                      placeholder="Enter Patient Name"
+                      defaultValue={selected.name}
+                    />
 
-                  <input
-                    className="w-24 rounded-[999px] border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-                    placeholder="Age"
-                    defaultValue={selected.age}
-                  />
+                    <input
+                      className="w-24 rounded-[999px] border border-transparent bg-white px-4 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                      placeholder="Age"
+                      defaultValue={selected.age}
+                    />
 
-                  <div className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                    Patient No : MH0001
+                    <div className="rounded-full border border-white/80 bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 shadow-inner shadow-slate-100">
+                      Patient No : MH0001
+                    </div>
+
+                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-slate-400/50">
+                      <span>Previously patient of Dr. Jay</span>
+                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
+                    </div>
                   </div>
-
-                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white">
-                    <span>Previously patient of Dr. Jay</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
-                  </div>
-                </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <input
