@@ -191,13 +191,16 @@ export default function MedLinkDoctorDashboard() {
 
   // keep refs to each patient row so we can scroll into view when expanded
   const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  const listRef = React.useRef<HTMLDivElement | null>(null);
 
   // when a row expands, scroll it into view (inside the list only)
   useEffect(() => {
     if (!expandedId) return;
     const el = rowRefs.current[expandedId];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const listEl = listRef.current;
+    if (el && listEl) {
+      const top = el.offsetTop - listEl.offsetTop;
+      listEl.scrollTo({ top, behavior: 'smooth' });
     }
   }, [expandedId]);
 
@@ -392,7 +395,7 @@ export default function MedLinkDoctorDashboard() {
                   <span className="inline-flex size-2 rounded-full bg-emerald-400" /> {filtered.length} active
                 </span>
               </div>
-              <div className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1 text-sm leading-tight">
+              <div ref={listRef} className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1 text-sm leading-tight">
                 {filtered.map((p) => {
                   const isSelected = selectedId === p.id;
                   const isOpen = expandedId === p.id;
