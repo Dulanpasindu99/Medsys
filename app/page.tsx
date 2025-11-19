@@ -778,41 +778,44 @@ export default function MedLinkDoctorDashboard() {
         </main>
       </div>
 
-      <aside className="sticky top-0 flex h-screen w-24 flex-col items-center justify-between border-l border-slate-200/70 bg-white/70 px-3 py-8 text-slate-600 shadow-[0_0_30px_rgba(15,23,42,0.05)] backdrop-blur">
+      <aside className="sticky top-0 flex h-screen w-28 flex-col items-center justify-between bg-transparent py-10">
         <div className="flex flex-col items-center gap-5">
-          <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-[0_20px_40px_rgba(15,23,42,0.3)]">
-            <svg {...iconProps} className="size-8">
+          <div className="flex size-20 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_25px_40px_rgba(15,23,42,0.35)]">
+            <svg {...iconProps} className="size-9">
               <circle cx={12} cy={8} r={3.5} />
               <path d="M7 19.5c.7-3.3 3.1-5.5 5-5.5s4.3 2.2 5 5.5" />
               <path d="M9.5 13h5" />
             </svg>
           </div>
-          <div className="h-16 w-px rounded-full bg-slate-200" />
-          <ul className="flex flex-col items-center gap-4">
-            {navigationItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={`group relative flex size-12 items-center justify-center rounded-3xl border text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
-                    item.isActive
-                      ? 'border-slate-900 bg-slate-900 text-white shadow-[0_12px_24px_rgba(15,23,42,0.3)]'
-                      : 'border-slate-200 bg-white'
-                  }`}
-                  aria-label={item.label}
-                >
-                  <item.icon className="size-5" />
-                  <span className="pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100">
-                    {item.label}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="h-10 w-px rounded-full bg-slate-200" />
+          <div className="flex flex-col items-center rounded-[999px] border border-slate-100 bg-white/90 px-3 py-6 text-slate-600 shadow-[0_25px_45px_rgba(15,23,42,0.08)] backdrop-blur">
+            <ul className="flex flex-col items-center gap-4">
+              {navigationItems.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={`group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                      item.isActive
+                        ? 'size-14 bg-slate-800 text-white shadow-[0_18px_32px_rgba(15,23,42,0.35)]'
+                        : 'size-12 bg-white text-slate-500 ring-1 ring-slate-200 hover:ring-slate-300'
+                    }`}
+                    aria-label={item.label}
+                  >
+                    <item.icon className="size-5" />
+                    <span className="pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100">
+                      {item.label}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="h-10 w-px rounded-full bg-slate-200" />
         </div>
 
         <button
           type="button"
-          className="group relative flex size-12 items-center justify-center rounded-3xl border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-400"
+          className="group relative flex size-14 items-center justify-center rounded-full border border-rose-100 bg-white text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
           aria-label={logoutItem.label}
         >
           <logoutItem.icon className="size-5" />
