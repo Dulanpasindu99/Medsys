@@ -13,9 +13,19 @@ interface Patient {
   gender: string;
 }
 
+const SHADOWS = {
+  card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
+  inset: 'shadow-[inset_0_1px_0_rgba(15,23,42,0.06)]',
+  primaryGlow: 'shadow-[0_12px_24px_rgba(14,165,233,0.25)]',
+  darkGlow: 'shadow-[0_14px_28px_rgba(15,23,42,0.18)]',
+  whiteInset: 'shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]',
+  tooltip: 'shadow-[0_12px_24px_rgba(15,23,42,0.18)]',
+  roseTooltip: 'shadow-[0_12px_24px_rgba(244,63,94,0.25)]',
+} as const;
+
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
   <div
-    className={`rounded-[24px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.08)] ring-1 ring-sky-50/60 backdrop-blur-xl ${className}`}
+    className={`rounded-[24px] border border-white/70 bg-white/80 ${SHADOWS.card} ring-1 ring-sky-50/60 backdrop-blur-xl ${className}`}
   >
     {children}
   </div>
@@ -386,12 +396,12 @@ export default function MedLinkDoctorDashboard() {
                     placeholder="Search by name, NIC or reason"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-xl border border-transparent bg-white px-9 py-2.5 pr-12 text-sm text-slate-900 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                    className={`w-full rounded-xl border border-transparent bg-white px-9 py-2.5 pr-12 text-sm text-slate-900 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
                   />
                   <MicIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 </div>
                 <button
-                  className="grid size-11 place-items-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-200 transition hover:bg-sky-600 active:translate-y-px"
+                  className={`grid size-11 place-items-center rounded-full bg-sky-500 text-white ${SHADOWS.primaryGlow} transition hover:bg-sky-600 active:translate-y-px`}
                   type="button"
                   aria-label="Search"
                 >
@@ -456,7 +466,7 @@ export default function MedLinkDoctorDashboard() {
                               setGender(p.gender as 'Male' | 'Female');
                               toggleExpand(p.id);
                             }}
-                            className="grid size-7 place-items-center rounded-full border border-slate-200 bg-white text-xs text-slate-700 shadow-inner shadow-slate-100 transition hover:bg-slate-50"
+                            className={`grid size-7 place-items-center rounded-full border border-slate-200 bg-white text-xs text-slate-700 ${SHADOWS.inset} transition hover:bg-slate-50`}
                             aria-label={isOpen ? 'Collapse' : 'Expand'}
                           >
                             {isOpen ? '–' : '+'}
@@ -564,22 +574,22 @@ export default function MedLinkDoctorDashboard() {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <input
-                      className="flex-1 min-w-[220px] rounded-[999px] border border-transparent bg-white px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                      className={`flex-1 min-w-[220px] rounded-[999px] border border-transparent bg-white px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
                       placeholder="Enter Patient Name"
                       defaultValue={selected.name}
                     />
 
                     <input
-                      className="w-24 rounded-[999px] border border-transparent bg-white px-4 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                      className={`w-24 rounded-[999px] border border-transparent bg-white px-4 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
                       placeholder="Age"
                       defaultValue={selected.age}
                     />
 
-                    <div className="rounded-full border border-white/80 bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 shadow-inner shadow-slate-100">
+                    <div className={`rounded-full border border-white/80 bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 ${SHADOWS.inset}`}>
                       Patient No : MH0001
                     </div>
 
-                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-slate-400/50">
+                    <div className={`inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white ${SHADOWS.darkGlow}`}>
                       <span>Previously patient of Dr. Jay</span>
                       <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
                     </div>
@@ -672,7 +682,7 @@ export default function MedLinkDoctorDashboard() {
                           </span>
                           <input
                             type="text"
-                            className="h-11 w-full rounded-full border border-transparent bg-white/80 pl-9 pr-4 text-sm font-medium text-slate-900 placeholder-slate-400 shadow-inner shadow-white/40 outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                            className={`h-11 w-full rounded-full border border-transparent bg-white/80 pl-9 pr-4 text-sm font-medium text-slate-900 placeholder-slate-400 ${SHADOWS.whiteInset} outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100`}
                             placeholder="Search test by name"
                             value={testQuery}
                             onChange={(event) => setTestQuery(event.target.value)}
@@ -858,7 +868,7 @@ export default function MedLinkDoctorDashboard() {
                     aria-label={item.label}
                   >
                     <item.icon className="size-5" />
-                    <span className="pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100">
+                    <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.tooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
                       {item.label}
                     </span>
                   </button>
@@ -875,7 +885,7 @@ export default function MedLinkDoctorDashboard() {
           aria-label={logoutItem.label}
         >
           <logoutItem.icon className="size-5" />
-          <span className="pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100">
+          <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.roseTooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
             {logoutItem.label}
           </span>
         </button>
