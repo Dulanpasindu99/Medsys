@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 // ---- Types ----
 interface Patient {
@@ -24,6 +24,73 @@ const SectionTitle = ({ title, sub }: { title: string; sub?: string }) => (
     <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
     {sub ? <span className="text-xs text-slate-500">{sub}</span> : null}
   </div>
+);
+
+type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
+
+const iconProps = {
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+} as const;
+
+const DoctorIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <circle cx={12} cy={7} r={3.5} />
+    <path d="M6 20c.6-3.2 3.1-5.5 6-5.5s5.4 2.3 6 5.5" />
+    <path d="M9 14h6" />
+  </svg>
+);
+
+const AssistantIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M4 10.5l2.2-4.5h11.6l2.2 4.5" />
+    <path d="M6.5 10.5v4.8a5.5 5.5 0 0011 0v-4.8" />
+    <path d="M12 9v2.3M10.7 10.2h2.6" />
+  </svg>
+);
+
+const PatientsIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M6 7h12a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z" />
+    <path d="M9 4h6l1 3H8l1-3z" />
+    <path d="M9 13h6M9 17h4" />
+  </svg>
+);
+
+const StatsIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M5 20h14" />
+    <path d="M8 16V9" />
+    <path d="M12 16V6" />
+    <path d="M16 16v-4" />
+  </svg>
+);
+
+const InventoryIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M3 7l9-4 9 4-9 4-9-4z" />
+    <path d="M3 7v10l9 4 9-4V7" />
+    <path d="M12 11v10" />
+  </svg>
+);
+
+const ChatIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M6 6h12a3 3 0 013 3v5a3 3 0 01-3 3h-2.5L12 20.5 10.5 17H6a3 3 0 01-3-3V9a3 3 0 013-3z" />
+    <path d="M9 11h6M9 14h4" />
+  </svg>
+);
+
+const LogoutIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M15 7l5 5-5 5" />
+    <path d="M10 12h10" />
+    <path d="M4 5v14" />
+  </svg>
 );
 
 export default function MedLinkDoctorDashboard() {
@@ -118,10 +185,7 @@ export default function MedLinkDoctorDashboard() {
   };
 
   // keep refs to each patient row so we can scroll into view when expanded
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [statsOpen, setStatsOpen] = useState(false);
-  const statsButtonRef = useRef<HTMLButtonElement | null>(null);
-  const statsPanelRef = useRef<HTMLDivElement | null>(null);
+  const rowRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
 
   // when a row expands, scroll it into view (inside the list only)
   useEffect(() => {
@@ -131,34 +195,6 @@ export default function MedLinkDoctorDashboard() {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [expandedId]);
-
-  useEffect(() => {
-    if (!statsOpen) return;
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        statsPanelRef.current &&
-        !statsPanelRef.current.contains(target) &&
-        statsButtonRef.current &&
-        !statsButtonRef.current.contains(target)
-      ) {
-        setStatsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [statsOpen]);
-
-  useEffect(() => {
-    if (!statsOpen) return;
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setStatsOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [statsOpen]);
 
   // Right sheet editable state
   const [sheet] = useState({
@@ -238,6 +274,20 @@ export default function MedLinkDoctorDashboard() {
     );
   }, [patients, search]);
 
+  const navigationItems = useMemo(
+    () => [
+      { id: 'doctor', label: 'Doctor Screen', icon: DoctorIcon, isActive: true },
+      { id: 'assistant', label: 'Assistant Screen', icon: AssistantIcon },
+      { id: 'patient', label: 'Patiant Management', icon: PatientsIcon },
+      { id: 'stats', label: 'Stats', icon: StatsIcon },
+      { id: 'inventory', label: 'Inventry Management', icon: InventoryIcon },
+      { id: 'ai', label: 'Ai Chat', icon: ChatIcon },
+    ],
+    []
+  );
+
+  const logoutItem = useMemo(() => ({ id: 'logout', label: 'Logout', icon: LogoutIcon }), []);
+
   // ------ Header derived state ------
   const occupancy = Math.min(patients.length, CAPACITY);
   const occupancyPercent = Math.round((occupancy / CAPACITY) * 100);
@@ -296,32 +346,11 @@ export default function MedLinkDoctorDashboard() {
   ]);
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-slate-50 text-slate-900">
-      {/* Top bar */}
-      <header className="shrink-0 border-b border-slate-200/60 bg-slate-50/90 px-8 py-4 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-between gap-4">
-          <div />
-          <div className="rounded-[999px] bg-gradient-to-r from-white via-slate-50 to-slate-100 p-[1px] shadow-[0_15px_45px_rgba(15,23,42,0.12)]">
-            <div className="flex items-center gap-3 rounded-[999px] border border-white/60 bg-white/95 px-6 py-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.4em] text-slate-400">Welcome</div>
-                <div className="text-xl font-semibold leading-5 text-slate-900">Hi Dr. Manjith</div>
-                <div className="text-[11px] text-slate-500">Surgeon / Family Consultant</div>
-              </div>
-              <div className="rounded-full bg-slate-900/90 p-0.5 shadow-[0_8px_24px_rgba(15,23,42,0.25)]">
-                <div className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-slate-900 to-slate-600 text-xs font-semibold uppercase tracking-wide text-white">
-                  DR
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden px-8 pb-6 pt-2">
-        {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
-        <div className="grid h-full w-full grid-cols-12 gap-6">
+    <div className="flex min-h-screen w-full bg-slate-50 text-slate-900">
+      <div className="flex min-h-screen flex-1 flex-col">
+        <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden px-8 py-6">
+          {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
+          <div className="grid h-full w-full grid-cols-12 gap-6">
           {/* RIGHT: Search + expandable patient list */}
           <div className="order-2 col-span-4 flex h-full min-h-0 flex-col overflow-hidden pl-1">
             <Card className="flex h-full min-h-0 flex-col p-4">
@@ -746,93 +775,52 @@ export default function MedLinkDoctorDashboard() {
             </div>
           </div>
         </div>
-      </main>
+        </main>
+      </div>
 
-      {/* Floating stats button + popup */}
-      {statsOpen && (
-        <div
-          ref={statsPanelRef}
-          id="queue-stats-panel"
-          className="fixed bottom-28 right-6 z-40 w-[340px]"
-        >
-          <Card className="relative space-y-5 px-5 py-5">
-            <button
-              type="button"
-              onClick={() => setStatsOpen(false)}
-              aria-label="Hide queue stats"
-              className="absolute right-4 top-4 text-slate-400 transition hover:text-slate-600"
-            >
-              ×
-            </button>
-            <div className="flex items-center gap-4">
-              <div className="rounded-[24px] bg-gradient-to-br from-sky-400 to-sky-600 p-[1px] shadow-inner shadow-sky-200/80">
-                <div className="rounded-[22px] bg-white/95 px-3 py-2 text-slate-900">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Queue</p>
-                  <div className="flex items-baseline gap-1">
-                    <p className="text-2xl font-semibold leading-6">{patients.length}</p>
-                    <span className="text-xs text-slate-500">today</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Capacity {occupancy}/{CAPACITY}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2 text-[11px] font-medium text-slate-600">
-                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> New {newPatients}
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
-                  <span className="h-2 w-2 rounded-full bg-slate-300" /> Existing {existingPatients}
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                <span>Patients amount</span>
-                <span className="text-sm text-slate-900">{occupancyPercent}%</span>
-              </div>
-              <div className="relative mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-sky-600 shadow-[0_4px_12px_rgba(14,165,233,0.35)]"
-                  style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
-                />
-                <div className="absolute inset-0 flex justify-between px-2 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-                  <span>Calm</span>
-                  <span>Busy</span>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-sm text-slate-600">
-              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center shadow-inner">
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Total</span>
-                <span className="text-2xl font-semibold text-slate-900">{patients.length}</span>
-                <span className="block text-[11px]">in queue</span>
-              </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center shadow-inner">
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">New</span>
-                <span className="text-2xl font-semibold text-slate-900">{newPatients}</span>
-                <span className="block text-[11px]">arrivals</span>
-              </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-center shadow-inner">
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Existing</span>
-                <span className="text-2xl font-semibold text-slate-900">{existingPatients}</span>
-                <span className="block text-[11px]">follow ups</span>
-              </div>
-            </div>
-          </Card>
+      <aside className="sticky top-0 flex h-screen w-24 flex-col items-center justify-between border-l border-slate-200/70 bg-white/70 px-3 py-8 text-slate-600 shadow-[0_0_30px_rgba(15,23,42,0.05)] backdrop-blur">
+        <div className="flex flex-col items-center gap-5">
+          <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-[0_20px_40px_rgba(15,23,42,0.3)]">
+            <svg {...iconProps} className="size-8">
+              <circle cx={12} cy={8} r={3.5} />
+              <path d="M7 19.5c.7-3.3 3.1-5.5 5-5.5s4.3 2.2 5 5.5" />
+              <path d="M9.5 13h5" />
+            </svg>
+          </div>
+          <div className="h-16 w-px rounded-full bg-slate-200" />
+          <ul className="flex flex-col items-center gap-4">
+            {navigationItems.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={`group relative flex size-12 items-center justify-center rounded-3xl border text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                    item.isActive
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-[0_12px_24px_rgba(15,23,42,0.3)]'
+                      : 'border-slate-200 bg-white'
+                  }`}
+                  aria-label={item.label}
+                >
+                  <item.icon className="size-5" />
+                  <span className="pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100">
+                    {item.label}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
-      <button
-        ref={statsButtonRef}
-        type="button"
-        onClick={() => setStatsOpen((prev) => !prev)}
-        aria-expanded={statsOpen}
-        aria-controls="queue-stats-panel"
-        className="fixed bottom-8 right-6 z-30 flex size-14 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white shadow-[0_25px_65px_rgba(15,23,42,0.45)] transition hover:bg-black"
-      >
-        {statsOpen ? 'Hide' : 'Stats'}
-      </button>
 
+        <button
+          type="button"
+          className="group relative flex size-12 items-center justify-center rounded-3xl border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-400"
+          aria-label={logoutItem.label}
+        >
+          <logoutItem.icon className="size-5" />
+          <span className="pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 shadow-lg transition group-hover:scale-100 group-hover:opacity-100">
+            {logoutItem.label}
+          </span>
+        </button>
+      </aside>
     </div>
   );
 }
