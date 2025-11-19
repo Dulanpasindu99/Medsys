@@ -42,6 +42,20 @@ const iconProps = {
   strokeLinejoin: 'round',
 } as const;
 
+const SearchIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <circle cx={11} cy={11} r={7} />
+    <path d="M16.5 16.5L21 21" />
+  </svg>
+);
+
+const MicIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M12 15a3 3 0 003-3V8a3 3 0 10-6 0v4a3 3 0 003 3z" />
+    <path d="M6.5 11a5.5 5.5 0 0011 0M12 15.5V19M9.5 19h5" />
+  </svg>
+);
+
 const DoctorIcon: IconRenderer = (props) => (
   <svg {...iconProps} {...props}>
     <circle cx={12} cy={7} r={3.5} />
@@ -367,25 +381,21 @@ export default function MedLinkDoctorDashboard() {
               <SectionTitle title="Search Patients" sub="Name / NIC / Mobile" />
               <div className="mt-4 flex items-center gap-3 rounded-2xl bg-slate-50/70 px-3 py-3 ring-1 ring-white/60">
                 <div className="relative flex-1">
-                  <svg className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" {...iconProps}>
-                    <circle cx={11} cy={11} r={7} />
-                    <path d="M16.5 16.5L21 21" />
-                  </svg>
+                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                   <input
                     placeholder="Search by name, NIC or reason"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-xl border border-transparent bg-white px-9 py-2.5 text-sm text-slate-900 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                    className="w-full rounded-xl border border-transparent bg-white px-9 py-2.5 pr-12 text-sm text-slate-900 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
                   />
+                  <MicIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 </div>
                 <button
-                  className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-sky-200 transition hover:bg-sky-600 active:translate-y-px"
+                  className="grid size-11 place-items-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-200 transition hover:bg-sky-600 active:translate-y-px"
                   type="button"
+                  aria-label="Search"
                 >
-                  <svg {...iconProps} className="size-4">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Search
+                  <SearchIcon className="size-4" />
                 </button>
               </div>
 
@@ -623,11 +633,12 @@ export default function MedLinkDoctorDashboard() {
                           className="min-w-[220px] flex-1 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
                           placeholder="Search Diseases"
                         />
-                        <button className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px">
-                          <span role="img" aria-hidden="true">
-                            🔍
-                          </span>
-                          Search
+                        <button
+                          className="grid size-11 place-items-center rounded-full bg-sky-500 text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px"
+                          aria-label="Search diseases"
+                          type="button"
+                        >
+                          <SearchIcon className="size-4" />
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
