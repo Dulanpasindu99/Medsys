@@ -635,7 +635,7 @@ export default function MedLinkDoctorDashboard() {
                   {/* Row 1: Disease + Regular / Medical Tests */}
                   <div className="grid grid-cols-12 gap-6">
                   {/* Disease side */}
-                  <div className="col-span-7">
+                  <div className="col-span-8">
                     <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -672,7 +672,7 @@ export default function MedLinkDoctorDashboard() {
                   </div>
 
                   {/* Medical Tests side */}
-                  <div className="col-span-5">
+                  <div className="col-span-4">
                     <div className="rounded-3xl border border-slate-100 bg-slate-50/80 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="text-base font-semibold text-slate-900">Medical Test</div>
@@ -704,9 +704,6 @@ export default function MedLinkDoctorDashboard() {
                           </span>
                         ))}
                       </div>
-                      <p className="mt-4 text-xs text-slate-500">
-                        Type a test name and press Enter to add it to the patient&apos;s order.
-                      </p>
                     </div>
                   </div>
                   </div>
