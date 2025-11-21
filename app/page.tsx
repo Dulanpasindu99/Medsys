@@ -278,9 +278,29 @@ export default function MedLinkDoctorDashboard() {
   const normalizeDiseaseSuggestions = (payload: unknown, query: string): string[] => {
     if (!Array.isArray(payload)) return [];
 
-    const candidates: unknown = payload[2] ?? payload[1];
-    const names: string[] = Array.isArray(candidates)
-      ? (candidates as unknown[]).map((entry) => {
+    const fields = Array.isArray(payload[1]) ? (payload[1] as unknown[]) : [];
+    const entries = Array.isArray(payload[2]) ? (payload[2] as unknown[]) : [];
+
+    const codeIndex = fields.findIndex((field) => field === 'code');
+    const nameIndex = fields.findIndex((field) => field === 'name');
+
+    const icd10Names: string[] = entries
+      .map((entry) => {
+        if (!Array.isArray(entry)) return '';
+        const code = codeIndex >= 0 && typeof entry[codeIndex] === 'string' ? entry[codeIndex] : undefined;
+        const name = nameIndex >= 0 && typeof entry[nameIndex] === 'string' ? entry[nameIndex] : undefined;
+
+        const codePart = code?.trim() ?? '';
+        const namePart = name?.trim() ?? '';
+
+        if (codePart && namePart) return `${codePart} — ${namePart}`;
+        return namePart || codePart;
+      })
+      .filter(Boolean);
+
+    const fallbackCandidates: unknown = payload[2] ?? payload[1];
+    const fallbackNames: string[] = Array.isArray(fallbackCandidates)
+      ? (fallbackCandidates as unknown[]).map((entry) => {
           if (Array.isArray(entry)) {
             return entry.filter((part) => typeof part === 'string').join(' — ');
           }
@@ -288,7 +308,8 @@ export default function MedLinkDoctorDashboard() {
         })
       : [];
 
-    const base = names.map((name) => name.trim()).filter(Boolean);
+    const combined = Array.from(new Set([...icd10Names, ...fallbackNames]));
+    const base = combined.map((name) => name.trim()).filter(Boolean);
     const qLower = query.trim().toLowerCase();
 
     const prefixMatches = base.filter((name) => name.toLowerCase().startsWith(qLower));
@@ -310,7 +331,7 @@ export default function MedLinkDoctorDashboard() {
       try {
         setIsFetchingDiseases(true);
         const response = await fetch(
-          `https://clinicaltables.nlm.nih.gov/api/conditions/v3/search?sf=code,name&maxList=10&terms=${encodeURIComponent(q)}`,
+          `https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?sf=code,name&maxList=10&terms=${encodeURIComponent(q)}`,
           { signal: controller.signal }
         );
 
