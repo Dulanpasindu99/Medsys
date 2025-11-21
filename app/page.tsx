@@ -944,6 +944,40 @@ export default function MedLinkDoctorDashboard() {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <input
+                      className="w-52 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                      placeholder="Enter NIC No"
+                      value={nicNumber}
+                      onChange={(event) => setNicNumber(event.target.value)}
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setGender('Male')}
+                        className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                          gender === 'Male'
+                            ? 'bg-sky-500 text-white shadow-sm'
+                            : 'border border-slate-300 bg-white text-slate-700'
+                        }`}
+                      >
+                        Male
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGender('Female')}
+                        className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                          gender === 'Female'
+                            ? 'bg-rose-500 text-white shadow-sm'
+                            : 'border border-slate-300 bg-white text-slate-700'
+                        }`}
+                      >
+                        Female
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
                       className={`flex-1 min-w-[220px] rounded-[999px] border border-transparent bg-white px-5 py-3 text-base font-semibold text-slate-900 placeholder-slate-400 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
                       placeholder="Enter Patient Name"
                       value={patientName}
@@ -966,40 +1000,6 @@ export default function MedLinkDoctorDashboard() {
                       <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
                     </div>
                   </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    className="w-52 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                    placeholder="Enter NIC No"
-                    value={nicNumber}
-                    onChange={(event) => setNicNumber(event.target.value)}
-                  />
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setGender('Male')}
-                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                        gender === 'Male'
-                          ? 'bg-sky-500 text-white shadow-sm'
-                          : 'border border-slate-300 bg-white text-slate-700'
-                      }`}
-                    >
-                      Male
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGender('Female')}
-                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                        gender === 'Female'
-                          ? 'bg-rose-500 text-white shadow-sm'
-                          : 'border border-slate-300 bg-white text-slate-700'
-                      }`}
-                    >
-                      Female
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* Two-column canvas */}
