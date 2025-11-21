@@ -293,6 +293,25 @@ export default function MedLinkDoctorDashboard() {
 
   const logoutItem = useMemo(() => ({ id: 'logout', label: 'Logout', icon: LogoutIcon }), []);
 
+  const patientVitals = useMemo(
+    () => [
+      { label: 'Blood Pressure', value: '118 / 76 mmHg' },
+      { label: 'Heart Rate', value: '74 bpm' },
+      { label: 'Temperature', value: '98.6°F' },
+      { label: 'SpO₂', value: '98%' },
+    ],
+    []
+  );
+
+  const patientAllergies = useMemo(
+    () => [
+      { name: 'Penicillin', severity: 'High', tone: 'rose', dot: 'bg-rose-400', pill: 'bg-rose-50 text-rose-700 ring-rose-100' },
+      { name: 'Peanuts', severity: 'Medium', tone: 'amber', dot: 'bg-amber-400', pill: 'bg-amber-50 text-amber-700 ring-amber-100' },
+      { name: 'Latex', severity: 'Low', tone: 'emerald', dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
+    ],
+    []
+  );
+
   // ------ Header derived state ------
   const occupancy = Math.min(patients.length, CAPACITY);
   const occupancyPercent = Math.round((occupancy / CAPACITY) * 100);
@@ -497,6 +516,59 @@ export default function MedLinkDoctorDashboard() {
                   </div>
                 )}
               </div>
+            </Card>
+
+            <Card className="flex flex-col gap-4 p-5">
+              <div className="flex items-center justify-between">
+                <SectionTitle title="Patient Vitals" />
+                <span className="rounded-full bg-sky-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_8px_22px_rgba(14,165,233,0.35)]">
+                  Live
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {patientVitals.map((vital) => (
+                  <div
+                    key={vital.label}
+                    className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{vital.label}</p>
+                    <p className="mt-1 text-xl font-bold text-slate-900">{vital.value}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="flex flex-col gap-4 p-5">
+              <div className="flex items-center justify-between">
+                <SectionTitle title="Allergies & Alerts" />
+                <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_10px_24px_rgba(244,63,94,0.35)]">
+                  Critical
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {patientAllergies.map((allergy) => (
+                  <div
+                    key={allergy.name}
+                    className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-white/70 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                  >
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Allergy</p>
+                      <p className="text-base font-semibold text-slate-900">{allergy.name}</p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${allergy.pill}`}
+                    >
+                      <span className={`size-2 rounded-full ${allergy.dot}`} />
+                      {allergy.severity}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Status colors: Green = Active · Red/Orange = Allergy
+              </p>
             </Card>
 
           </div>
