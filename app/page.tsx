@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 // ---- Types ----
@@ -628,14 +629,15 @@ export default function MedLinkDoctorDashboard() {
     );
   }, [patients, search]);
 
+  const activeNavigationId = 'doctor';
   const navigationItems = useMemo(
     () => [
-      { id: 'doctor', label: 'Doctor Screen', icon: DoctorIcon, isActive: true },
-      { id: 'assistant', label: 'Assistant Screen', icon: AssistantIcon },
-      { id: 'patient', label: 'Patiant Management', icon: PatientsIcon },
-      { id: 'stats', label: 'Stats', icon: StatsIcon },
-      { id: 'inventory', label: 'Inventry Management', icon: InventoryIcon },
-      { id: 'ai', label: 'Ai Chat', icon: ChatIcon },
+      { id: 'doctor', label: 'Doctor Screen', icon: DoctorIcon, href: '/' },
+      { id: 'assistant', label: 'Assistant Screen', icon: AssistantIcon, href: '/assistant' },
+      { id: 'patient', label: 'Patiant Management', icon: PatientsIcon, href: '/patients' },
+      { id: 'stats', label: 'Stats', icon: StatsIcon, href: '/stats' },
+      { id: 'inventory', label: 'Inventry Management', icon: InventoryIcon, href: '/inventory' },
+      { id: 'ai', label: 'Ai Chat', icon: ChatIcon, href: '/ai' },
     ],
     []
   );
@@ -1462,20 +1464,21 @@ export default function MedLinkDoctorDashboard() {
             <ul className="flex flex-col items-center gap-4">
               {navigationItems.map((item) => (
                 <li key={item.id}>
-                  <button
-                    type="button"
+                  <Link
+                    href={item.href}
                     className={`group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
-                      item.isActive
+                      item.id === activeNavigationId
                         ? 'size-14 bg-slate-800 text-white shadow-[0_18px_32px_rgba(15,23,42,0.35)]'
                         : 'size-12 bg-white text-slate-500 ring-1 ring-slate-200 hover:ring-slate-300'
                     }`}
                     aria-label={item.label}
+                    aria-current={item.id === activeNavigationId ? 'page' : undefined}
                   >
                     <item.icon className="size-5" />
                     <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.tooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
                       {item.label}
                     </span>
-                  </button>
+                  </Link>
                 </li>
               ))}
             </ul>
