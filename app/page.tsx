@@ -269,11 +269,14 @@ export default function MedLinkDoctorDashboard() {
     }
   };
 
-  const [selectedDiseases, setSelectedDiseases] = useState<string[]>(['Fever', 'Headache']);
+  const [selectedDiseases, setSelectedDiseases] = useState<string[]>([]);
   const [diseaseQuery, setDiseaseQuery] = useState('');
   const [diseaseSuggestions, setDiseaseSuggestions] = useState<string[]>([]);
   const [highlightedDiseaseIndex, setHighlightedDiseaseIndex] = useState(-1);
   const [isFetchingDiseases, setIsFetchingDiseases] = useState(false);
+  const [chipsPendingRemoval, setChipsPendingRemoval] = useState<Set<string>>(new Set());
+
+  const diseaseQuickTags = selectedDiseases;
 
   const normalizeDiseaseSuggestions = (payload: unknown, query: string): string[] => {
     if (!Array.isArray(payload)) return [];
@@ -365,9 +368,27 @@ export default function MedLinkDoctorDashboard() {
     const trimmed = disease.trim();
     if (!trimmed) return;
     setSelectedDiseases((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setChipsPendingRemoval((prev) => {
+      const next = new Set(prev);
+      next.delete(trimmed);
+      return next;
+    });
     setDiseaseQuery('');
     setDiseaseSuggestions([]);
     setHighlightedDiseaseIndex(-1);
+  };
+
+  const toggleChipRemovalState = (disease: string) => {
+    setChipsPendingRemoval((prev) => {
+      const next = new Set(prev);
+      if (next.has(disease)) {
+        next.delete(disease);
+        setSelectedDiseases((current) => current.filter((entry) => entry !== disease));
+      } else {
+        next.add(disease);
+      }
+      return next;
+    });
   };
 
   const handleDiseaseKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -836,14 +857,28 @@ export default function MedLinkDoctorDashboard() {
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {selectedDiseases.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                        {selectedDiseases.map((tag) => {
+                          const isPendingRemoval = chipsPendingRemoval.has(tag);
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => toggleChipRemovalState(tag)}
+                              className={`relative rounded-full px-4 py-2 text-sm font-semibold shadow-sm ring-1 transition ${
+                                isPendingRemoval
+                                  ? 'bg-rose-50 text-rose-700 ring-rose-200'
+                                  : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <span className={isPendingRemoval ? 'opacity-30' : ''}>{tag}</span>
+                              {isPendingRemoval ? (
+                                <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-base font-black text-rose-500">
+                                  ×
+                                </span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
