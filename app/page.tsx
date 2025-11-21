@@ -1247,9 +1247,9 @@ export default function MedLinkDoctorDashboard() {
 
                             <div className="col-span-2">
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dose</label>
-                              <div className="mt-1 grid grid-cols-8 items-center gap-2">
+                              <div className="relative mt-1">
                                 <input
-                                  className="col-span-5 w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                                  className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 pr-16 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
                                   placeholder="Qty"
                                   inputMode="numeric"
                                   value={clinicalDrugForm.doseValue}
@@ -1260,10 +1260,10 @@ export default function MedLinkDoctorDashboard() {
                                 <button
                                   type="button"
                                   onClick={toggleDoseUnit}
-                                  className={`col-span-3 flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-px hover:shadow ${
+                                  className={`absolute right-2 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-bold uppercase tracking-[0.18em] shadow-sm transition hover:-translate-y-px hover:shadow ${
                                     clinicalDrugForm.doseUnit === 'MG'
-                                      ? 'border border-sky-200 bg-sky-50 text-sky-700'
-                                      : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                                      ? 'border-sky-200 bg-sky-50 text-sky-700 ring-1 ring-sky-100'
+                                      : 'border-emerald-200 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
                                   }`}
                                   aria-label="Toggle dose unit"
                                 >
@@ -1274,21 +1274,9 @@ export default function MedLinkDoctorDashboard() {
 
                             <div className="col-span-2">
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Terms</label>
-                              <div className="mt-1 grid grid-cols-8 items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={toggleTerms}
-                                  className={`col-span-3 flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-px hover:shadow ${
-                                    clinicalDrugForm.terms === 'Daily'
-                                      ? 'border border-indigo-200 bg-indigo-50 text-indigo-700'
-                                      : 'border border-amber-200 bg-amber-50 text-amber-700'
-                                  }`}
-                                  aria-label="Toggle terms"
-                                >
-                                  {clinicalDrugForm.terms}
-                                </button>
+                              <div className="relative mt-1">
                                 <input
-                                  className="col-span-5 w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                                  className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 pr-28 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
                                   placeholder="Value"
                                   inputMode="numeric"
                                   value={clinicalDrugForm.termsValue}
@@ -1296,6 +1284,18 @@ export default function MedLinkDoctorDashboard() {
                                     setClinicalDrugForm((prev) => ({ ...prev, termsValue: event.target.value }))
                                   }
                                 />
+                                <button
+                                  type="button"
+                                  onClick={toggleTerms}
+                                  className={`absolute right-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border-2 px-5 py-[10px] text-[11px] font-semibold uppercase tracking-[0.18em] shadow-sm transition hover:-translate-y-px hover:shadow ${
+                                    clinicalDrugForm.terms === 'Daily'
+                                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
+                                      : 'border-amber-200 bg-amber-50 text-amber-700 ring-1 ring-amber-100'
+                                  }`}
+                                  aria-label="Toggle terms"
+                                >
+                                  {clinicalDrugForm.terms}
+                                </button>
                               </div>
                             </div>
 
