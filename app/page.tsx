@@ -247,6 +247,10 @@ export default function MedLinkDoctorDashboard() {
 
   const [selectedTests, setSelectedTests] = useState<string[]>(['F.B.C', 'Cholesterol']);
   const [testQuery, setTestQuery] = useState('');
+  const [highlightedTestIndex, setHighlightedTestIndex] = useState(-1);
+  const [testChipsPendingRemoval, setTestChipsPendingRemoval] = useState<Set<string>>(new Set());
+
+  const testChipsPendingRemovalRef = useRef(testChipsPendingRemoval);
 
   const filteredTestOptions = useMemo(() => {
     const available = preSavedTests.filter((test) => !selectedTests.includes(test));
@@ -257,15 +261,80 @@ export default function MedLinkDoctorDashboard() {
     return available.filter((test) => test.toLowerCase().includes(q));
   }, [preSavedTests, selectedTests, testQuery]);
 
+  useEffect(() => {
+    const shouldHighlight = testQuery.trim().length > 0;
+    setHighlightedTestIndex(shouldHighlight && filteredTestOptions.length ? 0 : -1);
+  }, [filteredTestOptions, testQuery]);
+
   const addMedicalTest = (test: string) => {
-    setSelectedTests((prev) => (prev.includes(test) ? prev : [...prev, test]));
+    const trimmed = test.trim();
+    if (!trimmed) return;
+    setSelectedTests((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setTestChipsPendingRemoval((prev) => {
+      const next = new Set(prev);
+      next.delete(trimmed);
+      return next;
+    });
     setTestQuery('');
+    setHighlightedTestIndex(-1);
   };
 
+  const toggleTestChipRemovalState = (test: string) => {
+    setTestChipsPendingRemoval((prev) => {
+      const next = new Set(prev);
+      if (next.has(test)) {
+        next.delete(test);
+        setSelectedTests((current) => current.filter((entry) => entry !== test));
+      } else {
+        next.add(test);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    testChipsPendingRemovalRef.current = testChipsPendingRemoval;
+  }, [testChipsPendingRemoval]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!testChipsPendingRemovalRef.current.size) return;
+      const target = event.target as HTMLElement | null;
+      const pendingChip = target?.closest('[data-test-chip]');
+      const isPendingChip = pendingChip?.getAttribute('data-pending-removal') === 'true';
+
+      if (!isPendingChip) {
+        setTestChipsPendingRemoval(new Set());
+      }
+    };
+
+    document.addEventListener('click', handleOutsideClick, true);
+
+    return () => {
+      document.removeEventListener('click', handleOutsideClick, true);
+    };
+  }, []);
+
   const handleMedicalTestKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && filteredTestOptions[0]) {
+    if (event.key === 'ArrowDown' && filteredTestOptions.length) {
       event.preventDefault();
-      addMedicalTest(filteredTestOptions[0]);
+      setHighlightedTestIndex((prev) => (prev + 1) % filteredTestOptions.length);
+      return;
+    }
+
+    if (event.key === 'ArrowUp' && filteredTestOptions.length) {
+      event.preventDefault();
+      setHighlightedTestIndex((prev) => (prev - 1 + filteredTestOptions.length) % filteredTestOptions.length);
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const selected =
+        (highlightedTestIndex >= 0 && filteredTestOptions[highlightedTestIndex]) || filteredTestOptions[0] || testQuery;
+      if (selected) {
+        addMedicalTest(selected);
+      }
     }
   };
 
@@ -913,33 +982,72 @@ export default function MedLinkDoctorDashboard() {
                     <div className="rounded-3xl border border-slate-100 bg-slate-50/80 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="text-base font-bold text-slate-900">Medical Test</div>
-                        <label className="relative flex-1 min-w-[200px]">
-                          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
-                            🔍
-                          </span>
+                        <div className="relative flex-1 min-w-[200px]">
+                          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                           <input
                             type="text"
-                            className={`h-11 w-full rounded-full border border-transparent bg-white/80 pl-9 pr-4 text-sm font-medium text-slate-900 placeholder-slate-400 ${SHADOWS.whiteInset} outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100`}
+                            className={`h-11 w-full rounded-full border border-transparent bg-white/80 pl-10 pr-4 text-sm font-medium text-slate-900 placeholder-slate-400 ${SHADOWS.whiteInset} outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100`}
                             placeholder="Search test by name"
                             value={testQuery}
                             onChange={(event) => setTestQuery(event.target.value)}
                             onKeyDown={handleMedicalTestKeyDown}
                             aria-label="Search pre-saved medical tests"
                           />
-                        </label>
+                          {Boolean(filteredTestOptions.length && (testQuery.trim() || highlightedTestIndex >= 0)) && (
+                            <div className="absolute left-0 right-0 z-10 mt-2 max-h-48 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 shadow-lg">
+                              <ul className="divide-y divide-slate-100 text-sm text-slate-800">
+                                {filteredTestOptions.map((test, index) => (
+                                  <li key={`${test}-${index}`}>
+                                    <button
+                                      type="button"
+                                      className={`flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-sky-50 ${
+                                        index === highlightedTestIndex ? 'bg-sky-50 text-sky-700' : ''
+                                      }`}
+                                      onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        addMedicalTest(test);
+                                      }}
+                                    >
+                                      <span className="flex-1 truncate">{test}</span>
+                                      {index === highlightedTestIndex ? (
+                                        <span className="ml-3 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-600">
+                                          Enter
+                                        </span>
+                                      ) : null}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
                           {selectedTests.length} Tests
                         </span>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {selectedTests.map((test) => (
-                          <span
-                            key={test}
-                            className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200"
-                          >
-                            {test}
-                          </span>
-                        ))}
+                        {selectedTests.map((test) => {
+                          const isPendingRemoval = testChipsPendingRemoval.has(test);
+                          return (
+                            <button
+                              key={test}
+                              type="button"
+                              data-test-chip
+                              data-pending-removal={isPendingRemoval}
+                              onClick={() => toggleTestChipRemovalState(test)}
+                              className={`group relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm ring-1 transition ${
+                                isPendingRemoval
+                                  ? 'bg-rose-50 text-rose-700 ring-rose-200'
+                                  : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <span className={isPendingRemoval ? 'opacity-70' : ''}>{test}</span>
+                              {isPendingRemoval ? (
+                                <span className="ml-1 text-base font-black text-rose-500 transition group-hover:scale-110">×</span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
