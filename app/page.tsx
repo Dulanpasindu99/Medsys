@@ -322,6 +322,13 @@ export default function MedLinkDoctorDashboard() {
     });
   };
 
+  const handleDrugFormKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addClinicalDrug();
+    }
+  };
+
   const updateRxRow = (index: number, field: keyof ClinicalDrug, value: string) => {
     setRxRows((prev) =>
       prev.map((row, i) =>
@@ -1218,6 +1225,7 @@ export default function MedLinkDoctorDashboard() {
                                   onChange={(event) =>
                                     setClinicalDrugForm((prev) => ({ ...prev, name: event.target.value }))
                                   }
+                                  onKeyDown={handleDrugFormKeyDown}
                                 />
                                 {Boolean(filteredDrugSuggestions.length) && clinicalDrugForm.name.trim() !== '' && (
                                   <div className="absolute left-0 right-0 z-10 mt-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -1256,6 +1264,7 @@ export default function MedLinkDoctorDashboard() {
                                   onChange={(event) =>
                                     setClinicalDrugForm((prev) => ({ ...prev, doseValue: event.target.value }))
                                   }
+                                  onKeyDown={handleDrugFormKeyDown}
                                 />
                                 <button
                                   type="button"
@@ -1280,6 +1289,7 @@ export default function MedLinkDoctorDashboard() {
                                   onChange={(event) =>
                                     setClinicalDrugForm((prev) => ({ ...prev, termsValue: event.target.value }))
                                   }
+                                  onKeyDown={handleDrugFormKeyDown}
                                 />
                                 <button
                                   type="button"
@@ -1295,7 +1305,7 @@ export default function MedLinkDoctorDashboard() {
 
                             <div className="col-span-2">
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Amount</label>
-                              <div className="mt-1 flex items-center gap-2">
+                              <div className="mt-1">
                                 <input
                                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
                                   placeholder="Qty"
@@ -1304,20 +1314,8 @@ export default function MedLinkDoctorDashboard() {
                                   onChange={(event) =>
                                     setClinicalDrugForm((prev) => ({ ...prev, amount: event.target.value }))
                                   }
-                                  onKeyDown={(event) => {
-                                    if (event.key === 'Enter') {
-                                      event.preventDefault();
-                                      addClinicalDrug();
-                                    }
-                                  }}
+                                  onKeyDown={handleDrugFormKeyDown}
                                 />
-                                <button
-                                  type="button"
-                                  onClick={addClinicalDrug}
-                                  className="rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400"
-                                >
-                                  Add drug
-                                </button>
                               </div>
                             </div>
                           </div>
