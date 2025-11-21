@@ -222,10 +222,20 @@ export default function MedLinkDoctorDashboard() {
     outside: [{ name: 'Paracetamol', dose: '250MG', terms: 'Hourly', amount: 32 }],
     tests: 'No',
     notes: 'No',
-    nextVisit: '05 November 2025',
   });
 
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const getNextVisitDate = (option: 'TwoWeeks' | 'ThreeWeeks') => {
+    const today = new Date();
+    const daysToAdd = option === 'TwoWeeks' ? 14 : 21;
+    today.setDate(today.getDate() + daysToAdd);
+    return formatDate(today);
+  };
+
   const [nextVisitOption, setNextVisitOption] = useState<'TwoWeeks' | 'ThreeWeeks'>('TwoWeeks');
+  const [nextVisitDate, setNextVisitDate] = useState(() => getNextVisitDate('TwoWeeks'));
 
   // Per-patient selected history date index in expanded card
   const visitDateOptions = useMemo(
@@ -349,6 +359,11 @@ export default function MedLinkDoctorDashboard() {
 
   const removeRxRow = (index: number) => {
     setRxRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleNextVisitSelect = (option: 'TwoWeeks' | 'ThreeWeeks') => {
+    setNextVisitOption(option);
+    setNextVisitDate(getNextVisitDate(option));
   };
 
   const preSavedTests = useMemo(
@@ -810,7 +825,7 @@ export default function MedLinkDoctorDashboard() {
               <h3>Special Notes</h3>
               <div class="subtitle">${sheet.notes}</div>
               <div class="subtitle" style="margin-top:12px;">Next Visit Date</div>
-              <div class="title" style="font-size:16px;">${sheet.nextVisit}</div>
+              <div class="title" style="font-size:16px;">${nextVisitDate}</div>
             </div>
             <button class="footer-btn" type="button">Download as Report</button>
           </div>
@@ -1006,40 +1021,6 @@ export default function MedLinkDoctorDashboard() {
                     <span>Previously patient of Dr. Jay</span>
                     <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
                   </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex justify-center">
-                <div className="flex w-full max-w-4xl flex-wrap items-center gap-3 rounded-[28px] border border-white/55 bg-gradient-to-r from-white/65 via-white/35 to-white/65 px-6 py-4 text-slate-900 shadow-[0_24px_60px_rgba(15,23,42,0.16)] ring-1 ring-white/60 backdrop-blur-2xl backdrop-saturate-150">
-                  <div className="text-2xl font-semibold text-slate-900 drop-shadow-sm">Next Visit Date</div>
-                  <button
-                    type="button"
-                    onClick={() => setNextVisitOption('TwoWeeks')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      nextVisitOption === 'TwoWeeks'
-                        ? 'bg-sky-500/90 text-white shadow-[0_10px_25px_rgba(14,165,233,0.35)]'
-                        : 'border border-white/70 bg-white/50 text-slate-800 backdrop-blur'
-                    }`}
-                  >
-                    Two Weeks
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNextVisitOption('ThreeWeeks')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      nextVisitOption === 'ThreeWeeks'
-                        ? 'bg-sky-500/90 text-white shadow-[0_10px_25px_rgba(14,165,233,0.35)]'
-                        : 'border border-white/70 bg-white/50 text-slate-800 backdrop-blur'
-                    }`}
-                  >
-                    Three Weeks
-                  </button>
-                  <div className="min-w-[220px] rounded-full bg-white/60 px-4 py-2 text-sm font-semibold text-slate-800 ring-1 ring-white/70 backdrop-blur">
-                    {sheet.nextVisit}
-                  </div>
-                  <button className="ml-auto rounded-full bg-sky-600/90 px-6 py-3 text-base font-semibold text-white shadow-[0_14px_30px_rgba(14,165,233,0.35)] transition hover:bg-sky-600 active:translate-y-px">
-                    Confirm
-                  </button>
                 </div>
               </div>
 
@@ -1431,11 +1412,42 @@ export default function MedLinkDoctorDashboard() {
                             </div>
                           ))}
                         </div>
-                        <div>
-                          <button className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                            <span>↪</span> Use same drugs
-                          </button>
-                          <p className="mt-2 text-center text-xs text-slate-500">• Drugs From previous history</p>
+                        <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-base font-bold text-slate-900">Next Visit Date</div>
+                            <div className="flex flex-1 flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleNextVisitSelect('TwoWeeks')}
+                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                                  nextVisitOption === 'TwoWeeks'
+                                    ? 'bg-sky-500/90 text-white shadow-[0_10px_25px_rgba(14,165,233,0.35)]'
+                                    : 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                                }`}
+                              >
+                                Two Weeks
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleNextVisitSelect('ThreeWeeks')}
+                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                                  nextVisitOption === 'ThreeWeeks'
+                                    ? 'bg-sky-500/90 text-white shadow-[0_10px_25px_rgba(14,165,233,0.35)]'
+                                    : 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                                }`}
+                              >
+                                Three Weeks
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+                            <div className="flex-1 min-w-[200px] rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
+                              {nextVisitDate}
+                            </div>
+                            <button className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800">
+                              Confirm
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
