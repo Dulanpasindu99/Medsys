@@ -1247,10 +1247,10 @@ export default function MedLinkDoctorDashboard() {
 
                             <div className="col-span-2">
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dose</label>
-                              <div className="relative mt-1">
+                              <div className="mt-1 flex items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm focus-within:border-sky-200 focus-within:ring-2 focus-within:ring-sky-100">
                                 <input
-                                  className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 pr-32 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
-                                  placeholder="Qty"
+                                  className="w-full border-none bg-transparent px-4 py-2 text-sm font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
+                                  placeholder="Value"
                                   inputMode="numeric"
                                   value={clinicalDrugForm.doseValue}
                                   onChange={(event) =>
@@ -1260,44 +1260,20 @@ export default function MedLinkDoctorDashboard() {
                                 <button
                                   type="button"
                                   onClick={toggleDoseUnit}
-                                  className={`absolute right-2 top-1/2 flex h-11 w-28 -translate-y-1/2 items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold uppercase tracking-[0.18em] shadow-sm transition duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-sky-100 ${
-                                    clinicalDrugForm.doseUnit === 'MG'
-                                      ? 'ring-1 ring-sky-100'
-                                      : 'ring-1 ring-emerald-100'
-                                  }`}
                                   aria-label="Toggle dose unit"
+                                  aria-pressed={clinicalDrugForm.doseUnit === 'MG'}
+                                  className="h-full rounded-none bg-slate-900 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                                 >
-                                  <span
-                                    className={`absolute inset-y-1 left-1 w-[46%] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out ${
-                                      clinicalDrugForm.doseUnit === 'MG'
-                                        ? 'translate-x-0'
-                                        : 'translate-x-[115%]'
-                                    }`}
-                                    aria-hidden
-                                  />
-                                  <span
-                                    className={`relative z-10 flex-1 text-center ${
-                                      clinicalDrugForm.doseUnit === 'MG' ? 'text-sky-700' : 'text-slate-500'
-                                    }`}
-                                  >
-                                    MG
-                                  </span>
-                                  <span
-                                    className={`relative z-10 flex-1 text-center ${
-                                      clinicalDrugForm.doseUnit === 'MG' ? 'text-slate-500' : 'text-emerald-700'
-                                    }`}
-                                  >
-                                    ML
-                                  </span>
+                                  {clinicalDrugForm.doseUnit}
                                 </button>
                               </div>
                             </div>
 
                             <div className="col-span-2">
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Terms</label>
-                              <div className="relative mt-1">
+                              <div className="mt-1 flex items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-sm focus-within:border-sky-200 focus-within:ring-2 focus-within:ring-sky-100">
                                 <input
-                                  className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 pr-32 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                                  className="w-full border-none bg-transparent px-4 py-2 text-sm font-semibold text-slate-800 placeholder:text-slate-400 outline-none"
                                   placeholder="Value"
                                   inputMode="numeric"
                                   value={clinicalDrugForm.termsValue}
@@ -1308,35 +1284,11 @@ export default function MedLinkDoctorDashboard() {
                                 <button
                                   type="button"
                                   onClick={toggleTerms}
-                                  className={`absolute right-2 top-1/2 flex h-11 w-28 -translate-y-1/2 items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold uppercase tracking-[0.18em] shadow-sm transition duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-100 ${
-                                    clinicalDrugForm.terms === 'Daily'
-                                      ? 'ring-1 ring-indigo-100'
-                                      : 'ring-1 ring-amber-100'
-                                  }`}
                                   aria-label="Toggle terms"
+                                  aria-pressed={clinicalDrugForm.terms === 'Daily'}
+                                  className="h-full rounded-none bg-slate-900 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
                                 >
-                                  <span
-                                    className={`absolute inset-y-1 left-1 w-[46%] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out ${
-                                      clinicalDrugForm.terms === 'Daily'
-                                        ? 'translate-x-0'
-                                        : 'translate-x-[115%]'
-                                    }`}
-                                    aria-hidden
-                                  />
-                                  <span
-                                    className={`relative z-10 flex-1 text-center ${
-                                      clinicalDrugForm.terms === 'Daily' ? 'text-indigo-700' : 'text-slate-500'
-                                    }`}
-                                  >
-                                    D
-                                  </span>
-                                  <span
-                                    className={`relative z-10 flex-1 text-center ${
-                                      clinicalDrugForm.terms === 'Daily' ? 'text-slate-500' : 'text-amber-700'
-                                    }`}
-                                  >
-                                    H
-                                  </span>
+                                  {clinicalDrugForm.terms === 'Daily' ? 'D' : 'H'}
                                 </button>
                               </div>
                             </div>
