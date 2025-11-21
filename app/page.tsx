@@ -269,7 +269,177 @@ export default function MedLinkDoctorDashboard() {
     }
   };
 
-  const diseaseQuickTags = useMemo(() => ['Fever', 'Headache'], []);
+  const [selectedDiseases, setSelectedDiseases] = useState<string[]>(['Fever', 'Headache']);
+  const [diseaseQuery, setDiseaseQuery] = useState('');
+  const [diseaseSuggestions, setDiseaseSuggestions] = useState<string[]>([]);
+  const [highlightedDiseaseIndex, setHighlightedDiseaseIndex] = useState(-1);
+  const [isFetchingDiseases, setIsFetchingDiseases] = useState(false);
+
+  const fallbackDiseases = useMemo(
+    () =>
+      [
+        'Fever',
+        'Headache',
+        'Common Cold',
+        'Influenza',
+        'Asthma',
+        'Allergic Rhinitis',
+        'Pneumonia',
+        'Tuberculosis',
+        'Bronchitis',
+        'Sinusitis',
+        'Migraine',
+        'Hypertension',
+        'Diabetes Mellitus',
+        'Hypothyroidism',
+        'Hyperthyroidism',
+        'Anemia',
+        'Anxiety Disorder',
+        'Depression',
+        'Arthritis',
+        'Osteoporosis',
+        'Back Pain',
+        'Gastritis',
+        'Peptic Ulcer',
+        'Gastroenteritis',
+        'Irritable Bowel Syndrome',
+        'Hepatitis B',
+        'Hepatitis C',
+        'Urinary Tract Infection',
+        'Kidney Stone',
+        'Gallstones',
+        'Chickenpox',
+        'Measles',
+        'Mumps',
+        'Covid-19',
+        'Dengue Fever',
+        'Malaria',
+      ],
+    []
+  );
+
+  const filterFallbackDiseases = React.useCallback(
+    (query: string) => {
+      const qLower = query.trim().toLowerCase();
+      if (!qLower) return [];
+
+      const prefixMatches = fallbackDiseases.filter((name) => name.toLowerCase().startsWith(qLower));
+      const secondaryMatches = fallbackDiseases.filter(
+        (name) => !name.toLowerCase().startsWith(qLower) && name.toLowerCase().includes(qLower)
+      );
+
+      return [...prefixMatches, ...secondaryMatches].slice(0, 8);
+    },
+    [fallbackDiseases]
+  );
+
+  const normalizeDiseaseSuggestions = (payload: unknown, query: string): string[] => {
+    if (!Array.isArray(payload)) return [];
+
+    const candidates: unknown = payload[2] ?? payload[1];
+    const names: string[] = Array.isArray(candidates)
+      ? (candidates as unknown[]).map((entry) => {
+          if (Array.isArray(entry)) {
+            return entry.filter((part) => typeof part === 'string').join(' — ');
+          }
+          return typeof entry === 'string' ? entry : '';
+        })
+      : [];
+
+    const base = names.map((name) => name.trim()).filter(Boolean);
+    const qLower = query.trim().toLowerCase();
+
+    const prefixMatches = base.filter((name) => name.toLowerCase().startsWith(qLower));
+    const fallbackMatches = prefixMatches.length ? prefixMatches : base.filter((name) => name.toLowerCase().includes(qLower));
+
+    return fallbackMatches.slice(0, 8);
+  };
+
+  useEffect(() => {
+    const q = diseaseQuery.trim();
+    if (q.length < 2) {
+      setDiseaseSuggestions([]);
+      setHighlightedDiseaseIndex(-1);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchSuggestions = async () => {
+      try {
+        setIsFetchingDiseases(true);
+        const response = await fetch(
+          `https://clinicaltables.nlm.nih.gov/api/conditions/v3/search?sf=code,name&maxList=10&terms=${encodeURIComponent(q)}`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch suggestions: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as unknown;
+        const normalized = normalizeDiseaseSuggestions(payload, q);
+        const finalSuggestions = normalized.length ? normalized : filterFallbackDiseases(q);
+        setDiseaseSuggestions(finalSuggestions);
+        setHighlightedDiseaseIndex(finalSuggestions.length ? 0 : -1);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Error fetching disease suggestions', error);
+          const offline = filterFallbackDiseases(q);
+          setDiseaseSuggestions(offline);
+          setHighlightedDiseaseIndex(offline.length ? 0 : -1);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsFetchingDiseases(false);
+        }
+      }
+    };
+
+    fetchSuggestions();
+
+    return () => controller.abort();
+  }, [diseaseQuery, filterFallbackDiseases]);
+
+  const addDisease = (disease: string) => {
+    const trimmed = disease.trim();
+    if (!trimmed) return;
+
+    const isKnownSuggestion = diseaseSuggestions.some(
+      (name) => name.toLowerCase() === trimmed.toLowerCase()
+    );
+    const isKnownFallback = fallbackDiseases.some(
+      (name) => name.toLowerCase() === trimmed.toLowerCase()
+    );
+
+    if (!isKnownSuggestion && !isKnownFallback) return;
+
+    setSelectedDiseases((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setDiseaseQuery('');
+    setDiseaseSuggestions([]);
+    setHighlightedDiseaseIndex(-1);
+  };
+
+  const handleDiseaseKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' && diseaseSuggestions.length) {
+      event.preventDefault();
+      setHighlightedDiseaseIndex((prev) => (prev + 1) % diseaseSuggestions.length);
+    } else if (event.key === 'ArrowUp' && diseaseSuggestions.length) {
+      event.preventDefault();
+      setHighlightedDiseaseIndex((prev) =>
+        prev <= 0 ? diseaseSuggestions.length - 1 : prev - 1
+      );
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (!diseaseSuggestions.length) return;
+      const selected =
+        highlightedDiseaseIndex >= 0 && diseaseSuggestions[highlightedDiseaseIndex]
+          ? diseaseSuggestions[highlightedDiseaseIndex]
+          : diseaseSuggestions[0] || diseaseQuery;
+      if (selected) {
+        addDisease(selected);
+      }
+    }
+  };
 
   const searchMatches = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -656,27 +826,78 @@ export default function MedLinkDoctorDashboard() {
                         <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">History</div>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <input
-                          className="min-w-[220px] flex-1 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                          placeholder="Search Diseases"
-                        />
+                        <div className="relative min-w-[220px] flex-1">
+                          <input
+                            className="w-full rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                            placeholder="Search Diseases"
+                            value={diseaseQuery}
+                            onChange={(event) => {
+                              setDiseaseQuery(event.target.value);
+                              setHighlightedDiseaseIndex(0);
+                            }}
+                            onKeyDown={handleDiseaseKeyDown}
+                          />
+                          {isFetchingDiseases ? (
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                              Searching…
+                            </div>
+                          ) : null}
+                          {Boolean(diseaseSuggestions.length) && (
+                            <div className="absolute left-0 right-0 z-10 mt-2 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 shadow-lg backdrop-blur">
+                              <ul className="divide-y divide-slate-100 text-sm text-slate-800">
+                                {diseaseSuggestions.map((suggestion, index) => (
+                                  <li key={`${suggestion}-${index}`}>
+                                    <button
+                                      type="button"
+                                      className={`flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-sky-50 ${
+                                        index === highlightedDiseaseIndex ? 'bg-sky-50 text-sky-700' : ''
+                                      }`}
+                                      onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        addDisease(suggestion);
+                                      }}
+                                    >
+                                      <span className="flex-1 truncate">{suggestion}</span>
+                                      {index === highlightedDiseaseIndex ? (
+                                        <span className="ml-3 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-600">Enter</span>
+                                      ) : null}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                         <button
-                          className="grid size-11 place-items-center rounded-full bg-sky-500 text-white shadow-sm transition hover:bg-sky-600 active:translate-y-px"
-                          aria-label="Search diseases"
+                          className={`grid size-11 place-items-center rounded-full text-white shadow-sm transition active:translate-y-px ${
+                            diseaseSuggestions.length
+                              ? 'bg-sky-500 hover:bg-sky-600'
+                              : 'cursor-not-allowed bg-slate-300'
+                          }`}
+                          aria-label="Add selected disease"
                           type="button"
+                          disabled={!diseaseSuggestions.length}
+                          onClick={() => {
+                            if (!diseaseSuggestions.length) return;
+                            const choice =
+                              (highlightedDiseaseIndex >= 0 && diseaseSuggestions[highlightedDiseaseIndex]) ||
+                              diseaseSuggestions[0];
+                            if (choice) {
+                              addDisease(choice);
+                            }
+                          }}
                         >
                           <SearchIcon className="size-4" />
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {diseaseQuickTags.map((tag) => (
-                          <button
+                        {selectedDiseases.map((tag) => (
+                          <span
                             key={tag}
-                            className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
-                            type="button"
+                            className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200"
                           >
                             {tag}
-                          </button>
+                          </span>
                         ))}
                       </div>
                     </div>
