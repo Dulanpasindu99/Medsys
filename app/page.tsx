@@ -468,75 +468,75 @@ export default function MedLinkDoctorDashboard() {
         <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden">
           {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
           <div className="grid h-full w-full grid-cols-12 gap-6">
-          {/* RIGHT: Search + standalone patient suggestion box */}
-          <div className="order-2 col-span-4 flex h-full min-h-0 flex-col gap-4 overflow-y-auto pl-1 pr-1">
-            <Card className="flex min-h-0 flex-col p-5">
-              <SectionTitle title="Search Patients" sub="Name / NIC" />
-              <div className="mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
-                <div className="relative">
-                  <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    placeholder="Search by name or NIC"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className={`w-full rounded-2xl border border-transparent bg-white px-11 py-3 text-sm text-slate-900 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
-                  />
-                  <MicIcon className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+            {/* RIGHT: Search + standalone patient suggestion box */}
+            <div className="order-2 col-span-3 flex h-full min-h-0 flex-col gap-4 overflow-y-auto pl-1 pr-1">
+              <Card className="flex min-h-0 flex-col p-5">
+                <SectionTitle title="Search Patients" sub="Name / NIC" />
+                <div className="mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
+                  <div className="relative">
+                    <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      placeholder="Search by name or NIC"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className={`w-full rounded-2xl border border-transparent bg-white px-11 py-3 text-sm text-slate-900 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
+                    />
+                    <MicIcon className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    Start typing to search by patient name or NIC. Matching patients will appear below.
+                  </p>
+
+                  {search && (
+                    <div className="mt-4 space-y-2 rounded-2xl bg-white/90 p-3 ring-1 ring-slate-200">
+                      {searchMatches.length === 0 ? (
+                        <p className="text-sm font-semibold text-slate-500">No matching patients found.</p>
+                      ) : (
+                        searchMatches.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleSearchSelect(p)}
+                            className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-3 text-left text-sm text-slate-800 ring-1 ring-slate-100 transition hover:-translate-y-px hover:bg-sky-50 hover:ring-sky-200"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-slate-900">{p.name}</div>
+                              <div className="truncate text-[11px] text-slate-500">{p.nic}</div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 text-[11px] font-semibold text-slate-500">
+                              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 ring-1 ring-emerald-100">
+                                <span className="size-2 rounded-full bg-emerald-400" />
+                                {p.reason}
+                              </span>
+                              <span className="rounded-full bg-slate-900 px-3 py-1 text-white">{p.time}</span>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Start typing to search by patient name or NIC. Matching patients will appear below.
-                </p>
+              </Card>
 
-                {search && (
-                  <div className="mt-4 space-y-2 rounded-2xl bg-white/90 p-3 ring-1 ring-slate-200">
-                    {searchMatches.length === 0 ? (
-                      <p className="text-sm font-semibold text-slate-500">No matching patients found.</p>
-                    ) : (
-                      searchMatches.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => handleSearchSelect(p)}
-                          className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-3 text-left text-sm text-slate-800 ring-1 ring-slate-100 transition hover:-translate-y-px hover:bg-sky-50 hover:ring-sky-200"
-                        >
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900">{p.name}</div>
-                            <div className="truncate text-[11px] text-slate-500">{p.nic}</div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 text-[11px] font-semibold text-slate-500">
-                            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 ring-1 ring-emerald-100">
-                              <span className="size-2 rounded-full bg-emerald-400" />
-                              {p.reason}
-                            </span>
-                            <span className="rounded-full bg-slate-900 px-3 py-1 text-white">{p.time}</span>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <Card className="flex flex-col gap-4 p-5">
-              <div className="flex items-center justify-between">
-                <SectionTitle title="Patient Vitals" />
-                <span className="rounded-full bg-sky-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_8px_22px_rgba(14,165,233,0.35)]">
-                  Live
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {patientVitals.map((vital) => (
-                  <div
-                    key={vital.label}
-                    className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{vital.label}</p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">{vital.value}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+              <Card className="flex flex-col gap-4 p-5">
+                <div className="flex items-center justify-between">
+                  <SectionTitle title="Patient Vitals" />
+                  <span className="rounded-full bg-sky-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_8px_22px_rgba(14,165,233,0.35)]">
+                    Live
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {patientVitals.map((vital) => (
+                    <div
+                      key={vital.label}
+                      className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{vital.label}</p>
+                      <p className="mt-1 text-xl font-bold text-slate-900">{vital.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
             <Card className="flex flex-col gap-4 p-5">
               <div className="flex items-center justify-between">
@@ -573,8 +573,8 @@ export default function MedLinkDoctorDashboard() {
 
           </div>
 
-          {/* LEFT: Full detailed sheet */}
-          <div className="order-1 col-span-8 flex h-full min-h-0 flex-col overflow-hidden pr-4">
+            {/* LEFT: Full detailed sheet */}
+            <div className="order-1 col-span-9 flex h-full min-h-0 flex-col overflow-hidden pr-4">
               <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
                 {/* Patient quick info */}
                 <div className="space-y-3">
