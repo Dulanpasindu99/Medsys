@@ -1205,7 +1205,7 @@ export default function MedLinkDoctorDashboard() {
                                       : 'bg-amber-100 text-amber-700 ring-1 ring-amber-200'
                                   }`}
                                 >
-                                  {clinicalDrugForm.source === 'Clinical' ? 'Clinical D.' : 'Outside D.'}
+                                  {clinicalDrugForm.source === 'Clinical' ? 'Clinical' : 'Outside'}
                                 </button>
                               </div>
                               <div className="relative mt-1">
@@ -1247,7 +1247,7 @@ export default function MedLinkDoctorDashboard() {
                               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dose</label>
                               <div className="mt-1 grid grid-cols-8 items-center gap-2">
                                 <input
-                                  className="col-span-5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                                  className="col-span-5 w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
                                   placeholder="Qty"
                                   inputMode="numeric"
                                   value={clinicalDrugForm.doseValue}
@@ -1258,7 +1258,11 @@ export default function MedLinkDoctorDashboard() {
                                 <button
                                   type="button"
                                   onClick={toggleDoseUnit}
-                                  className="col-span-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-px hover:border-slate-300"
+                                  className={`col-span-3 rounded-full px-3 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-px hover:shadow ${
+                                    clinicalDrugForm.doseUnit === 'MG'
+                                      ? 'border border-sky-200 bg-sky-50 text-sky-700'
+                                      : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                                  }`}
                                   aria-label="Toggle dose unit"
                                 >
                                   {clinicalDrugForm.doseUnit}
@@ -1272,13 +1276,17 @@ export default function MedLinkDoctorDashboard() {
                                 <button
                                   type="button"
                                   onClick={toggleTerms}
-                                  className="col-span-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-px hover:border-slate-300"
+                                  className={`col-span-3 rounded-full px-3 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-px hover:shadow ${
+                                    clinicalDrugForm.terms === 'Daily'
+                                      ? 'border border-indigo-200 bg-indigo-50 text-indigo-700'
+                                      : 'border border-amber-200 bg-amber-50 text-amber-700'
+                                  }`}
                                   aria-label="Toggle terms"
                                 >
                                   {clinicalDrugForm.terms}
                                 </button>
                                 <input
-                                  className="col-span-5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                                  className="col-span-5 w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
                                   placeholder="Value"
                                   inputMode="numeric"
                                   value={clinicalDrugForm.termsValue}
@@ -1304,7 +1312,7 @@ export default function MedLinkDoctorDashboard() {
                                 <button
                                   type="button"
                                   onClick={addClinicalDrug}
-                                  className="flex size-10 items-center justify-center rounded-full bg-sky-600 text-lg font-bold text-white shadow-[0_10px_24px_rgba(14,165,233,0.35)] transition hover:-translate-y-px hover:bg-sky-700"
+                                  className="flex size-12 items-center justify-center rounded-full bg-gradient-to-b from-sky-500 to-sky-600 text-xl font-extrabold text-white shadow-[0_14px_28px_rgba(14,165,233,0.35)] transition hover:-translate-y-0.5 hover:from-sky-600 hover:to-sky-700"
                                   aria-label="Add drug"
                                 >
                                   +
@@ -1329,10 +1337,11 @@ export default function MedLinkDoctorDashboard() {
                                   className="group grid grid-cols-[1.5fr_0.9fr_1fr_1fr_0.8fr_0.5fr] items-center gap-2 bg-white/80 px-4 py-3 odd:bg-white even:bg-slate-50/60"
                                 >
                                   <input
-                                    className="w-full rounded-lg border border-transparent bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
-                                    value={r.drug}
-                                    onChange={(event) => updateRxRow(i, 'drug', event.target.value)}
-                                  />
+                                  className="w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm outline-none focus:border-slate-200 focus:ring-0"
+                                  value={r.drug}
+                                  readOnly
+                                  aria-readonly
+                                />
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -1344,7 +1353,7 @@ export default function MedLinkDoctorDashboard() {
                                         : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
                                     }`}
                                   >
-                                    {r.source === 'Clinical' ? 'Clinical D.' : 'Outside D.'}
+                                    {r.source === 'Clinical' ? 'Clinical' : 'Outside'}
                                   </button>
                                   <input
                                     className="w-full rounded-lg border border-transparent bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
