@@ -13,6 +13,13 @@ interface Patient {
   gender: string;
 }
 
+interface ClinicalDrug {
+  drug: string;
+  dose: string;
+  terms: string;
+  amount: number;
+}
+
 const SHADOWS = {
   card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
   inset: 'shadow-[inset_0_1px_0_rgba(15,23,42,0.06)]',
@@ -223,11 +230,82 @@ export default function MedLinkDoctorDashboard() {
     () => ['Today', '05/10', '05/09', '05/08', '05/07', '05/06', '05/05', '15/04', '15/04'],
     []
   );
-  const [rxRows] = useState([
-    { drug: 'Ibuprofen', dose: '250MG', terms: '1 DAILY', amount: 2 },
-    { drug: 'Naproxen', dose: '250MG', terms: '1 DAILY', amount: 2 },
-    { drug: 'Acetaminophen', dose: '250MG', terms: '2 Hourly', amount: 3 },
+  const [rxRows, setRxRows] = useState<ClinicalDrug[]>([
+    { drug: 'Ibuprofen', dose: '250MG', terms: 'Daily', amount: 2 },
+    { drug: 'Naproxen', dose: '250MG', terms: 'Daily', amount: 2 },
+    { drug: 'Acetaminophen', dose: '250MG', terms: 'Hourly', amount: 3 },
   ]);
+
+  const suggestedDrugNames = useMemo(
+    () => [
+      'Ibuprofen',
+      'Naproxen',
+      'Acetaminophen',
+      'Paracetamol',
+      'Amoxicillin',
+      'Azithromycin',
+      'Metformin',
+      'Omeprazole',
+      'Amlodipine',
+      'Prednisone',
+      'Ciprofloxacin',
+      'Clopidogrel',
+    ],
+    []
+  );
+
+  const [clinicalDrugForm, setClinicalDrugForm] = useState({
+    name: '',
+    doseValue: '',
+    doseUnit: 'MG' as 'MG' | 'ML',
+    terms: 'Daily' as 'Daily' | 'Hourly',
+    amount: '',
+  });
+
+  const filteredDrugSuggestions = useMemo(() => {
+    const query = clinicalDrugForm.name.trim().toLowerCase();
+    if (!query) {
+      return suggestedDrugNames.slice(0, 6);
+    }
+    return suggestedDrugNames.filter((name) => name.toLowerCase().includes(query)).slice(0, 6);
+  }, [clinicalDrugForm.name, suggestedDrugNames]);
+
+  const toggleDoseUnit = () => {
+    setClinicalDrugForm((prev) => ({
+      ...prev,
+      doseUnit: prev.doseUnit === 'MG' ? 'ML' : 'MG',
+    }));
+  };
+
+  const toggleTerms = () => {
+    setClinicalDrugForm((prev) => ({
+      ...prev,
+      terms: prev.terms === 'Daily' ? 'Hourly' : 'Daily',
+    }));
+  };
+
+  const addClinicalDrug = () => {
+    const name = clinicalDrugForm.name.trim();
+    const doseValue = clinicalDrugForm.doseValue.trim();
+    const amountValue = clinicalDrugForm.amount.trim();
+
+    if (!name || !doseValue || !amountValue) return;
+
+    const amountNumber = Number(amountValue);
+    if (Number.isNaN(amountNumber)) return;
+
+    const dose = `${doseValue}${clinicalDrugForm.doseUnit}`;
+
+    const newEntry: ClinicalDrug = {
+      drug: name,
+      dose,
+      terms: clinicalDrugForm.terms,
+      amount: amountNumber,
+    };
+
+    setRxRows((prev) => [...prev, newEntry]);
+    setClinicalDrugForm({ name: '', doseValue: '', doseUnit: 'MG', terms: 'Daily', amount: '' });
+  };
 
   const preSavedTests = useMemo(
     () => [
@@ -1061,9 +1139,113 @@ export default function MedLinkDoctorDashboard() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="text-2xl font-bold text-slate-900">Clinical Drugs</div>
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
-                          3 items
+                          {rxRows.length} {rxRows.length === 1 ? 'item' : 'items'}
                         </span>
                       </div>
+
+                      <div className="mt-4 space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                        <div className="grid grid-cols-12 gap-3">
+                          <div className="col-span-4">
+                            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Drug Name</label>
+                            <div className="relative mt-1">
+                              <input
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                                placeholder="Type to search"
+                                value={clinicalDrugForm.name}
+                                onChange={(event) =>
+                                  setClinicalDrugForm((prev) => ({ ...prev, name: event.target.value }))
+                                }
+                              />
+                              {Boolean(filteredDrugSuggestions.length) && clinicalDrugForm.name.trim() !== '' && (
+                                <div className="absolute left-0 right-0 z-10 mt-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                                  <ul className="divide-y divide-slate-100 text-sm text-slate-700">
+                                    {filteredDrugSuggestions.map((drug) => (
+                                      <li key={drug}>
+                                        <button
+                                          type="button"
+                                          className="flex w-full items-center justify-between px-3 py-2 text-left transition hover:bg-sky-50"
+                                          onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            setClinicalDrugForm((prev) => ({ ...prev, name: drug }));
+                                          }}
+                                        >
+                                          <span className="truncate">{drug}</span>
+                                          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-600">Add</span>
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="col-span-3">
+                            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dose</label>
+                            <div className="mt-1 flex rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm">
+                              <input
+                                className="w-full rounded-l-xl px-3 py-2 outline-none"
+                                placeholder="Value"
+                                inputMode="numeric"
+                                value={clinicalDrugForm.doseValue}
+                                onChange={(event) =>
+                                  setClinicalDrugForm((prev) => ({ ...prev, doseValue: event.target.value }))
+                                }
+                              />
+                              <button
+                                type="button"
+                                className={`rounded-r-xl px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] transition ${
+                                  clinicalDrugForm.doseUnit === 'MG'
+                                    ? 'bg-slate-900 text-white shadow-md'
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}
+                                onClick={toggleDoseUnit}
+                              >
+                                {clinicalDrugForm.doseUnit}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="col-span-3">
+                            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Terms</label>
+                            <button
+                              type="button"
+                              onClick={toggleTerms}
+                              className={`mt-1 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition ${
+                                clinicalDrugForm.terms === 'Daily'
+                                  ? 'border-sky-200 bg-sky-50 text-sky-700'
+                                  : 'border-amber-200 bg-amber-50 text-amber-700'
+                              }`}
+                            >
+                              <span>{clinicalDrugForm.terms}</span>
+                              <span className="text-[11px] font-bold uppercase tracking-[0.18em]">Tap to toggle</span>
+                            </button>
+                          </div>
+
+                          <div className="col-span-2">
+                            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Amount</label>
+                            <input
+                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+                              placeholder="Qty"
+                              inputMode="numeric"
+                              value={clinicalDrugForm.amount}
+                              onChange={(event) =>
+                                setClinicalDrugForm((prev) => ({ ...prev, amount: event.target.value }))
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={addClinicalDrug}
+                            className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)] transition hover:-translate-y-[1px] hover:shadow-[0_14px_30px_rgba(15,23,42,0.24)]"
+                          >
+                            <span>＋</span> Add Clinical Drug
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
                         <div className="grid grid-cols-4 gap-2 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6b7280]">
                           <div>Drug Name</div>
@@ -1076,7 +1258,7 @@ export default function MedLinkDoctorDashboard() {
                             <div key={i} className="grid grid-cols-4 gap-2 bg-white/80 px-4 py-3 odd:bg-white even:bg-slate-50/60">
                               <div>{r.drug}</div>
                               <div>{r.dose}</div>
-                              <div>{(r.terms || '').toString()}</div>
+                              <div>{r.terms}</div>
                               <div>{r.amount}</div>
                             </div>
                           ))}
