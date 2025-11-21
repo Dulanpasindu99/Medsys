@@ -856,7 +856,7 @@ export default function MedLinkDoctorDashboard() {
         </main>
       </div>
 
-      <aside className="sticky top-0 flex h-screen w-28 flex-col items-center justify-between bg-[#f3f4f6] py-10 shadow-[inset_-1px_0_0_rgba(148,163,184,0.25)]">
+      <aside className="sticky top-0 flex h-screen w-28 flex-col items-center justify-between bg-transparent py-10">
         <div className="flex flex-col items-center gap-5">
           <div className="flex size-20 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_25px_40px_rgba(15,23,42,0.35)]">
             <svg {...iconProps} className="size-9">
