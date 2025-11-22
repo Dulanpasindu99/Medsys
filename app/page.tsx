@@ -1409,7 +1409,7 @@ export default function MedLinkDoctorDashboard() {
                         <div className="rounded-2xl bg-white px-4 py-4 shadow-sm">
                           <div className="flex flex-col items-center gap-3 text-center">
                             <div className="text-base font-bold text-slate-900">Next Visit Date</div>
-                            <div className="grid w-full max-w-md grid-cols-2 gap-3">
+                            <div className="grid w-full max-w-md grid-cols-1 gap-3">
                               <button
                                 type="button"
                                 onClick={() => handleNextVisitSelect('TwoWeeks')}
@@ -1419,7 +1419,7 @@ export default function MedLinkDoctorDashboard() {
                                     : 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300'
                                 }`}
                               >
-                                Two Weeks
+                                <span className="whitespace-nowrap">Two Weeks</span>
                               </button>
                               <button
                                 type="button"
@@ -1430,7 +1430,7 @@ export default function MedLinkDoctorDashboard() {
                                     : 'border border-slate-200 bg-white text-slate-800 hover:border-slate-300'
                                 }`}
                               >
-                                Three Weeks
+                                <span className="whitespace-nowrap">Three Weeks</span>
                               </button>
                             </div>
                             <div className="w-full max-w-md space-y-3">
