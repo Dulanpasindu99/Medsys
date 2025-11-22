@@ -101,18 +101,15 @@ export default function OwnerTools() {
     () => [
       {
         label: 'Doctor = owner',
-        description: 'One doctor running everything: allow every surface except this owner login card.',
         set: () =>
           setPermissions({ staffLogin: true, doctorScreen: true, assistantScreen: true, sharedDashboards: true, ownerTools: true }),
       },
       {
         label: 'Doctor + assistant',
-        description: 'Doctor keeps clinical tools, assistant keeps dispensing; doctor cannot open assistant-only panel.',
         set: () => setPermissions({ staffLogin: true, doctorScreen: true, assistantScreen: false, sharedDashboards: true, ownerTools: false }),
       },
       {
         label: 'Assistant only',
-        description: 'Front-desk only access, no clinical or owner tools.',
         set: () => setPermissions({ staffLogin: true, doctorScreen: false, assistantScreen: true, sharedDashboards: true, ownerTools: false }),
       },
     ],
@@ -128,7 +125,7 @@ export default function OwnerTools() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 text-slate-900">
+    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 lg:px-10">
         <header className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
@@ -137,10 +134,6 @@ export default function OwnerTools() {
             <Badge label="Permissions" tone="amber" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Manage doctors and assistants</h1>
-          <p className="max-w-3xl text-base text-slate-600">
-            Create credentials, decide who can reach the staff login, doctor screen, or assistant screen, and cover the edge
-            case where the owner and doctor are the same person. Everything follows the MedLink interface language.
-          </p>
           <div className="flex flex-wrap gap-3 text-sm text-slate-600">
             <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md">
               ↩ Back to login split
@@ -157,10 +150,6 @@ export default function OwnerTools() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Create staff</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-900">Add doctor or assistant credentials</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Mirror the live UI and decide exactly what each user can see. Use quick presets for common owner+doctor
-                  or doctor+assistant combinations.
-                </p>
               </div>
               <Badge label={role} />
             </div>
@@ -241,10 +230,6 @@ export default function OwnerTools() {
             </div>
 
             <div className="mt-6 flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-600">
-                Doctors acting as owners can receive access to every screen (except this owner login) by enabling all toggles.
-                Assistants remain limited to their own surface.
-              </p>
               <button
                 onClick={handleCreate}
                 className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:-translate-y-0.5 hover:bg-sky-700"
@@ -259,10 +244,6 @@ export default function OwnerTools() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Staff list</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-900">Manage existing accounts</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Toggle permissions inline. Doctor entries can be expanded to cover assistant tools when the doctor and owner
-                  are the same person.
-                </p>
               </div>
               <Badge label={`${staffUsers.length} users`} tone="emerald" />
             </div>

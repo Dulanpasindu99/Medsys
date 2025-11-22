@@ -847,9 +847,7 @@ export default function MedLinkDoctorDashboard() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full bg-[#f9fafb] text-slate-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(56,189,248,0.08),transparent_32%),radial-gradient(circle_at_85%_8%,rgba(14,165,233,0.12),transparent_25%),radial-gradient(circle_at_70%_70%,rgba(14,165,233,0.08),transparent_30%)]" />
-
+    <div className="relative flex min-h-screen w-full bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
       <div className="relative flex min-h-screen flex-1 flex-col px-6 pb-32 pt-6 lg:px-10">
         <main className="mx-auto flex w-full max-w-[1680px] flex-1 overflow-hidden">
           {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}

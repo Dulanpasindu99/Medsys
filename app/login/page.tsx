@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 
 const SHADOWS = {
   card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
@@ -60,28 +60,8 @@ export default function Login() {
   const [assistantUser, setAssistantUser] = useState('assistant1');
   const [assistantPassword, setAssistantPassword] = useState('assistant-access');
 
-  const quickSummary = useMemo(
-    () => [
-      {
-        title: 'Owner experience',
-        detail:
-          'Access to the full command center including staff creation, permissions, and switching into doctor/assistant views.',
-      },
-      {
-        title: 'Doctor login',
-        detail:
-          'Can reach the staff dashboard, doctor screen, and assistant view (when allowed) without needing owner credentials.',
-      },
-      {
-        title: 'Assistant login',
-        detail: 'Optimized for queue handling, issuing medicines, and helping doctors with patient details.',
-      },
-    ],
-    []
-  );
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-cyan-50 text-slate-900">
+    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 lg:px-10">
         <header className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
@@ -93,29 +73,21 @@ export default function Login() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
             Unified login for Medical Center owners, doctors, and assistants
           </h1>
-          <p className="max-w-3xl text-base text-slate-600">
-            Keep the familiar MedLink UI while separating credentials for every role. Owners get their own secure entry
-            point, while staff use the streamlined doctor or assistant sign-in that mirrors the in-app experience.
-          </p>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card className="p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <RolePill label="Medical Center Owner" />
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-100">
-                    Secure area
-                  </span>
-                </div>
-                <h2 className="mt-3 text-xl font-bold text-slate-900">Owner login</h2>
-                <p className="mt-2 max-w-xl text-sm text-slate-600">
-                  Manage staff accounts, control permissions, and jump into any role when you need to. This route keeps
-                  the management surface separate from the clinical flow.
-                </p>
+              <div className="flex items-center gap-2">
+                <RolePill label="Medical Center Owner" />
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-100">
+                  Secure area
+                </span>
               </div>
-              <Link
+              <h2 className="mt-3 text-xl font-bold text-slate-900">Owner login</h2>
+            </div>
+            <Link
                 href="/owner"
                 className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-900/25"
               >
@@ -143,10 +115,6 @@ export default function Login() {
               <div>
                 <RolePill label="Staff Login" />
                 <h2 className="mt-3 text-xl font-bold text-slate-900">Doctor & Assistant access</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  A shared entry built with the same MedLink controls. Keep the flow lightweight for staff while allowing
-                  owners to grant extra access when a doctor also acts as the owner.
-                </p>
               </div>
               <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100">
                 Dual panels
@@ -172,10 +140,6 @@ export default function Login() {
                 <button className="mt-4 w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-900/25">
                   Continue as doctor
                 </button>
-                <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
-                  Doctors can reach staff dashboards and the dedicated doctor screen. When the owner and doctor are the
-                  same person, permissions can unlock assistant tools too.
-                </p>
               </Card>
 
               <Card className="p-5">
@@ -201,40 +165,10 @@ export default function Login() {
                 <button className="mt-4 w-full rounded-full bg-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:-translate-y-0.5 hover:bg-sky-700">
                   Continue as assistant
                 </button>
-                <p className="mt-2 text-[13px] leading-relaxed text-slate-600">
-                  Assistants stay within their workflow and cannot reach owner pages. Doctors cannot see assistant-only
-                  tools unless permissions are elevated by the owner.
-                </p>
               </Card>
             </div>
           </Card>
         </div>
-
-        <Card className="p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Access map</p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">Who can reach what?</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <RolePill label="Staff login" />
-              <RolePill label="Doctor screen" />
-              <RolePill label="Assistant screen" />
-              <RolePill label="Owner tools" />
-            </div>
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            {quickSummary.map((item) => (
-              <div
-                key={item.title}
-                className={`rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-100 ${SHADOWS.inset}`}
-              >
-                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                <p className="mt-1 leading-relaxed text-slate-600">{item.detail}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
     </main>
   );

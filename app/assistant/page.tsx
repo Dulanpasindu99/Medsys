@@ -229,17 +229,13 @@ export default function AssistantScreen() {
   const logoutItem = useMemo(() => ({ id: 'logout', label: 'Logout', icon: LogoutIcon }), []);
 
   return (
-    <div className="relative flex min-h-screen w-full bg-[#f9fafb] text-slate-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(56,189,248,0.08),transparent_32%),radial-gradient(circle_at_85%_8%,rgba(14,165,233,0.12),transparent_25%),radial-gradient(circle_at_70%_70%,rgba(14,165,233,0.08),transparent_30%)]" />
-
+    <div className="relative flex min-h-screen w-full bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
       <div className="relative flex min-h-screen flex-1 flex-col px-6 py-8 lg:px-10">
         <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-6">
           <main className="flex-1 space-y-6">
             <header className="flex items-start justify-between rounded-[26px] border border-slate-100 bg-slate-50/80 p-4 shadow-sm backdrop-blur">
               <div>
-                <p className="text-sm font-semibold text-slate-500">Assistant Screen</p>
                 <h1 className="text-3xl font-bold text-slate-900">Doctor&apos;s Assistant Panel</h1>
-                <p className="text-sm text-slate-500">Same login as doctor, but access locked to assistant workspace.</p>
               </div>
               <div className="grid grid-cols-5 gap-3 text-center text-xs font-semibold text-slate-700">
                 <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
