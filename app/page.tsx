@@ -867,10 +867,6 @@ export default function MedLinkDoctorDashboard() {
                     />
                     <MicIcon className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
                   </div>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    Start typing to search by patient name or NIC. Matching patients will appear below.
-                  </p>
-
                   {search && (
                     <div className="mt-4 space-y-2 rounded-2xl bg-white/90 p-3 ring-1 ring-slate-200">
                       {searchMatches.length === 0 ? (
