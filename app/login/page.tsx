@@ -61,21 +61,20 @@ export default function Login() {
   const [assistantPassword, setAssistantPassword] = useState('assistant-access');
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 lg:px-10">
-        <header className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <span className="rounded-2xl bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 ring-1 ring-sky-200">
-              MedLink Access
-            </span>
-            <RolePill label="Owner + Staff" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
-            Unified login for Medical Center owners, doctors, and assistants
-          </h1>
-        </header>
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
+      <div className="aspect-[16/9] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+        <div className="flex h-full flex-col gap-6 overflow-auto px-6 py-7 lg:px-10">
+          <header className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className="rounded-2xl bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 ring-1 ring-sky-200">
+                MedLink Access
+              </span>
+              <RolePill label="Owner + Staff" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Team login</h1>
+          </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card className="p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -168,6 +167,7 @@ export default function Login() {
               </Card>
             </div>
           </Card>
+        </div>
         </div>
       </div>
     </main>
