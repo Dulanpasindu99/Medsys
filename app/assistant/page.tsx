@@ -337,7 +337,7 @@ export default function AssistantScreen() {
                   />
                   <button
                     type="button"
-                    className="rounded-full bg-[var(--ioc-blue)] px-3 py-1 text-[11px] font-semibold text-white shadow-[0_10px_22px_rgba(0,114,206,0.22)]"
+                    className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white shadow-[0_10px_22px_rgba(16,185,129,0.22)] transition hover:bg-emerald-600"
                     onClick={addAllergy}
                   >
                     Add
@@ -354,7 +354,7 @@ export default function AssistantScreen() {
                       type="button"
                       className={`rounded-full px-3 py-1 text-sm font-semibold ${
                         formState.bloodGroup === group
-                          ? 'bg-[var(--ioc-blue)] text-white shadow-[0_10px_22px_rgba(0,114,206,0.22)]'
+                          ? 'bg-slate-900 text-white shadow-[0_10px_22px_rgba(15,23,42,0.22)]'
                           : 'bg-slate-100 text-slate-700'
                       }`}
                       onClick={() => setFormState((p) => ({ ...p, bloodGroup: group }))}
@@ -605,7 +605,7 @@ export default function AssistantScreen() {
 
     <aside className="sticky top-0 flex h-screen w-28 flex-col items-center justify-between bg-transparent py-10">
     <div className="flex flex-col items-center gap-5">
-      <div className="flex size-20 items-center justify-center rounded-full bg-[var(--ioc-blue)] text-white shadow-[0_25px_40px_rgba(0,114,206,0.35)]">
+      <div className="flex size-20 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_25px_40px_rgba(15,23,42,0.35)]">
         <AssistantIcon className="size-9" />
       </div>
       <div className="h-10 w-px rounded-full bg-slate-200" />
@@ -615,16 +615,16 @@ export default function AssistantScreen() {
             <li key={item.id}>
               <Link
                 href={item.href}
-                className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ioc-blue)] ${
+                className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
                   item.id === activeNavigationId
-                    ? 'size-14 bg-[var(--ioc-blue)] text-white shadow-[0_18px_32px_rgba(0,114,206,0.28)]'
+                    ? 'size-14 bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
                     : 'size-12 bg-white text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
                 }`}
                 aria-label={item.label}
                 aria-current={item.id === activeNavigationId ? 'page' : undefined}
               >
                 <item.icon className="size-5" />
-                <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-[var(--ioc-blue)] px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.tooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
+                <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.tooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
                   {item.label}
                 </span>
               </Link>
