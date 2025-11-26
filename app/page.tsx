@@ -843,15 +843,15 @@ export default function MedLinkDoctorDashboard() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
-      <div className="aspect-[16/9] w-full max-w-[1680px] overflow-hidden rounded-[28px] border border-white/70 bg-white/75 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
-        <div className="relative flex h-full w-full bg-gradient-to-br from-sky-50 via-white to-blue-50">
-          <div className="relative flex h-full flex-1 flex-col px-6 pb-24 pt-6 lg:px-10">
-            <main className="mx-auto flex w-full flex-1 overflow-hidden">
+    <main className="flex min-h-screen items-start justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
+      <div className="w-full max-w-[1680px] overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+        <div className="relative flex w-full bg-gradient-to-br from-sky-50 via-white to-blue-50">
+          <div className="relative flex flex-1 flex-col px-6 pb-20 pt-6 lg:px-10">
+            <main className="mx-auto flex w-full flex-1">
           {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
-          <div className="grid h-full w-full grid-cols-12 gap-6">
+          <div className="grid w-full grid-cols-12 gap-6">
             {/* RIGHT: Search + standalone patient suggestion box */}
-            <div className="order-2 col-span-3 flex h-full min-h-0 flex-col gap-4 overflow-y-auto pl-1 pr-1">
+            <div className="order-2 col-span-12 flex flex-col gap-4 pl-1 pr-1 lg:order-2 lg:col-span-3">
               <Card className="flex min-h-0 flex-col p-5">
                 <SectionTitle title="Search Patients" sub="Name / NIC" />
                 <div className="mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
@@ -952,8 +952,8 @@ export default function MedLinkDoctorDashboard() {
           </div>
 
             {/* LEFT: Full detailed sheet */}
-            <div className="order-1 col-span-9 flex h-full min-h-0 flex-col overflow-hidden pr-4">
-              <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+            <div className="order-1 col-span-12 flex flex-col gap-4 pr-0 lg:order-1 lg:col-span-9 lg:pr-4">
+              <div className="flex flex-col gap-6 rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
                 {/* Patient quick info */}
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-3">

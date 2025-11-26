@@ -57,11 +57,11 @@ export default function Login() {
   const [assistantPassword, setAssistantPassword] = useState('assistant-access');
 
   return (
-    <main className="relative isolate flex min-h-screen items-center justify-center px-4 py-6 text-slate-900">
+    <main className="relative isolate flex min-h-screen items-start justify-center px-4 py-6 text-slate-900">
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/70 to-indigo-50" />
       <div className="absolute inset-0 -z-10 opacity-70" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(10,132,255,0.12), transparent 35%), radial-gradient(circle at 75% 18%, rgba(137, 207, 240, 0.12), transparent 32%), radial-gradient(circle at 60% 70%, rgba(64, 224, 208, 0.1), transparent 40%)' }} />
-      <div className="aspect-[16/9] w-full max-w-6xl overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl">
-        <div className="flex h-full flex-col gap-6 overflow-auto px-6 py-7 lg:px-10">
+      <div className="w-full max-w-6xl overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl">
+        <div className="flex flex-col gap-6 px-6 py-7 lg:px-10">
           <header className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <span className="rounded-2xl bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 ring-1 ring-white/70 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
