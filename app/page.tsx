@@ -36,13 +36,12 @@ const Card = ({ children, className = '' }: { children: React.ReactNode; classNa
   <div className={`ios-surface ${SHADOWS.card} ${className}`}>{children}</div>
 );
 
-const SectionTitle = ({ title, sub }: { title: string; sub?: string }) => (
+const SectionTitle = ({ title }: { title: string }) => (
   <div className="flex items-end justify-between">
     <h2 className="text-lg font-bold tracking-tight text-slate-900">
       <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--ioc-blue)] shadow-[0_0_0_4px_rgba(10,132,255,0.18)]" />
       {title}
     </h2>
-    {sub ? <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{sub}</span> : null}
   </div>
 );
 
@@ -853,12 +852,12 @@ export default function MedLinkDoctorDashboard() {
             {/* RIGHT: Search + standalone patient suggestion box */}
             <div className="order-2 col-span-3 flex h-full min-h-0 flex-col gap-4 overflow-y-auto pl-1 pr-1">
               <Card className="flex min-h-0 flex-col p-5">
-                <SectionTitle title="Search Patients" sub="Name / NIC" />
+                <SectionTitle title="Search Patients" />
                 <div className="mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
                   <div className="relative">
                     <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
                     <input
-                      placeholder="Search by name or NIC"
+                      placeholder="Search"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className={`w-full rounded-2xl border border-transparent bg-white px-11 py-3 text-sm text-slate-900 ${SHADOWS.inset} outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100`}
@@ -944,9 +943,6 @@ export default function MedLinkDoctorDashboard() {
                 ))}
               </div>
 
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Status colors: Green = Active · Red/Orange = Allergy
-              </p>
             </Card>
 
           </div>
