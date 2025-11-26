@@ -125,26 +125,27 @@ export default function OwnerTools() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 lg:px-10">
-        <header className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Badge label="Owner tools" />
-            <Badge label="Staff creation" tone="emerald" />
-            <Badge label="Permissions" tone="amber" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Manage doctors and assistants</h1>
-          <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-            <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md">
-              ↩ Back to login split
-            </Link>
-            <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-2 font-semibold text-sky-800 ring-1 ring-sky-100">
-              🔐 Owner area only
-            </span>
-          </div>
-        </header>
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
+      <div className="aspect-[16/9] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+        <div className="flex h-full flex-col gap-6 overflow-auto px-6 py-7 lg:px-10">
+          <header className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Badge label="Owner tools" />
+              <Badge label="Staff" tone="emerald" />
+              <Badge label="Access" tone="amber" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Manage staff access</h1>
+            <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+              <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md">
+                ↩ Back to login
+              </Link>
+              <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-2 font-semibold text-sky-800 ring-1 ring-sky-100">
+                🔐 Owner only
+              </span>
+            </div>
+          </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card className="p-7">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -299,6 +300,7 @@ export default function OwnerTools() {
               ))}
             </div>
           </Card>
+        </div>
         </div>
       </div>
     </main>

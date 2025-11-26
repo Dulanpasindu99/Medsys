@@ -229,14 +229,16 @@ export default function AssistantScreen() {
   const logoutItem = useMemo(() => ({ id: 'logout', label: 'Logout', icon: LogoutIcon }), []);
 
   return (
-    <div className="relative flex min-h-screen w-full bg-gradient-to-br from-sky-50 via-white to-blue-50 text-slate-900">
-      <div className="relative flex min-h-screen flex-1 flex-col px-6 py-8 lg:px-10">
-        <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-6">
-          <main className="flex-1 space-y-6">
-            <header className="flex items-start justify-between rounded-[26px] border border-slate-100 bg-slate-50/80 p-4 shadow-sm backdrop-blur">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Doctor&apos;s Assistant Panel</h1>
-              </div>
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
+      <div className="aspect-[16/9] w-full max-w-[1700px] overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+        <div className="relative flex h-full w-full bg-gradient-to-br from-sky-50 via-white to-blue-50">
+          <div className="relative flex h-full flex-1 flex-col px-6 py-8 lg:px-10">
+            <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-6">
+              <main className="flex-1 space-y-6">
+                <header className="flex items-start justify-between rounded-[26px] border border-slate-100 bg-slate-50/80 p-4 shadow-sm backdrop-blur">
+                  <div>
+                    <h1 className="text-3xl font-bold text-slate-900">Assistant Panel</h1>
+                  </div>
               <div className="grid grid-cols-5 gap-3 text-center text-xs font-semibold text-slate-700">
                 <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
                   <p className="text-slate-500">Total</p>
@@ -642,6 +644,8 @@ export default function AssistantScreen() {
       </span>
     </Link>
   </aside>
-    </div>
+        </div>
+      </div>
+    </main>
   );
 }
