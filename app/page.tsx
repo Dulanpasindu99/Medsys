@@ -1278,7 +1278,7 @@ export default function MedLinkDoctorDashboard() {
                                   onClick={toggleDoseUnit}
                                   aria-label="Toggle dose unit"
                                   aria-pressed={clinicalDrugForm.doseUnit === 'MG'}
-                                  className="h-full rounded-none bg-[var(--ioc-blue)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#0065b8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ioc-blue)]"
+                                  className="h-full rounded-none bg-slate-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700 transition hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
                                 >
                                   {clinicalDrugForm.doseUnit}
                                 </button>
@@ -1303,7 +1303,7 @@ export default function MedLinkDoctorDashboard() {
                                   onClick={toggleTerms}
                                   aria-label="Toggle terms"
                                   aria-pressed={clinicalDrugForm.terms === 'Daily'}
-                                  className="h-full rounded-none bg-[var(--ioc-blue)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#0065b8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ioc-blue)]"
+                                  className="h-full rounded-none bg-slate-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700 transition hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
                                 >
                                   {clinicalDrugForm.terms === 'Daily' ? 'D' : 'H'}
                                 </button>
@@ -1455,7 +1455,7 @@ export default function MedLinkDoctorDashboard() {
 
       <aside className="sticky top-0 flex h-screen w-28 flex-col items-center justify-between bg-transparent py-10">
         <div className="flex flex-col items-center gap-5">
-          <div className="flex size-20 items-center justify-center rounded-full bg-[var(--ioc-blue)] text-white shadow-[0_25px_40px_rgba(0,114,206,0.35)]">
+          <div className="flex size-20 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_25px_40px_rgba(15,23,42,0.35)]">
             <svg {...iconProps} className="size-9">
               <circle cx={12} cy={8} r={3.5} />
               <path d="M7 19.5c.7-3.3 3.1-5.5 5-5.5s4.3 2.2 5 5.5" />
@@ -1469,16 +1469,16 @@ export default function MedLinkDoctorDashboard() {
                 <li key={item.id}>
                   <Link
                     href={item.href}
-                    className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ioc-blue)] ${
+                    className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
                       item.id === activeNavigationId
-                        ? 'size-14 bg-[var(--ioc-blue)] text-white shadow-[0_18px_32px_rgba(0,114,206,0.28)]'
+                        ? 'size-14 bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
                         : 'size-12 bg-white text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
                     }`}
                     aria-label={item.label}
                     aria-current={item.id === activeNavigationId ? 'page' : undefined}
                   >
                     <item.icon className="size-5" />
-                    <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-[var(--ioc-blue)] px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.tooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
+                    <span className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${SHADOWS.tooltip} transition group-hover:scale-100 group-hover:opacity-100`}>
                       {item.label}
                     </span>
                   </Link>
