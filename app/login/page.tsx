@@ -4,18 +4,14 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 
 const SHADOWS = {
-  card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
-  inset: 'shadow-[inset_0_1px_0_rgba(15,23,42,0.06)]',
-  glow: 'shadow-[0_16px_40px_rgba(14,165,233,0.25)]',
+  card: 'shadow-[0_22px_52px_rgba(15,23,42,0.12)]',
+  inset: 'shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]',
+  glow: 'shadow-[0_18px_44px_rgba(10,132,255,0.28)]',
   tooltip: 'shadow-[0_12px_24px_rgba(15,23,42,0.18)]',
 } as const;
 
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div
-    className={`rounded-[24px] border border-white/70 bg-white/85 ${SHADOWS.card} ring-1 ring-sky-50/60 backdrop-blur-xl ${className}`}
-  >
-    {children}
-  </div>
+  <div className={`ios-surface ${SHADOWS.card} ${className}`}>{children}</div>
 );
 
 const Field = ({
@@ -44,7 +40,7 @@ const Field = ({
 );
 
 const RolePill = ({ label }: { label: string }) => (
-  <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 ring-1 ring-sky-100">
+    <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 ring-1 ring-white/70">
     <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
     {label}
   </span>
@@ -61,12 +57,14 @@ export default function Login() {
   const [assistantPassword, setAssistantPassword] = useState('assistant-access');
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
-      <div className="aspect-[16/9] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+    <main className="relative isolate flex min-h-screen items-center justify-center px-4 py-6 text-slate-900">
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/70 to-indigo-50" />
+      <div className="absolute inset-0 -z-10 opacity-70" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(10,132,255,0.12), transparent 35%), radial-gradient(circle at 75% 18%, rgba(137, 207, 240, 0.12), transparent 32%), radial-gradient(circle at 60% 70%, rgba(64, 224, 208, 0.1), transparent 40%)' }} />
+      <div className="aspect-[16/9] w-full max-w-6xl overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl">
         <div className="flex h-full flex-col gap-6 overflow-auto px-6 py-7 lg:px-10">
           <header className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <span className="rounded-2xl bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 ring-1 ring-sky-200">
+              <span className="rounded-2xl bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 ring-1 ring-white/70 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
                 MedLink Access
               </span>
               <RolePill label="Owner + Staff" />
@@ -86,10 +84,7 @@ export default function Login() {
               </div>
               <h2 className="mt-3 text-xl font-bold text-slate-900">Owner login</h2>
             </div>
-            <Link
-              href="/owner"
-              className="rounded-full bg-[var(--ioc-blue)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_28px_rgba(0,114,206,0.32)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(0,114,206,0.38)]"
-            >
+            <Link href="/owner" className="ios-button-primary px-5 py-2 text-[11px] uppercase tracking-[0.2em]">
               Go to owner tools
             </Link>
             </div>
@@ -99,11 +94,11 @@ export default function Login() {
               <Field label="Password" type="password" value={ownerPassword} onChange={setOwnerPassword} placeholder="••••••••" />
             </div>
             <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2 rounded-2xl bg-sky-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-700 ring-1 ring-sky-100">
+              <div className="flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-700 ring-1 ring-white/70 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
                 <span className="h-2 w-2 rounded-full bg-sky-500" />
                 Owner only area
               </div>
-              <button className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:-translate-y-0.5 hover:bg-sky-700">
+              <button className="ios-button-primary">
                 Sign in as owner
               </button>
             </div>
@@ -136,7 +131,7 @@ export default function Login() {
                     placeholder="••••••••"
                   />
                 </div>
-                <button className="mt-4 w-full rounded-full bg-[var(--ioc-blue)] px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(0,114,206,0.32)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(0,114,206,0.38)]">
+                <button className="ios-button-primary mt-4 w-full">
                   Continue as doctor
                 </button>
               </Card>
@@ -161,7 +156,7 @@ export default function Login() {
                     placeholder="••••••••"
                   />
                 </div>
-                <button className="mt-4 w-full rounded-full bg-sky-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:-translate-y-0.5 hover:bg-sky-700">
+                <button className="ios-button-primary mt-4 w-full">
                   Continue as assistant
                 </button>
               </Card>

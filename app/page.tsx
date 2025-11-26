@@ -23,27 +23,23 @@ interface ClinicalDrug {
 }
 
 const SHADOWS = {
-  card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
-  inset: 'shadow-[inset_0_1px_0_rgba(15,23,42,0.06)]',
-  primaryGlow: 'shadow-[0_12px_24px_rgba(14,165,233,0.25)]',
-  darkGlow: 'shadow-[0_14px_28px_rgba(0,114,206,0.24)]',
+  card: 'shadow-[0_20px_48px_rgba(15,23,42,0.12)]',
+  inset: 'shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]',
+  primaryGlow: 'shadow-[0_14px_28px_rgba(10,132,255,0.28)]',
+  darkGlow: 'shadow-[0_14px_28px_rgba(10,132,255,0.24)]',
   whiteInset: 'shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]',
-  tooltip: 'shadow-[0_12px_24px_rgba(0,114,206,0.22)]',
+  tooltip: 'shadow-[0_12px_24px_rgba(10,132,255,0.18)]',
   roseTooltip: 'shadow-[0_12px_24px_rgba(244,63,94,0.25)]',
 } as const;
 
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div
-    className={`rounded-[24px] border border-white/70 bg-white/80 ${SHADOWS.card} ring-1 ring-sky-50/60 backdrop-blur-xl ${className}`}
-  >
-    {children}
-  </div>
+  <div className={`ios-surface ${SHADOWS.card} ${className}`}>{children}</div>
 );
 
 const SectionTitle = ({ title, sub }: { title: string; sub?: string }) => (
   <div className="flex items-end justify-between">
     <h2 className="text-lg font-bold tracking-tight text-slate-900">
-      <span className="mr-2 inline-block h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.15)]" />
+      <span className="mr-2 inline-block h-2 w-2 rounded-full bg-[var(--ioc-blue)] shadow-[0_0_0_4px_rgba(10,132,255,0.18)]" />
       {title}
     </h2>
     {sub ? <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{sub}</span> : null}

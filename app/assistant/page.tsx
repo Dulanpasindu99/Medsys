@@ -229,34 +229,36 @@ export default function AssistantScreen() {
   const logoutItem = useMemo(() => ({ id: 'logout', label: 'Logout', icon: LogoutIcon }), []);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
-      <div className="aspect-[16/9] w-full max-w-[1700px] overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
-        <div className="relative flex h-full w-full bg-gradient-to-br from-sky-50 via-white to-blue-50">
+    <main className="relative isolate flex min-h-screen items-center justify-center px-4 py-6 text-slate-900">
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/70 to-indigo-50" />
+      <div className="absolute inset-0 -z-10 opacity-70" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(10,132,255,0.12), transparent 35%), radial-gradient(circle at 75% 18%, rgba(137, 207, 240, 0.12), transparent 32%), radial-gradient(circle at 60% 70%, rgba(64, 224, 208, 0.1), transparent 40%)' }} />
+      <div className="ios-surface aspect-[16/9] w-full max-w-[1700px] overflow-hidden rounded-[30px] ring-1 ring-slate-100/80">
+        <div className="relative flex h-full w-full bg-gradient-to-br from-white/90 via-sky-50/80 to-white">
           <div className="relative flex h-full flex-1 flex-col px-6 py-8 lg:px-10">
             <div className="mx-auto flex w-full max-w-[1700px] flex-1 gap-6">
               <main className="flex-1 space-y-6">
-                <header className="flex items-start justify-between rounded-[26px] border border-slate-100 bg-slate-50/80 p-4 shadow-sm backdrop-blur">
+                <header className="flex items-start justify-between rounded-[26px] border border-white/80 bg-white/70 p-4 shadow-[0_16px_38px_rgba(15,23,42,0.12)] backdrop-blur-xl">
                   <div>
                     <h1 className="text-3xl font-bold text-slate-900">Assistant Panel</h1>
                   </div>
               <div className="grid grid-cols-5 gap-3 text-center text-xs font-semibold text-slate-700">
-                <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
+                <div className="ios-surface px-3 py-2 shadow-sm">
                   <p className="text-slate-500">Total</p>
                   <p className="text-xl font-bold text-slate-900">{stats.total}</p>
                 </div>
-                <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
+                <div className="ios-surface px-3 py-2 shadow-sm">
                   <p className="text-slate-500">Male</p>
                   <p className="text-xl font-bold text-slate-900">{stats.male}</p>
                 </div>
-                <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
+                <div className="ios-surface px-3 py-2 shadow-sm">
                   <p className="text-slate-500">Female</p>
                   <p className="text-xl font-bold text-slate-900">{stats.female}</p>
                 </div>
-                <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
+                <div className="ios-surface px-3 py-2 shadow-sm">
                   <p className="text-slate-500">Existing</p>
                   <p className="text-xl font-bold text-slate-900">{stats.existing}</p>
                 </div>
-                <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
+                <div className="ios-surface px-3 py-2 shadow-sm">
                   <p className="text-slate-500">New</p>
                   <p className="text-xl font-bold text-slate-900">{stats.new}</p>
                 </div>
