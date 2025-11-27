@@ -143,6 +143,15 @@ export default function PatientManagement() {
 
   return (
     <main className="relative isolate min-h-screen px-4 py-6 text-slate-900 sm:px-6 md:px-8">
+      <div
+        className="pointer-events-none absolute inset-0 -z-20 opacity-60"
+        style={{
+          backgroundImage:
+            'linear-gradient(90deg, rgba(56,189,248,0.12) 1px, transparent 1px), linear-gradient(0deg, rgba(56,189,248,0.12) 1px, transparent 1px)',
+          backgroundSize: '80px 80px',
+          backgroundPosition: '30px 24px',
+        }}
+      />
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/80 to-indigo-50" />
       <div
         className="absolute inset-0 -z-10"
