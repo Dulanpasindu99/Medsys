@@ -142,7 +142,8 @@ body {
 
 .nav-rail {
   border-radius: 999px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
 }
 
 .nav-rail::before {

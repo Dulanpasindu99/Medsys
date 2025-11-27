@@ -113,31 +113,29 @@ export function NavigationPanel({
           <AccentIcon className="size-7" />
         </div>
         <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
-        <div className="flex flex-1 items-center justify-center rounded-2xl border border-white/70 bg-white/75 px-4 py-3 text-slate-600 shadow-[0_20px_38px_rgba(15,23,42,0.12)] backdrop-blur-xl md:px-3 md:py-4">
-          <ul className="flex items-center gap-3 md:flex-col md:gap-4">
-            {navigationItems.map((item) => (
-              <li key={item.id} className="flex justify-center">
-                <Link
-                  href={item.href}
-                  className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
-                    item.id === activeId
-                      ? 'size-14 bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
-                      : 'size-12 bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
-                  }`}
-                  aria-label={item.label}
-                  aria-current={item.id === activeId ? 'page' : undefined}
+        <ul className="flex flex-1 items-center justify-center gap-3 text-slate-600 md:flex-col md:gap-4">
+          {navigationItems.map((item) => (
+            <li key={item.id} className="flex justify-center">
+              <Link
+                href={item.href}
+                className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
+                  item.id === activeId
+                    ? 'size-14 bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
+                    : 'size-12 bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
+                }`}
+                aria-label={item.label}
+                aria-current={item.id === activeId ? 'page' : undefined}
+              >
+                <item.icon className="size-5" />
+                <span
+                  className={`pointer-events-none absolute right-full mr-3 hidden origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
                 >
-                  <item.icon className="size-5" />
-                  <span
-                    className={`pointer-events-none absolute right-full mr-3 hidden origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
-                  >
-                    {item.label}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+                  {item.label}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
         <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
       </div>
 
