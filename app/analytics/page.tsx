@@ -268,24 +268,6 @@ export default function AnalyticsCommandCenter() {
   return (
     <NavigationPageShell activeId="stats" accentIcon={StatsIcon}>
       <main className="relative isolate min-h-screen px-4 py-6 text-slate-900 sm:px-6 md:px-8">
-      <div
-        className="pointer-events-none absolute inset-0 -z-20 opacity-60"
-        style={{
-          backgroundImage:
-            'linear-gradient(90deg, rgba(56,189,248,0.12) 1px, transparent 1px), linear-gradient(0deg, rgba(56,189,248,0.12) 1px, transparent 1px)',
-          backgroundSize: '80px 80px',
-          backgroundPosition: '30px 24px',
-        }}
-      />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/80 to-indigo-50" />
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            'radial-gradient(circle at 30% 18%, rgba(14,165,233,0.18), transparent 38%), radial-gradient(circle at 82% 22%, rgba(56,189,248,0.2), transparent 36%), radial-gradient(circle at 62% 78%, rgba(8,145,178,0.14), transparent 42%)',
-        }}
-      />
-
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <header className="flex flex-col gap-3">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">

@@ -110,7 +110,7 @@ export function NavigationPanel({
           <AccentIcon className="size-8" />
         </div>
         <div className="h-10 w-px rounded-full bg-slate-200" />
-        <div className="flex flex-col items-center rounded-[20px] border border-sky-100 bg-[rgba(0,114,206,0.08)] px-3 py-5 text-slate-600 shadow-[0_20px_38px_rgba(0,114,206,0.12)] backdrop-blur">
+        <div className="flex flex-col items-center rounded-[20px] border border-white/70 bg-white/80 px-3 py-5 text-slate-600 shadow-[0_20px_38px_rgba(15,23,42,0.12)] backdrop-blur">
           <ul className="flex flex-col items-center gap-4">
             {navigationItems.map((item) => (
               <li key={item.id}>

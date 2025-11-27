@@ -773,10 +773,10 @@ export default function MedLinkDoctorDashboard() {
 
   return (
     <NavigationPageShell activeId="doctor" accentIcon={DoctorIcon}>
-      <main className="flex min-h-screen items-start justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
+      <main className="flex min-h-screen items-start justify-center px-4 py-6 text-slate-900">
       <div className="flex w-full max-w-[1760px] flex-col gap-6 lg:flex-row lg:items-start">
         <div className="w-full max-w-[1680px] flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
-          <div className="relative flex w-full bg-gradient-to-br from-sky-50 via-white to-blue-50">
+          <div className="relative flex w-full">
             <div className="relative flex flex-1 flex-col px-6 pb-20 pt-6 lg:px-10">
               <div className="mx-auto flex w-full flex-1">
           {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
