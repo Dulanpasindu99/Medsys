@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { PatientsIcon } from '../components/NavigationPanel';
+import { NavigationPageShell } from '../components/NavigationPageShell';
 
 type Gender = 'Male' | 'Female';
 
@@ -142,7 +144,8 @@ export default function PatientManagement() {
   }, [search, family, ageRange, gender]);
 
   return (
-    <main className="relative isolate min-h-screen px-4 py-6 text-slate-900 sm:px-6 md:px-8">
+    <NavigationPageShell activeId="patient" accentIcon={PatientsIcon}>
+      <main className="relative isolate min-h-screen px-4 py-6 text-slate-900 sm:px-6 md:px-8">
       <div
         className="pointer-events-none absolute inset-0 -z-20 opacity-60"
         style={{
@@ -325,7 +328,8 @@ export default function PatientManagement() {
           </div>
         </SectionShell>
       </div>
-    </main>
+      </main>
+    </NavigationPageShell>
   );
 }
 

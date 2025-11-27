@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { AssistantIcon, NavigationPanel } from '../components/NavigationPanel';
+import { AssistantIcon } from '../components/NavigationPanel';
+import { NavigationPageShell } from '../components/NavigationPageShell';
 
 const SHADOWS = {
   card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
@@ -146,11 +147,12 @@ export default function AssistantScreen() {
   };
 
   return (
-    <main className="relative isolate flex min-h-screen items-start justify-center px-4 py-6 text-slate-900">
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/70 to-indigo-50" />
-      <div className="absolute inset-0 -z-10 opacity-70" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(10,132,255,0.12), transparent 35%), radial-gradient(circle at 75% 18%, rgba(137, 207, 240, 0.12), transparent 32%), radial-gradient(circle at 60% 70%, rgba(64, 224, 208, 0.1), transparent 40%)' }} />
-      <div className="flex w-full max-w-[1760px] flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="ios-surface w-full max-w-[1700px] flex-1 overflow-hidden rounded-[30px] ring-1 ring-slate-100/80">
+    <NavigationPageShell activeId="assistant" accentIcon={AssistantIcon}>
+      <main className="relative isolate flex min-h-screen items-start justify-center px-4 py-6 text-slate-900">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/60 via-sky-50/70 to-indigo-50" />
+        <div className="absolute inset-0 -z-10 opacity-70" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(10,132,255,0.12), transparent 35%), radial-gradient(circle at 75% 18%, rgba(137, 207, 240, 0.12), transparent 32%), radial-gradient(circle at 60% 70%, rgba(64, 224, 208, 0.1), transparent 40%)' }} />
+        <div className="flex w-full max-w-[1760px] flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="ios-surface w-full max-w-[1700px] flex-1 overflow-hidden rounded-[30px] ring-1 ring-slate-100/80">
           <div className="relative flex w-full bg-gradient-to-br from-white/90 via-sky-50/80 to-white">
             <div className="relative flex flex-1 flex-col px-6 py-8 lg:px-10">
               <div className="mx-auto flex w-full max-w-[1700px] flex-col gap-6">
@@ -521,9 +523,9 @@ export default function AssistantScreen() {
     </div>
   </div>
 </div>
-        <NavigationPanel activeId="assistant" accentIcon={AssistantIcon} className="self-start" />
       </div>
       </div>
     </main>
+    </NavigationPageShell>
   );
 }
