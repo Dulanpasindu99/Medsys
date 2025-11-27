@@ -70,7 +70,7 @@ export const LogoutIcon: IconRenderer = (props) => (
   </svg>
 );
 
-type NavigationItemId = 'doctor' | 'assistant' | 'patient' | 'stats' | 'inventory' | 'ai';
+export type NavigationItemId = 'doctor' | 'assistant' | 'patient' | 'stats' | 'inventory' | 'ai' | 'owner';
 
 type NavigationItem = {
   id: NavigationItemId;
@@ -83,7 +83,8 @@ const navigationItems: NavigationItem[] = [
   { id: 'doctor', label: 'Doctor Screen', icon: DoctorIcon, href: '/' },
   { id: 'assistant', label: 'Assistant Screen', icon: AssistantIcon, href: '/assistant' },
   { id: 'patient', label: 'Patiant Management', icon: PatientsIcon, href: '/patients' },
-  { id: 'stats', label: 'Stats', icon: StatsIcon, href: '/stats' },
+  { id: 'stats', label: 'Analytics', icon: StatsIcon, href: '/analytics' },
+  { id: 'owner', label: 'Owner Tools', icon: InventoryIcon, href: '/owner' },
   { id: 'inventory', label: 'Inventry Management', icon: InventoryIcon, href: '/inventory' },
   { id: 'ai', label: 'Ai Chat', icon: ChatIcon, href: '/ai' },
 ];
@@ -102,7 +103,7 @@ export function NavigationPanel({
 }) {
   return (
     <aside
-      className={`sticky top-6 flex h-[calc(100vh-3rem)] w-28 flex-col items-center justify-between rounded-[24px] border border-white/70 bg-white/80 px-4 py-8 shadow-[0_18px_40px_rgba(15,23,42,0.18)] backdrop-blur ${className}`}
+      className={`fixed right-6 top-6 z-20 flex h-[calc(100vh-3rem)] w-28 flex-col items-center justify-between px-4 py-8 ${className}`}
     >
       <div className="flex flex-col items-center gap-6">
         <div className="flex size-16 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_22px_36px_rgba(15,23,42,0.28)]">

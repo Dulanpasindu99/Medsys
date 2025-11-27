@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { IconRenderer } from './components/NavigationPanel';
-import { DoctorIcon, NavigationPanel } from './components/NavigationPanel';
+import { DoctorIcon } from './components/NavigationPanel';
+import { NavigationPageShell } from './components/NavigationPageShell';
 
 // ---- Types ----
 interface Patient {
@@ -771,7 +772,8 @@ export default function MedLinkDoctorDashboard() {
   };
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
+    <NavigationPageShell activeId="doctor" accentIcon={DoctorIcon}>
+      <main className="flex min-h-screen items-start justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 px-4 py-6 text-slate-900">
       <div className="flex w-full max-w-[1760px] flex-col gap-6 lg:flex-row lg:items-start">
         <div className="w-full max-w-[1680px] flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
           <div className="relative flex w-full bg-gradient-to-br from-sky-50 via-white to-blue-50">
@@ -1378,9 +1380,9 @@ export default function MedLinkDoctorDashboard() {
       </div>
     </div>
   </div>
-        <NavigationPanel activeId="doctor" accentIcon={DoctorIcon} className="self-start" />
       </div>
       </div>
     </main>
+    </NavigationPageShell>
   );
 }

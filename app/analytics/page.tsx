@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { StatsIcon } from '../components/NavigationPanel';
+import { NavigationPageShell } from '../components/NavigationPageShell';
 
 interface DiseaseRecord {
   id: string;
@@ -264,7 +266,8 @@ export default function AnalyticsCommandCenter() {
   };
 
   return (
-    <main className="relative isolate min-h-screen px-4 py-6 text-slate-900 sm:px-6 md:px-8">
+    <NavigationPageShell activeId="stats" accentIcon={StatsIcon}>
+      <main className="relative isolate min-h-screen px-4 py-6 text-slate-900 sm:px-6 md:px-8">
       <div
         className="pointer-events-none absolute inset-0 -z-20 opacity-60"
         style={{
@@ -659,6 +662,7 @@ export default function AnalyticsCommandCenter() {
           </div>
         </section>
       </div>
-    </main>
+      </main>
+    </NavigationPageShell>
   );
 }
