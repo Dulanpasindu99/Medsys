@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -101,32 +102,34 @@ export function NavigationPanel({
   accentIcon: IconRenderer;
   className?: string;
 }) {
-  return (
+  if (typeof document === 'undefined') return null;
+
+  const content = (
     <aside
-      className={`fixed right-6 top-6 z-20 flex h-[calc(100vh-3rem)] w-28 flex-col items-center justify-between px-4 py-8 ${className}`}
+      className={`fixed inset-x-4 bottom-4 z-30 flex items-center gap-4 rounded-[28px] border border-white/60 bg-white/70 px-4 py-3 shadow-[0_18px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-all md:inset-auto md:right-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:px-4 md:py-5 lg:right-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
-      <div className="flex flex-col items-center gap-6">
-        <div className="flex size-16 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_22px_36px_rgba(15,23,42,0.28)]">
-          <AccentIcon className="size-8" />
+      <div className="flex items-center gap-4 md:flex-col md:gap-6">
+        <div className="flex size-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_22px_36px_rgba(15,23,42,0.28)]">
+          <AccentIcon className="size-7" />
         </div>
-        <div className="h-10 w-px rounded-full bg-slate-200" />
-        <div className="flex flex-col items-center rounded-[20px] border border-white/70 bg-white/80 px-3 py-5 text-slate-600 shadow-[0_20px_38px_rgba(15,23,42,0.12)] backdrop-blur">
-          <ul className="flex flex-col items-center gap-4">
+        <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-white/70 bg-white/75 px-4 py-3 text-slate-600 shadow-[0_20px_38px_rgba(15,23,42,0.12)] backdrop-blur-xl md:px-3 md:py-4">
+          <ul className="flex items-center gap-3 md:flex-col md:gap-4">
             {navigationItems.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} className="flex justify-center">
                 <Link
                   href={item.href}
                   className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
                     item.id === activeId
                       ? 'size-14 bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
-                      : 'size-12 bg-white text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
+                      : 'size-12 bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
                   }`}
                   aria-label={item.label}
                   aria-current={item.id === activeId ? 'page' : undefined}
                 >
                   <item.icon className="size-5" />
                   <span
-                    className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100`}
+                    className={`pointer-events-none absolute right-full mr-3 hidden origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
                   >
                     {item.label}
                   </span>
@@ -135,21 +138,25 @@ export function NavigationPanel({
             ))}
           </ul>
         </div>
-        <div className="h-10 w-px rounded-full bg-slate-200" />
+        <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
       </div>
 
       <Link
         href="/logout"
-        className="ios-nav-button group relative flex size-14 items-center justify-center rounded-full border border-rose-100 bg-white text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
+        className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200 md:size-14"
         aria-label="Logout"
       >
         <LogoutIcon className="size-5" />
         <span
-          className={`pointer-events-none absolute right-full mr-3 origin-right scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_ROSE_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100`}
+          className={`pointer-events-none absolute right-full mr-3 hidden origin-right scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_ROSE_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
         >
           Logout
         </span>
       </Link>
     </aside>
+  );
+
+  return (
+    createPortal(content, document.body)
   );
 }
