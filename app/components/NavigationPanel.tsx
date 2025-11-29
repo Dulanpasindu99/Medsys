@@ -113,12 +113,6 @@ export function NavigationPanel({
   if (typeof document === 'undefined') return null;
 
   const doctorName = 'Dr. Charuka Gamage';
-  const doctorRole = 'General Physician';
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    weekday: 'short',
-  }).format(new Date());
 
   const doctorInitials = doctorName
     .split(' ')
@@ -133,21 +127,12 @@ export function NavigationPanel({
       className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
       <div className="flex flex-col items-center gap-3 text-center text-slate-700">
-        <div className="relative flex flex-col items-center gap-3 rounded-[26px] bg-white/95 px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
-          <div className="flex items-center justify-center rounded-full bg-slate-900 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
-            <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-900/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
-              {doctorInitials}
-              <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white text-sky-600 ring-2 ring-sky-100 shadow-[0_10px_18px_rgba(10,132,255,0.25)]">
-                <AccentIcon className="size-[14px]" />
-              </div>
+        <div className="relative flex items-center justify-center rounded-full bg-slate-900 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
+          <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-900/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
+            {doctorInitials}
+            <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white text-sky-600 ring-2 ring-sky-100 shadow-[0_10px_18px_rgba(10,132,255,0.25)]">
+              <AccentIcon className="size-[14px]" />
             </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-sm font-semibold text-slate-900">{doctorName}</div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">{doctorRole}</div>
-          </div>
-          <div className="rounded-full bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 ring-1 ring-slate-200">
-            {formattedDate}
           </div>
         </div>
       </div>
