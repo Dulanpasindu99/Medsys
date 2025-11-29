@@ -132,8 +132,8 @@ export function NavigationPanel({
     <aside
       className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
-      <div className="flex flex-col items-center gap-4 text-center text-slate-700">
-        <div className="relative flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3 text-center text-slate-700">
+        <div className="relative flex flex-col items-center gap-3 rounded-[26px] bg-white/95 px-4 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
           <div className="flex items-center justify-center rounded-full bg-slate-900 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
             <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-900/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
               {doctorInitials}
@@ -146,37 +146,39 @@ export function NavigationPanel({
             <div className="text-sm font-semibold text-slate-900">{doctorName}</div>
             <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">{doctorRole}</div>
           </div>
-        </div>
-        <div className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 shadow-[0_12px_24px_rgba(15,23,42,0.12)]">
-          {formattedDate}
+          <div className="rounded-full bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 ring-1 ring-slate-200">
+            {formattedDate}
+          </div>
         </div>
       </div>
 
-      <ul className="flex flex-col items-center gap-3 text-slate-600">
-        {navigationItems.map((item) => (
-          <li key={item.id} className="flex justify-center">
-            <Link
-              href={item.href}
-              className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
-                item.id === activeId
-                  ? 'bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
-                  : 'bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
-              }`}
-              aria-label={item.label}
-              aria-current={item.id === activeId ? 'page' : undefined}
-            >
-              <item.icon className="size-5" />
-              <span
-                className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+      <div className="flex flex-1 items-center">
+        <ul className="flex flex-col items-center gap-4 rounded-full bg-white/90 px-3 py-5 text-slate-600 ring-1 ring-slate-200 shadow-[0_14px_32px_rgba(15,23,42,0.12)]">
+          {navigationItems.map((item) => (
+            <li key={item.id} className="flex justify-center">
+              <Link
+                href={item.href}
+                className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
+                  item.id === activeId
+                    ? 'bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
+                    : 'bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
+                }`}
+                aria-label={item.label}
+                aria-current={item.id === activeId ? 'page' : undefined}
               >
-                {item.label}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+                <item.icon className="size-5" />
+                <span
+                  className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3 rounded-[26px] bg-white/95 px-3 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
         <Link
           href="/help"
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-sky-100 bg-white/90 text-sky-600 shadow-[0_12px_24px_rgba(10,132,255,0.18)] transition hover:-translate-y-0.5 hover:border-sky-200"
@@ -206,7 +208,5 @@ export function NavigationPanel({
     </aside>
   );
 
-  return (
-    createPortal(content, document.body)
-  );
+  return createPortal(content, document.body);
 }
