@@ -106,7 +106,7 @@ export function NavigationPanel({
 
   const content = (
     <aside
-      className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center gap-4 rounded-full px-4 py-3 transition-all md:inset-auto md:right-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:px-4 md:py-5 lg:right-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
+      className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center gap-4 rounded-full px-4 py-3 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:px-4 md:py-5 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
       <div className="flex items-center gap-4 md:flex-col md:gap-6">
         <div className="flex size-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_22px_36px_rgba(15,23,42,0.28)]">
@@ -128,7 +128,7 @@ export function NavigationPanel({
               >
                 <item.icon className="size-5" />
                 <span
-                  className={`pointer-events-none absolute right-full mr-3 hidden origin-right scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+                  className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
                 >
                   {item.label}
                 </span>
@@ -146,7 +146,7 @@ export function NavigationPanel({
       >
         <LogoutIcon className="size-5" />
         <span
-          className={`pointer-events-none absolute right-full mr-3 hidden origin-right scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_ROSE_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+          className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_ROSE_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
         >
           Logout
         </span>

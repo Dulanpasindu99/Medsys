@@ -12,7 +12,7 @@ type NavigationPageShellProps = {
 export function NavigationPageShell({ children, activeId, accentIcon }: NavigationPageShellProps) {
   return (
     <div className="relative">
-      <div className="lg:pr-40">{children}</div>
+      <div className="lg:pl-40">{children}</div>
       <NavigationPanel activeId={activeId} accentIcon={accentIcon} />
     </div>
   );
