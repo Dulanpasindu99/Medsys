@@ -71,6 +71,14 @@ export const LogoutIcon: IconRenderer = (props) => (
   </svg>
 );
 
+export const HelpIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <circle cx={12} cy={12} r={9} />
+    <path d="M9.75 10.25a2.25 2.25 0 114.5 0c0 1.5-2.25 1.5-2.25 3" />
+    <circle cx={12} cy={16.5} r={0.8} />
+  </svg>
+);
+
 export type NavigationItemId = 'doctor' | 'assistant' | 'patient' | 'stats' | 'inventory' | 'ai' | 'owner';
 
 type NavigationItem = {
@@ -104,53 +112,97 @@ export function NavigationPanel({
 }) {
   if (typeof document === 'undefined') return null;
 
+  const doctorName = 'Dr. Charuka Gamage';
+  const doctorRole = 'General Physician';
+  const formattedDate = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(new Date());
+
+  const doctorInitials = doctorName
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   const content = (
     <aside
-      className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center gap-4 rounded-full px-4 py-3 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:px-4 md:py-5 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
+      className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
-      <div className="flex items-center gap-4 md:flex-col md:gap-6">
-        <div className="flex size-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_22px_36px_rgba(15,23,42,0.28)]">
-          <AccentIcon className="size-7" />
+      <div className="flex flex-col items-center gap-4 text-center text-slate-700">
+        <div className="relative flex flex-col items-center gap-3">
+          <div className="flex items-center justify-center rounded-full bg-slate-900 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
+            <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-900/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
+              {doctorInitials}
+              <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white text-sky-600 ring-2 ring-sky-100 shadow-[0_10px_18px_rgba(10,132,255,0.25)]">
+                <AccentIcon className="size-[14px]" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-sm font-semibold text-slate-900">{doctorName}</div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">{doctorRole}</div>
+          </div>
         </div>
-        <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
-        <ul className="flex flex-1 items-center justify-center gap-3 text-slate-600 md:flex-col md:gap-4">
-          {navigationItems.map((item) => (
-            <li key={item.id} className="flex justify-center">
-              <Link
-                href={item.href}
-                className={`ios-nav-button group relative flex items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
-                  item.id === activeId
-                    ? 'size-14 bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
-                    : 'size-12 bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
-                }`}
-                aria-label={item.label}
-                aria-current={item.id === activeId ? 'page' : undefined}
-              >
-                <item.icon className="size-5" />
-                <span
-                  className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
-                >
-                  {item.label}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
+        <div className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 shadow-[0_12px_24px_rgba(15,23,42,0.12)]">
+          {formattedDate}
+        </div>
       </div>
 
-      <Link
-        href="/logout"
-        className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200 md:size-14"
-        aria-label="Logout"
-      >
-        <LogoutIcon className="size-5" />
-        <span
-          className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_ROSE_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+      <ul className="flex flex-col items-center gap-3 text-slate-600">
+        {navigationItems.map((item) => (
+          <li key={item.id} className="flex justify-center">
+            <Link
+              href={item.href}
+              className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
+                item.id === activeId
+                  ? 'bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
+                  : 'bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
+              }`}
+              aria-label={item.label}
+              aria-current={item.id === activeId ? 'page' : undefined}
+            >
+              <item.icon className="size-5" />
+              <span
+                className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+              >
+                {item.label}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-col items-center gap-3">
+        <Link
+          href="/help"
+          className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-sky-100 bg-white/90 text-sky-600 shadow-[0_12px_24px_rgba(10,132,255,0.18)] transition hover:-translate-y-0.5 hover:border-sky-200"
+          aria-label="Help"
         >
-          Logout
-        </span>
-      </Link>
+          <HelpIcon className="size-5" />
+          <span
+            className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+          >
+            Help
+          </span>
+        </Link>
+
+        <Link
+          href="/logout"
+          className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
+          aria-label="Logout"
+        >
+          <LogoutIcon className="size-5" />
+          <span
+            className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-rose-600 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_ROSE_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+          >
+            Logout
+          </span>
+        </Link>
+      </div>
     </aside>
   );
 
