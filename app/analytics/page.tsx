@@ -361,6 +361,83 @@ export default function AnalyticsCommandCenter() {
             </div>
           </header>
 
+          <TileCard className="lg:col-span-4" tone="sky">
+            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <span>Quick filters</span>
+              <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] text-slate-700">Mini controls</span>
+            </div>
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+              <div
+                className={`flex min-w-[220px] flex-1 items-center gap-3 rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 ${SHADOWS.inset}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-slate-500">
+                  <path d="M10 21h4" />
+                  <path d="M12 17v4" />
+                  <path d="m7 13-1-1a2 2 0 0 1 2-3h1.5" />
+                  <path d="M10 5a2 2 0 1 1 4 0v7a2 2 0 1 1-4 0Z" />
+                </svg>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search disease or family"
+                  className="w-full bg-transparent text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+              <select
+                value={gender}
+                onChange={(event) => setGender(event.target.value as 'all' | 'Male' | 'Female')}
+                className="min-w-[160px] rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+              >
+                <option value="all">All genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+              <select
+                value={family}
+                onChange={(event) => setFamily(event.target.value)}
+                className="min-w-[160px] rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+              >
+                <option value="all">All families</option>
+                {families.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={disease}
+                onChange={(event) => setDisease(event.target.value)}
+                className="min-w-[160px] rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+              >
+                <option value="all">All diseases</option>
+                {diseaseNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={month}
+                onChange={(event) => setMonth(event.target.value)}
+                className="min-w-[160px] rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+              >
+                <option value="all">All months</option>
+                {months.map((monthKey) => (
+                  <option key={monthKey} value={monthKey}>
+                    {monthName(monthKey)}
+                  </option>
+                ))}
+              </select>
+              <div className="flex min-w-[170px] items-center justify-between rounded-2xl bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 ring-1 ring-slate-100">
+                <div className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.18)]" />
+                  Live tiles
+                </div>
+                <span className="rounded-full bg-slate-700/90 px-2 py-1 text-[10px] text-white">{filteredRecords.length} results</span>
+              </div>
+            </div>
+          </TileCard>
+
           <div className="grid auto-rows-fr gap-4 lg:grid-cols-4">
             <TileCard className="lg:col-span-2">
               <div className="flex items-start justify-between gap-3">
@@ -621,19 +698,19 @@ export default function AnalyticsCommandCenter() {
           </div>
 
           <div className="grid auto-rows-fr gap-4 lg:grid-cols-4">
-            <TileCard className="lg:col-span-2">
+            <TileCard className="lg:col-span-4">
               <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 <span>Conditions board</span>
                 <span className="rounded-full bg-slate-700/90 px-3 py-1 text-[10px] font-semibold text-white">{topFourDiseases.length} tiles</span>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
                 {topFourDiseases.map((item) => {
                   const total = item.male + item.female;
                   const maleWidth = total === 0 ? 0 : Math.round((item.male / total) * 100);
                   const femaleWidth = total === 0 ? 0 : 100 - maleWidth;
 
                   return (
-                    <div key={item.disease} className="rounded-2xl bg-white/80 p-4 ring-1 ring-slate-100">
+                    <div key={item.disease} className="min-w-[240px] flex-1 rounded-2xl bg-white/80 p-4 ring-1 ring-slate-100">
                       <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
                         <div className="flex items-center gap-2">
                           <span className="inline-flex h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.18)]" />
@@ -655,81 +732,6 @@ export default function AnalyticsCommandCenter() {
                     </div>
                   );
                 })}
-              </div>
-            </TileCard>
-
-            <TileCard className="lg:col-span-2" tone="sky">
-              <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <span>Quick filters</span>
-                <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] text-slate-700">Mini controls</span>
-              </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className={`flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 ${SHADOWS.inset}`}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-slate-500">
-                    <path d="M10 21h4" />
-                    <path d="M12 17v4" />
-                    <path d="m7 13-1-1a2 2 0 0 1 2-3h1.5" />
-                    <path d="M10 5a2 2 0 1 1 4 0v7a2 2 0 1 1-4 0Z" />
-                  </svg>
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search disease or family"
-                    className="w-full bg-transparent text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none"
-                  />
-                </div>
-                <select
-                  value={gender}
-                  onChange={(event) => setGender(event.target.value as 'all' | 'Male' | 'Female')}
-                  className="rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  <option value="all">All genders</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-                <select
-                  value={family}
-                  onChange={(event) => setFamily(event.target.value)}
-                  className="rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  <option value="all">All families</option>
-                  {families.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={disease}
-                  onChange={(event) => setDisease(event.target.value)}
-                  className="rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  <option value="all">All diseases</option>
-                  {diseaseNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={month}
-                  onChange={(event) => setMonth(event.target.value)}
-                  className="rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  <option value="all">All months</option>
-                  {months.map((monthKey) => (
-                    <option key={monthKey} value={monthKey}>
-                      {monthName(monthKey)}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center justify-between rounded-2xl bg-white/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 ring-1 ring-slate-100">
-                  <div className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.18)]" />
-                    Live tiles
-                  </div>
-                  <span className="rounded-full bg-slate-700/90 px-2 py-1 text-[10px] text-white">{filteredRecords.length} results</span>
-                </div>
               </div>
             </TileCard>
           </div>
