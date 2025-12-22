@@ -51,8 +51,9 @@ body {
 
 .page-width {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
+  padding: clamp(20px, 2.5vw, 44px);
 }
 
 .ios-shell::before,
@@ -67,7 +68,9 @@ body {
 .ios-shell::before {
   background: radial-gradient(circle at 15% 25%, rgba(10, 132, 255, 0.12), transparent 32%),
     radial-gradient(circle at 85% 12%, rgba(76, 201, 240, 0.12), transparent 36%),
-    radial-gradient(circle at 70% 75%, rgba(100, 255, 218, 0.12), transparent 38%);
+    radial-gradient(circle at 70% 75%, rgba(100, 255, 218, 0.12), transparent 38%),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 64px),
+    repeating-linear-gradient(180deg, rgba(148, 163, 184, 0.08) 0, rgba(148, 163, 184, 0.08) 1px, transparent 1px, transparent 64px);
   filter: blur(0px);
 }
 
