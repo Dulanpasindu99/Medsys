@@ -157,8 +157,8 @@ export function NavigationPanel({
                 href={item.href}
                 className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
                   item.id === activeId
-                    ? 'ios-nav-button--active bg-slate-700 text-white shadow-[0_18px_32px_rgba(71,85,105,0.28)]'
-                    : 'bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
+                    ? 'ios-nav-button--active text-white'
+                    : 'text-slate-500 ring-1 ring-sky-100 hover:text-slate-700 hover:ring-sky-200'
                 }`}
                 aria-label={item.label}
                 aria-current={item.id === activeId ? 'page' : undefined}
