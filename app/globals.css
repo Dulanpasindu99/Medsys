@@ -49,6 +49,12 @@ body {
   position: relative;
 }
 
+.page-width {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .ios-shell::before,
 .ios-shell::after {
   content: '';

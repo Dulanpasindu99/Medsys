@@ -14,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {/* Ignore extension-injected attributes on hydration (e.g., Grammarly) */}
       <body suppressHydrationWarning className="antialiased ios-shell">
         <div className="relative z-10 min-h-screen">
-          <PageTransition>{children}</PageTransition>
+          <div className="page-width">
+            <PageTransition>{children}</PageTransition>
+          </div>
         </div>
       </body>
     </html>
