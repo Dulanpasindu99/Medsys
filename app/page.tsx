@@ -835,23 +835,13 @@ export default function MedLinkDoctorDashboard() {
                       onChange={(event) => setPatientAge(event.target.value)}
                     />
 
-                    <div className="ml-auto flex flex-col items-end gap-2">
-                      <img
-                        src="/medlink-western-hospital.svg"
-                        alt="MedLink Western Hospital"
-                        className="h-7 w-auto object-contain"
-                      />
-                      <div
-                        className={`rounded-full border border-white/80 bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 ${SHADOWS.inset}`}
-                      >
-                        Patient No : MH0001
-                      </div>
-
-                      <div className={`inline-flex items-center gap-2 rounded-full bg-[var(--ioc-blue)] px-4 py-2 text-xs font-semibold text-white ${SHADOWS.darkGlow}`}>
-                        <span>Previously patient of Dr. Jay</span>
-                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
-                      </div>
+                    <div className={`rounded-full border border-white/80 bg-slate-50/70 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 ${SHADOWS.inset}`}>
+                      Patient No : MH0001
                     </div>
+
+                  <div className={`inline-flex items-center gap-2 rounded-full bg-[var(--ioc-blue)] px-4 py-2 text-xs font-semibold text-white ${SHADOWS.darkGlow}`}>
+                    <span>Previously patient of Dr. Jay</span>
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] tracking-wide">10 SEP 25</span>
                   </div>
                 </div>
               </div>
