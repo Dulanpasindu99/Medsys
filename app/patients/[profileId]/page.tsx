@@ -88,7 +88,7 @@ export default function PatientProfilePage({ params }: { params: { profileId: st
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 text-sm font-semibold text-slate-800">
-                <span className="rounded-full bg-slate-900 px-4 py-2 text-white shadow-[0_12px_32px_rgba(15,23,42,0.28)]">
+                <span className="rounded-full bg-slate-700 px-4 py-2 text-white shadow-[0_12px_32px_rgba(71,85,105,0.28)]">
                   NIC {profile.nic}
                 </span>
                 <span className="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200">
@@ -128,7 +128,7 @@ export default function PatientProfilePage({ params }: { params: { profileId: st
                         <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 ring-1 ring-emerald-100">Blood pressure</span>
                       ) : null}
                       {entry.tags?.map((tag) => (
-                        <span key={tag} className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                        <span key={tag} className="rounded-full bg-slate-700 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
                           {tag}
                         </span>
                       ))}
@@ -224,7 +224,7 @@ export default function PatientProfilePage({ params }: { params: { profileId: st
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">System status</p>
                 <h2 className="text-xl font-bold text-slate-900">Profile coverage</h2>
               </div>
-              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_30px_rgba(15,23,42,0.35)]">
+              <span className="rounded-full bg-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_30px_rgba(71,85,105,0.35)]">
                 {Object.keys(patientProfiles).length} patients auto-styled
               </span>
             </div>

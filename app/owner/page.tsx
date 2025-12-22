@@ -135,7 +135,10 @@ export default function OwnerTools() {
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Manage staff access</h1>
             <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-              <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-slate-800 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--ioc-blue)] px-3 py-2 font-semibold text-white shadow-[0_10px_24px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
+              >
                 ↩ Back to login
               </Link>
               <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-2 font-semibold text-sky-800 ring-1 ring-sky-100">
@@ -232,7 +235,7 @@ export default function OwnerTools() {
             <div className="mt-6 flex items-center justify-between gap-3">
               <button
                 onClick={handleCreate}
-                className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:-translate-y-0.5 hover:bg-sky-700"
+                className="rounded-full bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[0_14px_30px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
               >
                 Create user
               </button>

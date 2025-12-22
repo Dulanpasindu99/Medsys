@@ -127,8 +127,8 @@ export function NavigationPanel({
       className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
       <div className="flex flex-col items-center gap-3 text-center text-slate-700">
-        <div className="relative flex items-center justify-center rounded-full bg-slate-900 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
-          <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-900/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
+        <div className="relative flex items-center justify-center rounded-full bg-slate-700 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
+          <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-700/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
             {doctorInitials}
             <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white text-sky-600 ring-2 ring-sky-100 shadow-[0_10px_18px_rgba(10,132,255,0.25)]">
               <AccentIcon className="size-[14px]" />
@@ -145,7 +145,7 @@ export function NavigationPanel({
                 href={item.href}
                 className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
                   item.id === activeId
-                    ? 'bg-slate-900 text-white shadow-[0_18px_32px_rgba(15,23,42,0.28)]'
+                    ? 'bg-slate-700 text-white shadow-[0_18px_32px_rgba(71,85,105,0.28)]'
                     : 'bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
                 }`}
                 aria-label={item.label}
@@ -153,7 +153,7 @@ export function NavigationPanel({
               >
                 <item.icon className="size-5" />
                 <span
-                  className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+                  className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-700 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
                 >
                   {item.label}
                 </span>
@@ -171,7 +171,7 @@ export function NavigationPanel({
         >
           <HelpIcon className="size-5" />
           <span
-            className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+            className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-700 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
           >
             Help
           </span>
