@@ -246,7 +246,7 @@ export default function PatientManagement() {
                 <div className="flex flex-col gap-5 px-5 py-5 md:flex-row md:items-start md:justify-between md:px-6 md:py-6">
                   <div className="flex flex-1 flex-col gap-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(15,23,42,0.3)]">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(71,85,105,0.3)]">
                         {patient.id}
                         <span className="text-slate-300">·</span>
                         {patient.name}
@@ -276,7 +276,7 @@ export default function PatientManagement() {
                       {patient.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_32px_rgba(15,23,42,0.3)]"
+                          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_32px_rgba(71,85,105,0.3)]"
                         >
                           {tag}
                         </span>
@@ -298,7 +298,7 @@ export default function PatientManagement() {
                       <span className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Age: {patient.age}</span>
                       <span className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-100">Visits: {patient.visits}</span>
                     </div>
-                    <div className="rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(15,23,42,0.35)]">
+                    <div className="rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(71,85,105,0.35)]">
                       <div className="text-xs uppercase tracking-[0.18em] text-slate-300">Conditions</div>
                       <div className="mt-1 flex flex-wrap gap-2">
                         {patient.conditions.map((condition) => (
@@ -327,4 +327,3 @@ export default function PatientManagement() {
     </NavigationPageShell>
   );
 }
-

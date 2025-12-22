@@ -336,7 +336,7 @@ export default function AnalyticsCommandCenter() {
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
                 <span className="inline-flex h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.18)]" />
                 Insights control room
-                <span className="rounded-full bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white">Live</span>
+                <span className="rounded-full bg-slate-700 px-2 py-1 text-[10px] font-semibold text-white">Live</span>
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Disease Intelligence</h1>
               <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
@@ -368,7 +368,7 @@ export default function AnalyticsCommandCenter() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Filtered visits</p>
                   <div className="flex items-baseline gap-3">
                     <p className="text-4xl font-bold leading-tight text-slate-900">{filteredRecords.length}</p>
-                    <span className="rounded-full bg-slate-900/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                    <span className="rounded-full bg-slate-700/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
                       {uniqueDiseases} diseases
                     </span>
                   </div>
@@ -422,7 +422,7 @@ export default function AnalyticsCommandCenter() {
                 <div className="mt-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xl font-bold text-slate-900">{topDisease.disease}</p>
-                    <div className="rounded-full bg-slate-900/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                    <div className="rounded-full bg-slate-700/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
                       {topDisease.total} visits
                     </div>
                   </div>
@@ -624,7 +624,7 @@ export default function AnalyticsCommandCenter() {
             <TileCard className="lg:col-span-2">
               <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 <span>Conditions board</span>
-                <span className="rounded-full bg-slate-900/90 px-3 py-1 text-[10px] font-semibold text-white">{topFourDiseases.length} tiles</span>
+                <span className="rounded-full bg-slate-700/90 px-3 py-1 text-[10px] font-semibold text-white">{topFourDiseases.length} tiles</span>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {topFourDiseases.map((item) => {
@@ -639,7 +639,7 @@ export default function AnalyticsCommandCenter() {
                           <span className="inline-flex h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.18)]" />
                           {item.disease}
                         </div>
-                        <span className="rounded-full bg-slate-900/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                        <span className="rounded-full bg-slate-700/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                           {item.total} pts
                         </span>
                       </div>
@@ -728,7 +728,7 @@ export default function AnalyticsCommandCenter() {
                     <span className="h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_0_6px_rgba(14,165,233,0.18)]" />
                     Live tiles
                   </div>
-                  <span className="rounded-full bg-slate-900/90 px-2 py-1 text-[10px] text-white">{filteredRecords.length} results</span>
+                  <span className="rounded-full bg-slate-700/90 px-2 py-1 text-[10px] text-white">{filteredRecords.length} results</span>
                 </div>
               </div>
             </TileCard>

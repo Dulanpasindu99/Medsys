@@ -306,7 +306,7 @@ export default function AssistantScreen() {
                       type="button"
                       className={`rounded-full px-3 py-1 text-sm font-semibold ${
                         formState.bloodGroup === group
-                          ? 'bg-slate-900 text-white shadow-[0_10px_22px_rgba(15,23,42,0.22)]'
+                          ? 'bg-slate-700 text-white shadow-[0_10px_22px_rgba(71,85,105,0.22)]'
                           : 'bg-slate-100 text-slate-700'
                       }`}
                       onClick={() => setFormState((p) => ({ ...p, bloodGroup: group }))}
@@ -340,7 +340,10 @@ export default function AssistantScreen() {
                     value={formState.regularDrug}
                     onChange={(e) => setFormState((p) => ({ ...p, regularDrug: e.target.value }))}
                   />
-                  <button type="button" className="rounded-full bg-sky-200 px-3 py-1 text-xs font-semibold text-sky-900">
+                  <button
+                    type="button"
+                    className="rounded-full bg-[var(--ioc-blue)] px-3 py-1 text-xs font-semibold text-white shadow-[0_6px_14px_rgba(10,132,255,0.35)] transition hover:bg-[#0070f0]"
+                  >
                     Done
                   </button>
                 </div>
@@ -350,7 +353,7 @@ export default function AssistantScreen() {
                 <button
                   type="button"
                   onClick={addPatient}
-                  className="rounded-2xl bg-sky-300 px-5 py-3 text-sm font-semibold text-sky-900 shadow-sm transition hover:bg-sky-400"
+                  className="rounded-2xl bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.35)] transition hover:bg-[#0070f0]"
                 >
                   Confirm
                 </button>
@@ -486,12 +489,14 @@ export default function AssistantScreen() {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    <span className="rounded-full bg-sky-200 px-3 py-2 text-sky-900">Download</span>
+                    <span className="rounded-full bg-[var(--ioc-blue)] px-3 py-2 text-white shadow-[0_6px_14px_rgba(10,132,255,0.35)]">
+                      Download
+                    </span>
                     <span className="rounded-full bg-slate-100 px-3 py-2 text-slate-400 line-through">Medical report locked</span>
                   </div>
                   <button
                     type="button"
-                    className="rounded-2xl bg-sky-300 px-6 py-3 text-sm font-semibold text-sky-900 shadow-[0_12px_28px_rgba(125,211,252,0.4)] transition hover:-translate-y-0.5 hover:bg-sky-400"
+                    className="rounded-2xl bg-[var(--ioc-blue)] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
                     onClick={markDoneAndNext}
                   >
                     Done & Next
