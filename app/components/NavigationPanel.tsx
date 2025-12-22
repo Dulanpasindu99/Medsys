@@ -88,7 +88,7 @@ type NavigationItem = {
   href: string;
 };
 
-const navigationItems: NavigationItem[] = [
+export const navigationItems: NavigationItem[] = [
   { id: 'doctor', label: 'Doctor Screen', icon: DoctorIcon, href: '/' },
   { id: 'assistant', label: 'Assistant Screen', icon: AssistantIcon, href: '/assistant' },
   { id: 'patient', label: 'Patiant Management', icon: PatientsIcon, href: '/patients' },
