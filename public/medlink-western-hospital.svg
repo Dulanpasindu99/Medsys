@@ -1,0 +1,14 @@
+<svg width="820" height="120" viewBox="0 0 820 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#4B5356">
+    <path d="M62 18c6 0 10 4 10 10v14c0 3 2 5 5 5h14c6 0 10 4 10 10s-4 10-10 10H77c-3 0-5 2-5 5v14c0 6-4 10-10 10s-10-4-10-10V72c0-3-2-5-5-5H33c-6 0-10-4-10-10s4-10 10-10h14c3 0 5-2 5-5V28c0-6 4-10 10-10z"/>
+    <text x="130" y="78" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="700">MEDLINK</text>
+    <g transform="translate(440 22)">
+      <circle cx="48" cy="12" r="10"/>
+      <path d="M18 32c10-10 30-10 40 0l-6 8c-6-6-22-6-28 0l-6-8z"/>
+      <path d="M6 52c16-16 48-16 64 0l-6 8c-12-12-40-12-52 0l-6-8z"/>
+      <path d="M0 72c22-22 66-22 88 0l-6 8c-18-18-58-18-76 0l-6-8z"/>
+      <text x="108" y="38" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="600">Western</text>
+      <text x="108" y="68" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="600">Hospital</text>
+    </g>
+  </g>
+</svg>
