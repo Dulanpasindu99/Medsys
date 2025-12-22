@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/app/lib/db";
+import { findUserByEmail } from "@/app/lib/store";
 import { verifyPassword } from "@/app/lib/auth";
 
 export async function POST(request: Request) {
@@ -10,12 +10,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
   }
 
-  const db = getDb();
-  const user = db
-    .prepare("SELECT id, name, email, password_hash, role FROM users WHERE email = ?")
-    .get(email) as { id: number; name: string; email: string; password_hash: string; role: string } | undefined;
+  const user = findUserByEmail(email);
 
-  if (!user || !verifyPassword(password, user.password_hash)) {
+  if (!user || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
   }
 

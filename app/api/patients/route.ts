@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/app/lib/db";
+import { createPatient, listPatients } from "@/app/lib/store";
 
 export async function GET() {
-  const db = getDb();
-  const patients = db
-    .prepare("SELECT id, name, date_of_birth, phone, address, created_at FROM patients ORDER BY created_at DESC")
-    .all();
+  const patients = listPatients().map((patient) => ({
+    id: patient.id,
+    name: patient.name,
+    date_of_birth: patient.dateOfBirth,
+    phone: patient.phone,
+    address: patient.address,
+    created_at: patient.createdAt,
+  }));
 
   return NextResponse.json({ patients });
 }
@@ -18,15 +22,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Patient name is required." }, { status: 400 });
   }
 
-  const db = getDb();
-  const result = db
-    .prepare(
-      "INSERT INTO patients (name, date_of_birth, phone, address) VALUES (?, ?, ?, ?)"
-    )
-    .run(name, dateOfBirth ?? null, phone ?? null, address ?? null);
+  const created = createPatient({
+    name,
+    dateOfBirth: dateOfBirth ?? null,
+    phone: phone ?? null,
+    address: address ?? null,
+  });
 
   return NextResponse.json({
-    id: result.lastInsertRowid,
+    id: created.id,
     name,
     dateOfBirth: dateOfBirth ?? null,
     phone: phone ?? null,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/app/lib/db";
+import { createUser, findUserByEmail, listUsers } from "@/app/lib/store";
 import { hashPassword } from "@/app/lib/auth";
 
 const ALLOWED_ROLES = ["owner", "doctor", "assistant"] as const;
@@ -10,14 +10,17 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role");
 
-  const db = getDb();
   if (role && !ALLOWED_ROLES.includes(role as Role)) {
     return NextResponse.json({ error: "Invalid role." }, { status: 400 });
   }
 
-  const users = role
-    ? db.prepare("SELECT id, name, email, role, created_at FROM users WHERE role = ?").all(role)
-    : db.prepare("SELECT id, name, email, role, created_at FROM users").all();
+  const users = listUsers(role as Role | undefined).map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    created_at: user.createdAt,
+  }));
 
   return NextResponse.json({ users });
 }
@@ -34,19 +37,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid role." }, { status: 400 });
   }
 
-  const db = getDb();
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  const existing = findUserByEmail(email);
   if (existing) {
     return NextResponse.json({ error: "Email already exists." }, { status: 409 });
   }
 
   const passwordHash = hashPassword(password);
-  const result = db
-    .prepare("INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)")
-    .run(name, email, passwordHash, role);
+  const created = createUser({ name, email, passwordHash, role });
 
   return NextResponse.json({
-    id: result.lastInsertRowid,
+    id: created.id,
     name,
     email,
     role,
