@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -112,10 +113,12 @@ export function NavigationPanel({
 }) {
   if (typeof document === 'undefined') return null;
 
+  const router = useRouter();
   const doctorName = 'Dr. Charuka Gamage';
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
   const [indicatorOffset, setIndicatorOffset] = useState(0);
+  const lastWheelTimeRef = useRef(0);
 
   useLayoutEffect(() => {
     const list = navListRef.current;
@@ -142,9 +145,31 @@ export function NavigationPanel({
     .slice(0, 2)
     .toUpperCase();
 
+  const handleWheel: React.WheelEventHandler<HTMLElement> = (event) => {
+    if (event.deltaY === 0) return;
+
+    const now = Date.now();
+    if (now - lastWheelTimeRef.current < 600) {
+      event.preventDefault();
+      return;
+    }
+
+    const currentIndex = navigationItems.findIndex((item) => item.id === activeId);
+    if (currentIndex === -1) return;
+
+    const direction = event.deltaY > 0 ? 1 : -1;
+    const nextIndex = currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= navigationItems.length) return;
+
+    lastWheelTimeRef.current = now;
+    event.preventDefault();
+    router.push(navigationItems[nextIndex].href);
+  };
+
   const content = (
     <aside
       className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
+      onWheel={handleWheel}
     >
       <div className="flex flex-col items-center gap-3 text-center text-slate-700">
         <div className="relative flex items-center justify-center rounded-full bg-slate-700 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
