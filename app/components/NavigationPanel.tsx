@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
@@ -113,10 +113,22 @@ export function NavigationPanel({
   if (typeof document === 'undefined') return null;
 
   const doctorName = 'Dr. Charuka Gamage';
-  const activeIndex = Math.max(
-    0,
-    navigationItems.findIndex((item) => item.id === activeId),
-  );
+  const navListRef = useRef<HTMLUListElement>(null);
+  const [indicatorOffset, setIndicatorOffset] = useState(0);
+
+  useLayoutEffect(() => {
+    const list = navListRef.current;
+    if (!list) return;
+
+    const activeButton = list.querySelector<HTMLAnchorElement>(
+      `[data-nav-id="${activeId}"]`,
+    );
+    if (!activeButton) return;
+
+    const listRect = list.getBoundingClientRect();
+    const buttonRect = activeButton.getBoundingClientRect();
+    setIndicatorOffset(buttonRect.top - listRect.top);
+  }, [activeId]);
 
   const doctorInitials = doctorName
     .split(' ')
@@ -143,10 +155,11 @@ export function NavigationPanel({
 
       <div className="flex flex-1 items-center">
         <ul
+          ref={navListRef}
           className="nav-rail__list flex flex-col items-center gap-4 rounded-full bg-white/90 px-3 py-5 text-slate-600 ring-1 ring-slate-200 shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
           style={
             {
-              '--nav-indicator-offset': `${activeIndex * 64}px`,
+              '--nav-indicator-offset': `${indicatorOffset}px`,
             } as React.CSSProperties
           }
         >
@@ -161,6 +174,7 @@ export function NavigationPanel({
                     : 'text-slate-500 ring-1 ring-sky-100 hover:text-slate-700 hover:ring-sky-200'
                 }`}
                 aria-label={item.label}
+                data-nav-id={item.id}
                 aria-current={item.id === activeId ? 'page' : undefined}
               >
                 <item.icon className="ios-nav-button__icon size-5" />
