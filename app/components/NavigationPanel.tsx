@@ -114,6 +114,7 @@ export function NavigationPanel({
 
   const doctorName = 'Dr. Charuka Gamage';
   const navListRef = useRef<HTMLUListElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
   const [indicatorOffset, setIndicatorOffset] = useState(0);
 
   useLayoutEffect(() => {
@@ -127,7 +128,10 @@ export function NavigationPanel({
 
     const listRect = list.getBoundingClientRect();
     const buttonRect = activeButton.getBoundingClientRect();
-    setIndicatorOffset(buttonRect.top - listRect.top);
+    const indicatorHeight = indicatorRef.current?.getBoundingClientRect().height ?? 0;
+    const centeredOffset =
+      buttonRect.top - listRect.top + (buttonRect.height - indicatorHeight) / 2;
+    setIndicatorOffset(centeredOffset);
   }, [activeId]);
 
   const doctorInitials = doctorName
@@ -163,7 +167,7 @@ export function NavigationPanel({
             } as React.CSSProperties
           }
         >
-          <span className="nav-rail__indicator" aria-hidden="true" />
+          <span ref={indicatorRef} className="nav-rail__indicator" aria-hidden="true" />
           {navigationItems.map((item) => (
             <li key={item.id} className="flex justify-center">
               <Link

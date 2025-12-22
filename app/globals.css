@@ -130,19 +130,19 @@ body {
 }
 
 .page-transition--forward.page-transition--exit .page-transition__content {
-  animation: ios-page-exit-forward 240ms cubic-bezier(0.33, 0.02, 0.11, 0.99) forwards;
+  animation: ios-page-exit-forward 180ms ease-in forwards;
 }
 
 .page-transition--forward.page-transition--enter .page-transition__content {
-  animation: ios-page-enter-forward 320ms cubic-bezier(0.17, 0.67, 0.27, 1.18) both;
+  animation: ios-page-enter-forward 220ms ease-out both;
 }
 
 .page-transition--backward.page-transition--exit .page-transition__content {
-  animation: ios-page-exit-backward 240ms cubic-bezier(0.33, 0.02, 0.11, 0.99) forwards;
+  animation: ios-page-exit-backward 180ms ease-in forwards;
 }
 
 .page-transition--backward.page-transition--enter .page-transition__content {
-  animation: ios-page-enter-backward 320ms cubic-bezier(0.17, 0.67, 0.27, 1.18) both;
+  animation: ios-page-enter-backward 220ms ease-out both;
 }
 
 .nav-rail {
@@ -161,14 +161,15 @@ body {
 .nav-rail__indicator {
   position: absolute;
   left: 50%;
-  top: 20px;
+  top: 0;
   width: 48px;
   height: 48px;
   border-radius: 999px;
   background: #4b5563;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.28);
-  transform: translate(-50%, var(--nav-indicator-offset));
-  transition: transform 420ms cubic-bezier(0.2, 0.85, 0.25, 1), box-shadow 420ms ease;
+  transform: translate3d(-50%, var(--nav-indicator-offset), 0);
+  transition: transform 320ms ease-out, box-shadow 320ms ease-out;
+  will-change: transform;
   z-index: 0;
 }
 
@@ -178,14 +179,14 @@ body {
     opacity: 1;
   }
   to {
-    transform: translateY(24px);
+    transform: translateY(10px);
     opacity: 0;
   }
 }
 
 @keyframes ios-page-enter-forward {
   from {
-    transform: translateY(-24px);
+    transform: translateY(-10px);
     opacity: 0;
   }
   to {
@@ -200,14 +201,14 @@ body {
     opacity: 1;
   }
   to {
-    transform: translateY(-24px);
+    transform: translateY(-10px);
     opacity: 0;
   }
 }
 
 @keyframes ios-page-enter-backward {
   from {
-    transform: translateY(24px);
+    transform: translateY(10px);
     opacity: 0;
   }
   to {

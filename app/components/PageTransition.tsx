@@ -42,13 +42,13 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
         setDisplayedPath(pathname);
         previousIndexRef.current = pendingIndexRef.current;
         setTransitionStage('enter');
-      }, 240);
+      }, 180);
 
       return () => clearTimeout(exitTimer);
     }
 
     if (transitionStage === 'enter') {
-      const enterTimer = setTimeout(() => setTransitionStage('idle'), 320);
+      const enterTimer = setTimeout(() => setTransitionStage('idle'), 220);
       return () => clearTimeout(enterTimer);
     }
 
