@@ -401,7 +401,7 @@ export default function AnalyticsCommandCenter() {
                     <p className="text-lg font-bold text-slate-900">{totalMale}</p>
                     <p>Male</p>
                   </div>
-                  <div className="rounded-xl bg-violet-50/70 px-3 py-2 text-violet-600">
+                  <div className="rounded-xl bg-rose-50/70 px-3 py-2 text-rose-600">
                     <p className="text-lg font-bold text-slate-900">{totalFemale}</p>
                     <p>Female</p>
                   </div>
@@ -566,7 +566,7 @@ export default function AnalyticsCommandCenter() {
                   <div
                     className="absolute inset-0 rounded-full"
                     style={{
-                      background: `conic-gradient(#0ea5e9 ${toPercentage(totalMale, totalMale + totalFemale)}%, #8b5cf6 0)`,
+                      background: `conic-gradient(#0ea5e9 ${toPercentage(totalMale, totalMale + totalFemale)}%, #fb7185 0)`,
                     }}
                   />
                   <div className="absolute inset-3 rounded-full bg-white/90" />
@@ -581,9 +581,9 @@ export default function AnalyticsCommandCenter() {
                     </span>
                     <span>{totalMale}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 ring-1 ring-violet-100">
-                    <span className="inline-flex items-center gap-2 text-violet-600">
-                      <span className="h-2 w-2 rounded-full bg-violet-500" /> Female
+                  <div className="flex items-center justify-between rounded-xl bg-white/80 px-3 py-2 ring-1 ring-rose-100">
+                    <span className="inline-flex items-center gap-2 text-rose-600">
+                      <span className="h-2 w-2 rounded-full bg-rose-500" /> Female
                     </span>
                     <span>{totalFemale}</span>
                   </div>
@@ -645,7 +645,7 @@ export default function AnalyticsCommandCenter() {
                       </div>
                       <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-slate-100">
                         <div className="h-full bg-gradient-to-r from-sky-400 to-sky-500" style={{ width: `${maleWidth}%` }} />
-                        <div className="h-full bg-gradient-to-r from-violet-400 to-violet-500" style={{ width: `${femaleWidth}%` }} />
+                        <div className="h-full bg-gradient-to-r from-rose-400 to-rose-500" style={{ width: `${femaleWidth}%` }} />
                       </div>
                       <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
                         <span>{item.male} male</span>
