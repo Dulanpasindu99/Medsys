@@ -125,19 +125,16 @@ body {
 
 .page-transition__content {
   will-change: transform, filter, opacity;
-  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    filter 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    opacity 220ms ease;
-  transform-origin: 50% 22%;
+  transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 240ms ease;
+  transform-origin: 50% 50%;
 }
 
 .page-transition--exit .page-transition__content {
-  animation: ios-page-exit 260ms cubic-bezier(0.33, 0.02, 0.11, 0.99) forwards;
-  filter: blur(6px);
+  animation: ios-page-exit 240ms cubic-bezier(0.33, 0.02, 0.11, 0.99) forwards;
 }
 
 .page-transition--enter .page-transition__content {
-  animation: ios-page-enter 360ms cubic-bezier(0.17, 0.67, 0.27, 1.18) both;
+  animation: ios-page-enter 320ms cubic-bezier(0.17, 0.67, 0.27, 1.18) both;
 }
 
 .nav-rail {
@@ -169,31 +166,22 @@ body {
 
 @keyframes ios-page-exit {
   from {
-    transform: translateX(0px) scale(1);
-    filter: blur(0px);
+    transform: translateX(0px);
     opacity: 1;
   }
   to {
-    transform: translateX(-18px) scale(0.94);
-    filter: blur(10px);
-    opacity: 0.3;
+    transform: translateX(-24px);
+    opacity: 0;
   }
 }
 
 @keyframes ios-page-enter {
   from {
-    transform: translateX(18px) scale(1.05);
-    filter: blur(10px);
-    opacity: 0.2;
-  }
-  55% {
-    transform: translateX(-6px) scale(0.99);
-    filter: blur(4px);
-    opacity: 0.9;
+    transform: translateX(24px);
+    opacity: 0;
   }
   to {
-    transform: translateX(0px) scale(1);
-    filter: blur(0px);
+    transform: translateX(0px);
     opacity: 1;
   }
 }
