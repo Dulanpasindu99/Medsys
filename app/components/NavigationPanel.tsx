@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 
@@ -117,8 +117,11 @@ export function NavigationPanel({
   const doctorName = 'Dr. Charuka Gamage';
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const [indicatorOffset, setIndicatorOffset] = useState(0);
   const lastWheelTimeRef = useRef(0);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isLogoutConfirming, setIsLogoutConfirming] = useState(false);
 
   useLayoutEffect(() => {
     const list = navListRef.current;
@@ -136,6 +139,12 @@ export function NavigationPanel({
       buttonRect.top - listRect.top + (buttonRect.height - indicatorHeight) / 2;
     setIndicatorOffset(centeredOffset);
   }, [activeId]);
+
+  useEffect(() => {
+    if (isLogoutConfirmOpen) {
+      cancelButtonRef.current?.focus();
+    }
+  }, [isLogoutConfirmOpen]);
 
   const doctorInitials = doctorName
     .split(' ')
@@ -164,6 +173,25 @@ export function NavigationPanel({
     lastWheelTimeRef.current = now;
     event.preventDefault();
     router.push(navigationItems[nextIndex].href);
+  };
+
+  const handleLogoutClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setIsLogoutConfirming(false);
+    setIsLogoutConfirmOpen(true);
+  };
+
+  const handleLogoutCancel = () => {
+    setIsLogoutConfirmOpen(false);
+    setIsLogoutConfirming(false);
+  };
+
+  const handleLogoutConfirm = () => {
+    setIsLogoutConfirming(true);
+    window.setTimeout(() => {
+      setIsLogoutConfirmOpen(false);
+      setIsLogoutConfirming(false);
+    }, 160);
   };
 
   const content = (
@@ -232,8 +260,9 @@ export function NavigationPanel({
           </span>
         </Link>
 
-        <Link
-          href="/logout"
+        <button
+          type="button"
+          onClick={handleLogoutClick}
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
           aria-label="Logout"
         >
@@ -243,10 +272,46 @@ export function NavigationPanel({
           >
             Logout
           </span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
 
-  return createPortal(content, document.body);
+  return createPortal(
+    <>
+      {content}
+      {isLogoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-3xl bg-white/95 p-6 text-center shadow-[0_24px_60px_rgba(15,23,42,0.3)]">
+            <p className="text-lg font-semibold text-slate-900">Are you sure</p>
+            <p className="mt-2 text-sm text-slate-500">
+              You are about to log out of the system.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                ref={cancelButtonRef}
+                type="button"
+                onClick={handleLogoutCancel}
+                className="rounded-full bg-sky-500 px-6 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(14,116,255,0.35)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLogoutConfirm}
+                className={`rounded-full px-6 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 ${
+                  isLogoutConfirming
+                    ? 'bg-sky-500 text-white shadow-[0_12px_24px_rgba(14,116,255,0.35)]'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>,
+    document.body,
+  );
 }
