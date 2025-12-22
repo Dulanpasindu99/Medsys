@@ -1024,6 +1024,7 @@ export default function MedLinkDoctorDashboard() {
                       </div>
                     </div>
                   </div>
+                  </div>
 
                   {/* Row 2: Drugs table + mini card */}
                   <div className="grid grid-cols-12 gap-6 overflow-hidden">
@@ -1281,6 +1282,8 @@ export default function MedLinkDoctorDashboard() {
       </div>
     </div>
   </div>
+      </div>
+      </div>
     </main>
     </NavigationPageShell>
   );
