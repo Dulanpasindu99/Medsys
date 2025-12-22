@@ -113,6 +113,10 @@ export function NavigationPanel({
   if (typeof document === 'undefined') return null;
 
   const doctorName = 'Dr. Charuka Gamage';
+  const activeIndex = Math.max(
+    0,
+    navigationItems.findIndex((item) => item.id === activeId),
+  );
 
   const doctorInitials = doctorName
     .split(' ')
@@ -138,20 +142,28 @@ export function NavigationPanel({
       </div>
 
       <div className="flex flex-1 items-center">
-        <ul className="flex flex-col items-center gap-4 rounded-full bg-white/90 px-3 py-5 text-slate-600 ring-1 ring-slate-200 shadow-[0_14px_32px_rgba(15,23,42,0.12)]">
+        <ul
+          className="nav-rail__list flex flex-col items-center gap-4 rounded-full bg-white/90 px-3 py-5 text-slate-600 ring-1 ring-slate-200 shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
+          style={
+            {
+              '--nav-indicator-offset': `${activeIndex * 64}px`,
+            } as React.CSSProperties
+          }
+        >
+          <span className="nav-rail__indicator" aria-hidden="true" />
           {navigationItems.map((item) => (
             <li key={item.id} className="flex justify-center">
               <Link
                 href={item.href}
                 className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
                   item.id === activeId
-                    ? 'bg-slate-700 text-white shadow-[0_18px_32px_rgba(71,85,105,0.28)]'
+                    ? 'ios-nav-button--active bg-slate-700 text-white shadow-[0_18px_32px_rgba(71,85,105,0.28)]'
                     : 'bg-white/90 text-slate-500 ring-1 ring-sky-100 hover:ring-sky-200'
                 }`}
                 aria-label={item.label}
                 aria-current={item.id === activeId ? 'page' : undefined}
               >
-                <item.icon className="size-5" />
+                <item.icon className="ios-nav-button__icon size-5" />
                 <span
                   className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-700 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
                 >

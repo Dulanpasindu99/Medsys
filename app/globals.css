@@ -133,7 +133,7 @@ body {
 
 .page-transition--exit .page-transition__content {
   animation: ios-page-exit 260ms cubic-bezier(0.33, 0.02, 0.11, 0.99) forwards;
-  filter: blur(8px);
+  filter: blur(6px);
 }
 
 .page-transition--enter .page-transition__content {
@@ -148,32 +148,51 @@ body {
   content: none;
 }
 
+.nav-rail__list {
+  position: relative;
+  --nav-indicator-offset: 0px;
+}
+
+.nav-rail__indicator {
+  position: absolute;
+  left: 12px;
+  top: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.45), rgba(148, 163, 184, 0.15));
+  box-shadow: 0 18px 36px rgba(71, 85, 105, 0.28);
+  transform: translateY(var(--nav-indicator-offset));
+  transition: transform 420ms cubic-bezier(0.2, 0.85, 0.25, 1), box-shadow 420ms ease;
+  z-index: 0;
+}
+
 @keyframes ios-page-exit {
   from {
-    transform: scale(1);
+    transform: translateX(0px) scale(1);
     filter: blur(0px);
     opacity: 1;
   }
   to {
-    transform: scale(0.92);
-    filter: blur(14px);
-    opacity: 0.38;
+    transform: translateX(-18px) scale(0.94);
+    filter: blur(10px);
+    opacity: 0.3;
   }
 }
 
 @keyframes ios-page-enter {
   from {
-    transform: scale(1.08);
-    filter: blur(12px);
-    opacity: 0.25;
+    transform: translateX(18px) scale(1.05);
+    filter: blur(10px);
+    opacity: 0.2;
   }
   55% {
-    transform: scale(0.98);
-    filter: blur(6px);
+    transform: translateX(-6px) scale(0.99);
+    filter: blur(4px);
     opacity: 0.9;
   }
   to {
-    transform: scale(1);
+    transform: translateX(0px) scale(1);
     filter: blur(0px);
     opacity: 1;
   }
@@ -201,6 +220,7 @@ body {
   position: relative;
   overflow: hidden;
   transition: transform 180ms ease, box-shadow 220ms ease, filter 220ms ease;
+  z-index: 1;
 }
 
 .ios-nav-button::before,
@@ -243,4 +263,17 @@ body {
 
 .ios-nav-button:active::after {
   opacity: 0.9;
+}
+
+.ios-nav-button--active {
+  transform: translateY(-1px) scale(1.04);
+}
+
+.ios-nav-button__icon {
+  transition: transform 320ms cubic-bezier(0.2, 0.85, 0.25, 1), filter 320ms ease;
+}
+
+.ios-nav-button--active .ios-nav-button__icon {
+  transform: translateY(-2px) scale(1.1);
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.35));
 }
