@@ -64,7 +64,7 @@ export default function OwnerSection() {
     const [role, setRole] = useState<Role>('Doctor');
     const [name, setName] = useState('Dr. Charuka Gamage');
     const [username, setUsername] = useState('dr.charuka');
-    const [password, setPassword] = useState('medlink-123');
+    const [password, setPassword] = useState('medsys-123');
     const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(defaultPermissions('Doctor'));
 
     const [staffUsers, setStaffUsers] = useState<StaffUser[]>([

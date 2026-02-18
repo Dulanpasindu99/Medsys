@@ -45,7 +45,7 @@ type Store = {
 };
 
 const dataDir = path.join(process.cwd(), "data");
-const storePath = path.join(dataDir, "medlink.json");
+const storePath = path.join(dataDir, "medsys.json");
 
 const defaultData: StoreData = {
   users: [],
@@ -75,7 +75,7 @@ function loadData(): StoreData {
     const parsed = JSON.parse(raw) as StoreData;
     return hydrateData(parsed);
   } catch (error) {
-    console.warn("Failed to read medlink.json, resetting store.", error);
+    console.warn("Failed to read medsys.json, resetting store.", error);
     return structuredClone(defaultData);
   }
 }
@@ -103,15 +103,15 @@ function saveData(store: Store) {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __medlinkStore: Store | undefined;
+  var __medsysStore: Store | undefined;
 }
 
 export function getStore() {
-  if (!global.__medlinkStore) {
-    global.__medlinkStore = { data: loadData() };
+  if (!global.__medsysStore) {
+    global.__medsysStore = { data: loadData() };
   }
 
-  return global.__medlinkStore;
+  return global.__medsysStore;
 }
 
 function nextId(store: Store, key: keyof StoreData["counters"]) {

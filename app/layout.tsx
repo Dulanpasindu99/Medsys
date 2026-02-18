@@ -5,7 +5,7 @@ import { PageTransition } from "./components/PageTransition";
 import NavigationPanel from "./components/NavigationPanel";
 
 export const metadata: Metadata = {
-  title: "MedLink UI",
+  title: "Medsys UI",
   description: "Doctor dashboard",
 };
 

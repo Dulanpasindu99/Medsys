@@ -189,8 +189,8 @@ const AssistantPanel = ({
 );
 
 export default function Login() {
-  const [ownerEmail, setOwnerEmail] = useState('owner@medlink.lk');
-  const [ownerPassword, setOwnerPassword] = useState('medlink-owner');
+  const [ownerEmail, setOwnerEmail] = useState('owner@medsys.lk');
+  const [ownerPassword, setOwnerPassword] = useState('medsys-owner');
 
   const [doctorUser, setDoctorUser] = useState('dr.charuka');
   const [doctorPassword, setDoctorPassword] = useState('doctor-access');
@@ -273,7 +273,7 @@ export default function Login() {
           <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-3">
-                <Chip>MedLink Access</Chip>
+                <Chip>Medsys Access</Chip>
                 <RolePill label="Owner + Staff" />
               </div>
               <div className="flex flex-wrap items-center gap-3">
