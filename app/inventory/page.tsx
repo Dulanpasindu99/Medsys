@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import AnalyticsSection from '../sections/AnalyticsSection';
+import InventorySection from '../sections/InventorySection';
 
-export default function AnalyticsPage() {
+export default function InventoryPage() {
     return (
         <div className="h-full w-full">
             <div className="page-width mx-auto">
-                <AnalyticsSection />
+                <InventorySection />
             </div>
         </div>
     );

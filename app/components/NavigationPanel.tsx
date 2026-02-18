@@ -1,8 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
 
@@ -33,9 +34,9 @@ export const AssistantIcon: IconRenderer = (props) => (
 
 export const PatientsIcon: IconRenderer = (props) => (
   <svg {...iconProps} {...props}>
-    <path d="M6 7h12a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2z" />
-    <path d="M9 4h6l1 3H8l1-3z" />
-    <path d="M9 13h6M9 17h4" />
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="8.5" cy="7" r="4" />
+    <polyline points="17 11 19 13 23 9" />
   </svg>
 );
 
@@ -79,7 +80,13 @@ export const HelpIcon: IconRenderer = (props) => (
   </svg>
 );
 
-export type NavigationItemId = 'doctor' | 'assistant' | 'patient' | 'stats' | 'inventory' | 'ai' | 'owner';
+export const OwnerIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+export type NavigationItemId = 'doctor' | 'assistant' | 'patient' | 'analytics' | 'inventory' | 'ai' | 'owner';
 
 type NavigationItem = {
   id: NavigationItemId;
@@ -89,49 +96,86 @@ type NavigationItem = {
 };
 
 export const navigationItems: NavigationItem[] = [
-  { id: 'doctor', label: 'Doctor Screen', icon: DoctorIcon, href: '/' },
-  { id: 'assistant', label: 'Assistant Screen', icon: AssistantIcon, href: '/assistant' },
-  { id: 'patient', label: 'Patiant Management', icon: PatientsIcon, href: '/patients' },
-  { id: 'stats', label: 'Analytics', icon: StatsIcon, href: '/analytics' },
-  { id: 'owner', label: 'Owner Tools', icon: InventoryIcon, href: '/owner' },
-  { id: 'inventory', label: 'Inventry Management', icon: InventoryIcon, href: '/inventory' },
-  { id: 'ai', label: 'Ai Chat', icon: ChatIcon, href: '/ai' },
+  { id: 'doctor', label: 'Doctor Page', icon: DoctorIcon, href: '/' },
+  { id: 'patient', label: 'Patient Management', icon: PatientsIcon, href: '/patient' },
+  { id: 'analytics', label: 'Insights control room,Disease Intelligence', icon: StatsIcon, href: '/analytics' },
+  { id: 'inventory', label: 'Inventory Management', icon: InventoryIcon, href: '/inventory' },
+  { id: 'ai', label: 'Analytics Ai Tools', icon: ChatIcon, href: '/ai' },
+  { id: 'assistant', label: 'Assistant Panel', icon: AssistantIcon, href: '/assistant' },
+  { id: 'owner', label: 'Manage Staff Access', icon: OwnerIcon, href: '/owner' },
 ];
 
 const NAV_TOOLTIP = 'shadow-[0_12px_24px_rgba(10,132,255,0.18)]';
 const NAV_ROSE_TOOLTIP = 'shadow-[0_12px_24px_rgba(244,63,94,0.25)]';
 
-export function NavigationPanel({
-  activeId,
-  accentIcon: AccentIcon,
+export default function NavigationPanel({
   className = '',
 }: {
-  activeId: NavigationItemId;
-  accentIcon: IconRenderer;
   className?: string;
 }) {
-  if (typeof document === 'undefined') return null;
-
+  const [isMounted, setIsMounted] = useState(false);
+  const pathname = usePathname();
   const doctorName = 'Dr. Charuka Gamage';
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
+
+  // Determine active ID based on pathname
+  const activeId = navigationItems.find(item => {
+    if (item.href === '/') return pathname === '/';
+    return pathname.startsWith(item.href);
+  })?.id || 'doctor';
+
   const [indicatorOffset, setIndicatorOffset] = useState(0);
 
-  useLayoutEffect(() => {
+  // Only render portal on client-side to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const updateIndicator = () => {
     const list = navListRef.current;
     if (!list) return;
 
-    const activeButton = list.querySelector<HTMLAnchorElement>(
-      `[data-nav-id="${activeId}"]`,
+    const activeLink = list.querySelector<HTMLElement>(
+      `[data-nav-id="${activeId}"]`
     );
-    if (!activeButton) return;
+    if (!activeLink) return;
 
     const listRect = list.getBoundingClientRect();
-    const buttonRect = activeButton.getBoundingClientRect();
-    const indicatorHeight = indicatorRef.current?.getBoundingClientRect().height ?? 0;
+    const linkRect = activeLink.getBoundingClientRect();
+    const indicatorHeight = indicatorRef.current?.getBoundingClientRect().height ?? 48;
+
+    // Calculate center-to-center offset
     const centeredOffset =
-      buttonRect.top - listRect.top + (buttonRect.height - indicatorHeight) / 2;
+      linkRect.top - listRect.top + (linkRect.height - indicatorHeight) / 2;
+
     setIndicatorOffset(centeredOffset);
+  };
+
+  useLayoutEffect(() => {
+    // Initial calculation
+    updateIndicator();
+
+    // Re-calculate on window resize
+    window.addEventListener('resize', updateIndicator);
+
+    // Re-calculate on list resize (robust against layout shifts)
+    const observer = new ResizeObserver(() => {
+      updateIndicator();
+    });
+
+    if (navListRef.current) {
+      observer.observe(navListRef.current);
+    }
+
+    // Small delay to catch end of transitions/animations
+    const timeoutId = setTimeout(updateIndicator, 150);
+
+    return () => {
+      window.removeEventListener('resize', updateIndicator);
+      observer.disconnect();
+      clearTimeout(timeoutId);
+    };
   }, [activeId]);
 
   const doctorInitials = doctorName
@@ -142,16 +186,18 @@ export function NavigationPanel({
     .slice(0, 2)
     .toUpperCase();
 
+  const ActiveIcon = navigationItems.find(item => item.id === activeId)?.icon || DoctorIcon;
+
   const content = (
     <aside
-      className={`nav-rail fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
+      className={`nav-rail fixed inset-x-4 bottom-4 z-50 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
       <div className="flex flex-col items-center gap-3 text-center text-slate-700">
         <div className="relative flex items-center justify-center rounded-full bg-slate-700 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
           <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-700/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
             {doctorInitials}
             <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white text-sky-600 ring-2 ring-sky-100 shadow-[0_10px_18px_rgba(10,132,255,0.25)]">
-              <AccentIcon className="size-[14px]" />
+              <ActiveIcon className="size-[14px]" />
             </div>
           </div>
         </div>
@@ -172,11 +218,10 @@ export function NavigationPanel({
             <li key={item.id} className="flex justify-center">
               <Link
                 href={item.href}
-                className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
-                  item.id === activeId
-                    ? 'ios-nav-button--active text-white'
-                    : 'text-slate-500 ring-1 ring-sky-100 hover:text-slate-700 hover:ring-sky-200'
-                }`}
+                className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${item.id === activeId
+                  ? 'ios-nav-button--active text-white'
+                  : 'text-slate-500 ring-1 ring-sky-100 hover:text-slate-700 hover:ring-sky-200'
+                  }`}
                 aria-label={item.label}
                 data-nav-id={item.id}
                 aria-current={item.id === activeId ? 'page' : undefined}
@@ -194,8 +239,7 @@ export function NavigationPanel({
       </div>
 
       <div className="flex flex-col items-center gap-3 rounded-[26px] bg-white/95 px-3 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
-        <Link
-          href="/help"
+        <button
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-sky-100 bg-white/90 text-sky-600 shadow-[0_12px_24px_rgba(10,132,255,0.18)] transition hover:-translate-y-0.5 hover:border-sky-200"
           aria-label="Help"
         >
@@ -205,10 +249,9 @@ export function NavigationPanel({
           >
             Help
           </span>
-        </Link>
+        </button>
 
-        <Link
-          href="/logout"
+        <button
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
           aria-label="Logout"
         >
@@ -218,10 +261,11 @@ export function NavigationPanel({
           >
             Logout
           </span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
 
+  if (!isMounted) return null;
   return createPortal(content, document.body);
 }

@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import AnalyticsSection from '../sections/AnalyticsSection';
+import AiSection from '../sections/AiSection';
 
-export default function AnalyticsPage() {
+export default function AiPage() {
     return (
         <div className="h-full w-full">
             <div className="page-width mx-auto">
-                <AnalyticsSection />
+                <AiSection />
             </div>
         </div>
     );

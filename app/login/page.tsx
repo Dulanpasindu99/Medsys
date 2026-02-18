@@ -79,9 +79,8 @@ const OwnerPanel = ({
 }: OwnerPanelProps) => (
   <Card
     onClick={onClick}
-    className={`relative overflow-hidden p-8 transition-transform duration-300 ease-out ${
-      onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(15,23,42,0.18)]' : ''
-    } ${highlight ? 'ring-2 ring-sky-100 shadow-[0_30px_70px_rgba(15,23,42,0.2)]' : ''}`}
+    className={`relative overflow-hidden p-8 transition-transform duration-300 ease-out ${onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(15,23,42,0.18)]' : ''
+      } ${highlight ? 'ring-2 ring-sky-100 shadow-[0_30px_70px_rgba(15,23,42,0.2)]' : ''}`}
   >
     <div className="pointer-events-none absolute -left-10 -top-10 h-48 w-48 rounded-full bg-sky-200/40" />
     <div className="pointer-events-none absolute -right-6 top-1/3 h-40 w-40 rounded-full bg-indigo-200/40" />
@@ -135,9 +134,8 @@ const DoctorPanel = ({
 }: StaffPanelProps) => (
   <Card
     onClick={onClick}
-    className={`p-5 transition-transform duration-300 ease-out ${
-      onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.16)]' : ''
-    } ${highlight ? 'ring-2 ring-sky-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]' : ''}`}
+    className={`p-5 transition-transform duration-300 ease-out ${onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.16)]' : ''
+      } ${highlight ? 'ring-2 ring-sky-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]' : ''}`}
   >
     <div className="flex items-center gap-2">
       <RolePill label="Doctor Login" />
@@ -168,9 +166,8 @@ const AssistantPanel = ({
 }: StaffPanelProps) => (
   <Card
     onClick={onClick}
-    className={`p-5 transition-transform duration-300 ease-out ${
-      onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.16)]' : ''
-    } ${highlight ? 'ring-2 ring-emerald-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]' : ''}`}
+    className={`p-5 transition-transform duration-300 ease-out ${onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.16)]' : ''
+      } ${highlight ? 'ring-2 ring-emerald-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]' : ''}`}
   >
     <div className="flex items-center gap-2">
       <RolePill label="Assistant Login" />
@@ -268,9 +265,8 @@ export default function Login() {
       )}
 
       <div
-        className={`relative w-full max-w-6xl overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl transition-all duration-300 ease-out ${
-          activeModal ? 'scale-[0.98] blur-[1.5px] opacity-75' : ''
-        }`}
+        className={`relative w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl transition-all duration-300 ease-out ${activeModal ? 'scale-[0.98] blur-[1.5px] opacity-75' : ''
+          }`}
         aria-hidden={!!activeModal}
       >
         <div className="flex flex-col gap-8 px-6 py-8 lg:px-12">
