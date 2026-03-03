@@ -6,10 +6,18 @@ import type { IconRenderer } from '../components/NavigationPanel';
 import { getProfileIdByNicOrName } from '../data/patientProfiles';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { DIAGNOSIS_MAPPING } from '../data/diagnosisMapping';
+import { ApiClientError, appointmentsApi, patientsApi } from '@/app/lib/api-client';
+import { getAccessToken, getRefreshToken } from '@/app/lib/auth-store';
+import {
+    addDrugSchema,
+    doctorFormSchema,
+    rxRowSchema,
+} from '@/app/utils/schema-validation/doctor-section.schema';
 
 // ---- Types ----
 interface Patient {
     id: string;
+    patientNumber: number;
     name: string;
     nic: string;
     time: string;
@@ -91,80 +99,113 @@ export default function DoctorSection() {
     );
     const dateStr = useMemo(() => now.toLocaleDateString('en-US'), [now]);
 
-    // ------ Demo Data ------
-    const patients = useMemo<Patient[]>(
-        () => [
-            {
-                id: 'p1',
-                name: 'Premadasa',
-                nic: '61524862V',
-                time: '5.00 PM',
-                reason: 'Fever, Headache',
-                age: 66,
-                gender: 'Male',
-                profileId: getProfileIdByNicOrName('61524862V', 'Premadasa'),
-            },
-            {
-                id: 'p2',
-                name: 'JR Jayawardhana',
-                nic: '64524862V',
-                time: '5.10 PM',
-                reason: 'Stomach Ache, Headache',
-                age: 62,
-                gender: 'Male',
-                profileId: getProfileIdByNicOrName('64524862V', 'JR Jayawardhana'),
-            },
-            {
-                id: 'p3',
-                name: 'Mitreepala Siirisena',
-                nic: '78522862V',
-                time: '5.20 PM',
-                reason: 'Fever',
-                age: 68,
-                gender: 'Male',
-                profileId: getProfileIdByNicOrName('78522862V', 'Mitreepala Siirisena'),
-            },
-            {
-                id: 'p4',
-                name: 'Chandrika Bandranayake',
-                nic: '71524862V',
-                time: '5.30 PM',
-                reason: 'Fever, Headache',
-                age: 63,
-                gender: 'Female',
-                profileId: getProfileIdByNicOrName('71524862V', 'Chandrika Bandranayake'),
-            },
-            {
-                id: 'p5',
-                name: 'Ranil Vicramasinghe',
-                nic: '77524862V',
-                time: '5.00 PM',
-                reason: 'Fever, Headache',
-                age: 76,
-                gender: 'Male',
-                profileId: getProfileIdByNicOrName('77524862V', 'Ranil Vicramasinghe'),
-            },
-            {
-                id: 'p6',
-                name: 'Mahinda Rajapakshe',
-                nic: '74524862V',
-                time: '—',
-                reason: 'Headache',
-                age: 66,
-                gender: 'Male',
-                profileId: getProfileIdByNicOrName('74524862V', 'Mahinda Rajapakshe'),
-            },
-        ],
-        []
-    );
+    // ------ Queue Data ------
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [allPatients, setAllPatients] = useState<Patient[]>([]);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadPatients = async () => {
+            if (!getAccessToken() && !getRefreshToken()) {
+                router.replace('/login');
+                return;
+            }
+
+            try {
+                setLoadError(null);
+                const [appointmentsResponse, patientsResponse] = await Promise.all([
+                    appointmentsApi.list(1, 200, 'waiting'),
+                    patientsApi.list(1, 500),
+                ]);
+
+                const patientById = new Map(
+                    patientsResponse.data.map((patient) => [String(patient.id), patient])
+                );
+
+                const toAge = (dob: string | null) => {
+                    if (!dob) return 0;
+                    const date = new Date(dob);
+                    return Number.isNaN(date.getTime())
+                        ? 0
+                        : Math.max(0, new Date().getFullYear() - date.getFullYear());
+                };
+                const toPatientNumber = (id: string | number, fallback: number) => {
+                    const parsed = Number(id);
+                    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+                };
+
+                const mapped = appointmentsResponse.data
+                    .map((appointment, index) => {
+                        const patient = patientById.get(String(appointment.patient_id));
+                        if (!patient) return null;
+                        return {
+                            id: `p-${appointment.id}`,
+                            patientNumber: toPatientNumber(patient.id, index + 1),
+                            name: String(patient.full_name ?? ''),
+                            nic: String(patient.nic ?? 'N/A'),
+                            time: new Date(appointment.scheduled_at).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                            }),
+                            reason: String(appointment.reason ?? 'Consultation'),
+                            age: toAge(patient.dob),
+                            gender: patient.gender === 'female' ? 'Female' : 'Male',
+                            profileId: patient.nic
+                                ? getProfileIdByNicOrName(patient.nic, patient.full_name)
+                                : undefined,
+                        } as Patient;
+                    })
+                    .filter((entry): entry is Patient => Boolean(entry));
+
+                const allMapped = patientsResponse.data.map((patient, index) => ({
+                    id: `patient-${patient.id}`,
+                    patientNumber: toPatientNumber(patient.id, index + 1),
+                    name: String(patient.full_name ?? ''),
+                    nic: String(patient.nic ?? 'N/A'),
+                    time: 'N/A',
+                    reason: 'General',
+                    age: toAge(patient.dob),
+                    gender: patient.gender === 'female' ? 'Female' : 'Male',
+                    profileId: patient.nic
+                        ? getProfileIdByNicOrName(patient.nic, patient.full_name)
+                        : undefined,
+                })) as Patient[];
+
+                if (!mounted) return;
+                setPatients(mapped);
+                setAllPatients(allMapped);
+            } catch (error) {
+                if (error instanceof ApiClientError && error.status === 401) {
+                    router.replace('/login');
+                    return;
+                }
+                if (mounted) {
+                    setLoadError(error instanceof Error ? error.message : 'Failed to load doctor queue');
+                }
+            }
+        };
+
+        void loadPatients();
+
+        return () => {
+            mounted = false;
+        };
+    }, [router]);
 
     const [search, setSearch] = useState('');
 
     const [patientName, setPatientName] = useState('');
     const [patientAge, setPatientAge] = useState('');
     const [nicNumber, setNicNumber] = useState('');
+    const [currentPatientNumber, setCurrentPatientNumber] = useState<number | null>(null);
     const [gender, setGender] = useState<'Male' | 'Female'>('Male');
     const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+    const [doctorNotes, setDoctorNotes] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     // Right sheet editable state
     const [sheet] = useState({
@@ -223,6 +264,7 @@ export default function DoctorSection() {
         amount: '',
         source: 'Clinical' as ClinicalDrug['source'],
     });
+    const [showDrugSuggestions, setShowDrugSuggestions] = useState(false);
 
     const filteredDrugSuggestions = useMemo(() => {
         const query = clinicalDrugForm.name.trim().toLowerCase();
@@ -258,8 +300,21 @@ export default function DoctorSection() {
         const doseValue = clinicalDrugForm.doseValue.trim();
         const termsValue = clinicalDrugForm.termsValue.trim();
         const amountValue = clinicalDrugForm.amount.trim();
-
-        if (!name || !doseValue || !amountValue) return;
+        const parsed = addDrugSchema.safeParse({
+            name,
+            doseValue,
+            termsValue,
+            amount: amountValue,
+        });
+        if (!parsed.success) {
+            const nextErrors: Record<string, string> = {};
+            for (const issue of parsed.error.issues) {
+                const key = String(issue.path[0] ?? 'drug');
+                nextErrors[`drug_${key}`] = issue.message;
+            }
+            setFieldErrors((prev) => ({ ...prev, ...nextErrors }));
+            return;
+        }
 
         const dose = `${doseValue}${clinicalDrugForm.doseUnit}`;
         const termsDisplay = termsValue ? `${clinicalDrugForm.terms} ${termsValue}` : clinicalDrugForm.terms;
@@ -282,6 +337,16 @@ export default function DoctorSection() {
             amount: '',
             source: 'Clinical',
         });
+        setFieldErrors((prev) => {
+            const next = { ...prev };
+            delete next.drug_name;
+            delete next.drug_doseValue;
+            delete next.drug_termsValue;
+            delete next.drug_amount;
+            delete next.rxRows;
+            return next;
+        });
+        setShowDrugSuggestions(false);
     };
 
     const handleDrugFormKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -522,6 +587,11 @@ export default function DoctorSection() {
         setDiseaseQuery('');
         setDiseaseSuggestions([]);
         setHighlightedDiseaseIndex(-1);
+        setFieldErrors((prev) => {
+            const next = { ...prev };
+            delete next.selectedDiseases;
+            return next;
+        });
     };
 
     const toggleChipRemovalState = (disease: string) => {
@@ -585,10 +655,13 @@ export default function DoctorSection() {
     const searchMatches = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) return [];
-        return patients.filter(
-            (p) => p.name.toLowerCase().includes(q) || p.nic.toLowerCase().includes(q)
+        const asLower = (value: unknown) => String(value ?? '').toLowerCase();
+        return allPatients.filter((p) =>
+            asLower(p.name).includes(q) ||
+            asLower(p.nic).includes(q) ||
+            asLower(p.id).includes(q)
         );
-    }, [patients, search]);
+    }, [allPatients, search]);
 
     const patientVitals = useMemo(
         () => [
@@ -610,57 +683,114 @@ export default function DoctorSection() {
     // ------ Header derived state ------
     const occupancy = Math.min(patients.length, CAPACITY);
     const occupancyPercent = Math.round((occupancy / CAPACITY) * 100);
-    const newPatients = Math.max(1, Math.ceil(patients.length * 0.4));
+    const newPatients = patients.length === 0 ? 0 : Math.ceil(patients.length * 0.4);
     const existingPatients = Math.max(0, patients.length - newPatients);
-
-    // ------ Dev Smoke Tests (run once on mount) ------
-    useEffect(() => {
-        console.assert(Array.isArray(patients) && patients.length > 0, 'patients array should be non-empty');
-        console.assert(
-            Array.isArray(sheet.clinical) && sheet.clinical.every((x) => typeof x === 'string'),
-            'sheet.clinical must be string[]'
-        );
-        const s = new Set<string>();
-        s.add('p1');
-        console.assert(s.has('p1'), 'Set should add id');
-        s.delete('p1');
-        console.assert(!s.has('p1'), 'Set should delete id');
-
-        console.assert(CAPACITY === 40, 'Header capacity should stay at 40 slots');
-        console.assert(occupancy <= CAPACITY, 'Occupancy cannot exceed capacity');
-        console.assert(
-            occupancyPercent <= 100 && occupancyPercent >= 0,
-            'Occupancy percent should remain within 0-100'
-        );
-        console.assert(
-            newPatients + existingPatients === patients.length,
-            'New + Existing counts should match total patients'
-        );
-
-        // visitDateOptions basic tests
-        console.assert(visitDateOptions.length >= 5, 'visitDateOptions should contain multiple entries');
-        console.assert(visitDateOptions[0] === 'Today', 'First visitDateOptions entry should be Today');
-
-        console.assert(typeof timeStr === 'string' && timeStr.length > 0, 'timeStr should be defined');
-        console.assert(typeof dateStr === 'string' && dateStr.length > 0, 'dateStr should be defined');
-
-    }, [
-        patients,
-        sheet.clinical,
-        timeStr,
-        dateStr,
-        gender,
-        visitDateOptions,
-        occupancy,
-        occupancyPercent,
-        newPatients,
-        existingPatients,
-    ]);
 
     const handleSearchSelect = (patient: Patient) => {
         const profileId = patient.profileId || getProfileIdByNicOrName(patient.nic, patient.name);
         if (profileId) {
             setSelectedProfileId(profileId);
+        }
+        setCurrentPatientNumber(patient.patientNumber);
+        setPatientName(String(patient.name ?? ''));
+        setNicNumber(String(patient.nic ?? ''));
+        setPatientAge(String(patient.age ?? ''));
+        setGender(patient.gender === 'Female' ? 'Female' : 'Male');
+        setFieldErrors((prev) => {
+            const next = { ...prev };
+            delete next.nicNumber;
+            delete next.patientName;
+            delete next.patientAge;
+            return next;
+        });
+    };
+
+    const nextPatientNumber = useMemo(
+        () => Math.max(0, ...allPatients.map((patient) => patient.patientNumber || 0)) + 1,
+        [allPatients]
+    );
+    const displayedPatientNumber = currentPatientNumber ?? nextPatientNumber;
+
+    const toDobFromAge = (ageText: string) => {
+        const age = Number(ageText);
+        if (!Number.isFinite(age) || age <= 0) return undefined;
+        const now = new Date();
+        const year = now.getFullYear() - Math.floor(age);
+        return `${year}-01-01`;
+    };
+
+    const handleSaveAndPrint = async () => {
+        const fullName = patientName.trim();
+        const formValidation = doctorFormSchema.safeParse({
+            nicNumber: nicNumber.trim(),
+            patientName: fullName,
+            patientAge: patientAge.trim(),
+            selectedDiseases,
+        });
+        const validationErrors: Record<string, string> = {};
+        if (!formValidation.success) {
+            for (const issue of formValidation.error.issues) {
+                const key = String(issue.path[0] ?? 'form');
+                validationErrors[key] = issue.message;
+            }
+        }
+        if (rxRows.length > 0) {
+            const invalidDrugRow = rxRows.find((row) => !rxRowSchema.safeParse(row).success);
+            if (invalidDrugRow) {
+                validationErrors.rxRows = 'Complete all fields for each added prescription row.';
+            }
+        }
+        if (Object.keys(validationErrors).length > 0) {
+            setFieldErrors((prev) => ({ ...prev, ...validationErrors }));
+            setSaveError('Please fix highlighted fields.');
+            setSaveSuccess(null);
+            return;
+        }
+        setFieldErrors({});
+
+        const payload = {
+            full_name: fullName,
+            nic: nicNumber.trim() || undefined,
+            gender: (gender === 'Male' ? 'male' : 'female') as 'male' | 'female',
+            dob: toDobFromAge(patientAge),
+            address: doctorNotes.trim() || undefined,
+        };
+
+        setIsSaving(true);
+        setSaveError(null);
+        setSaveSuccess(null);
+        try {
+            try {
+                await patientsApi.create(payload);
+            } catch (error) {
+                // NIC may already exist; try update existing patient by NIC from current page.
+                if (
+                    error instanceof ApiClientError &&
+                    (error.status === 400 || error.status === 409) &&
+                    payload.nic
+                ) {
+                    const listed = await patientsApi.list(1, 20);
+                    const existing = listed.data.find(
+                        (entry) => (entry.nic ?? '').toLowerCase() === payload.nic?.toLowerCase()
+                    );
+                    if (existing) {
+                        await patientsApi.update(existing.id, payload);
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    throw error;
+                }
+            }
+
+            setSaveSuccess('Patient record saved successfully.');
+            if (typeof window !== 'undefined') {
+                window.print();
+            }
+        } catch (error) {
+            setSaveError(error instanceof Error ? error.message : 'Failed to save patient record.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -669,6 +799,11 @@ export default function DoctorSection() {
             <div className="w-full flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
                 <div>
                     <div className="relative flex flex-1 flex-col px-6 pb-20 pt-6 lg:px-10">
+                        {loadError ? (
+                            <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                                {loadError}
+                            </div>
+                        ) : null}
                         <div className="mx-auto flex w-full flex-1">
                             {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
                             <div className="grid w-full grid-cols-12 gap-6">
@@ -676,7 +811,7 @@ export default function DoctorSection() {
                                 <div className="order-2 col-span-12 flex flex-col gap-4 pl-1 pr-1 lg:order-2 lg:col-span-3">
                                     <Card className="flex min-h-0 flex-col p-5">
                                         <SectionTitle title="Search Patients" sub="Name / NIC" />
-                                        <div className="mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
+                                        <div className="relative mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
                                             <div className="relative z-[100]">
                                                 <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
                                                 <input
@@ -688,7 +823,7 @@ export default function DoctorSection() {
                                                 <MicIcon className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
                                             </div>
                                             {search && (
-                                                <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-60 overflow-y-auto rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200">
+                                                <div className="absolute left-0 right-0 top-full z-[120] mt-2 max-h-60 overflow-y-auto rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200">
                                                     {searchMatches.length === 0 ? (
                                                         <p className="p-3 text-sm font-semibold text-slate-500">No matching patients found.</p>
                                                     ) : (
@@ -772,10 +907,21 @@ export default function DoctorSection() {
                                     </Card>
 
                                     <div className="mt-2 flex justify-end">
-                                        <button className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md">
-                                            Save & Print Record
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveAndPrint}
+                                            disabled={isSaving}
+                                            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md disabled:opacity-60"
+                                        >
+                                            {isSaving ? 'Saving...' : 'Save & Print Record'}
                                         </button>
                                     </div>
+                                    {saveError ? (
+                                        <p className="mt-2 text-sm font-semibold text-rose-600">{saveError}</p>
+                                    ) : null}
+                                    {saveSuccess ? (
+                                        <p className="mt-2 text-sm font-semibold text-emerald-700">{saveSuccess}</p>
+                                    ) : null}
 
                                 </div>
 
@@ -784,13 +930,38 @@ export default function DoctorSection() {
                                     <div className="flex flex-col gap-6 rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
                                         {/* Patient quick info */}
                                         <div className="space-y-3">
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <input
-                                                    className="w-52 rounded-[999px] border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-                                                    placeholder="Enter NIC No"
-                                                    value={nicNumber}
-                                                    onChange={(event) => setNicNumber(event.target.value)}
-                                                />
+                                            <div className="flex flex-wrap items-start gap-3">
+                                                <div className="w-52">
+                                                    <input
+                                                        className={`w-full rounded-[999px] border bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:ring-2 ${fieldErrors.nicNumber
+                                                            ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100'
+                                                            : 'border-slate-200 focus:border-sky-400 focus:ring-sky-100'
+                                                            }`}
+                                                        placeholder="Enter NIC No"
+                                                        value={nicNumber}
+                                                        onChange={(event) => {
+                                                            setCurrentPatientNumber(null);
+                                                            const nextNic = event.target.value.replace(/\D/g, '').slice(0, 15);
+                                                            setNicNumber(nextNic);
+                                                            setFieldErrors((prev) => {
+                                                                const next = { ...prev };
+                                                                if (!nextNic) {
+                                                                    delete next.nicNumber;
+                                                                } else if (nextNic.length < 10) {
+                                                                    next.nicNumber = 'NIC must be at least 10 digits';
+                                                                } else if (nextNic.length > 15) {
+                                                                    next.nicNumber = 'NIC must be at most 15 digits';
+                                                                } else {
+                                                                    delete next.nicNumber;
+                                                                }
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    />
+                                                    <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.nicNumber ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.nicNumber ?? 'placeholder'}
+                                                    </p>
+                                                </div>
 
                                                 <div className="flex items-center gap-2">
                                                     <PatientProfileModal
@@ -824,21 +995,52 @@ export default function DoctorSection() {
                                                 <img src="/assets/brand-logo.png" alt="Brand Logo" className="h-10 w-auto object-contain opacity-90" />
                                             </div>
 
-                                            <div className="flex items-center gap-4">
-                                                <input
-                                                    className="flex-1 rounded-xl border border-transparent bg-slate-50/50 px-4 py-2 text-lg font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 ring-slate-200/50 transition focus:bg-white focus:ring-2 focus:ring-sky-100"
-                                                    placeholder="Patient Name"
-                                                    value={patientName}
-                                                    onChange={(e) => setPatientName(e.target.value)}
-                                                />
-                                                <input
-                                                    className="w-20 rounded-xl border border-transparent bg-slate-50/50 px-3 py-2 text-center text-lg font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 ring-slate-200/50 transition focus:bg-white focus:ring-2 focus:ring-sky-100"
-                                                    placeholder="Age"
-                                                    value={patientAge}
-                                                    onChange={(e) => setPatientAge(e.target.value)}
-                                                />
+                                            <div className="flex items-start gap-4">
+                                                <div className="flex-1">
+                                                    <input
+                                                        className={`w-full rounded-xl border bg-slate-50/50 px-4 py-2 text-lg font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 transition focus:bg-white focus:ring-2 ${fieldErrors.patientName
+                                                            ? 'border-rose-400 ring-rose-200 focus:ring-rose-100'
+                                                            : 'border-transparent ring-slate-200/50 focus:ring-sky-100'
+                                                            }`}
+                                                        placeholder="Patient Name"
+                                                        value={patientName ?? ''}
+                                                        onChange={(e) => {
+                                                            setCurrentPatientNumber(null);
+                                                            setPatientName(e.target.value.replace(/[^A-Za-z ]/g, '').replace(/\s{2,}/g, ' '));
+                                                            setFieldErrors((prev) => {
+                                                                const next = { ...prev };
+                                                                delete next.patientName;
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    />
+                                                    <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.patientName ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.patientName ?? 'placeholder'}
+                                                    </p>
+                                                </div>
+                                                <div className="w-20">
+                                                    <input
+                                                        className={`w-full rounded-xl border bg-slate-50/50 px-3 py-2 text-center text-lg font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 transition focus:bg-white focus:ring-2 ${fieldErrors.patientAge
+                                                            ? 'border-rose-400 ring-rose-200 focus:ring-rose-100'
+                                                            : 'border-transparent ring-slate-200/50 focus:ring-sky-100'
+                                                            }`}
+                                                        placeholder="Age"
+                                                        value={patientAge ?? ''}
+                                                        onChange={(e) => {
+                                                            setPatientAge(e.target.value.replace(/[^0-9]/g, '').slice(0, 3));
+                                                            setFieldErrors((prev) => {
+                                                                const next = { ...prev };
+                                                                delete next.patientAge;
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    />
+                                                    <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.patientAge ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.patientAge ?? 'placeholder'}
+                                                    </p>
+                                                </div>
                                                 <div className="pl-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-                                                    Patient No: <span className="text-slate-900">12</span>
+                                                    Patient No: <span className="text-slate-900">{displayedPatientNumber}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -851,7 +1053,10 @@ export default function DoctorSection() {
                                                 <p className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Diagnosis (ICD-10)</p>
                                                 <div className="relative">
                                                     <input
-                                                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-50"
+                                                        className={`w-full rounded-2xl border bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:ring-4 ${fieldErrors.selectedDiseases
+                                                            ? 'border-rose-400 focus:border-rose-300 focus:ring-rose-50'
+                                                            : 'border-slate-200 focus:border-sky-300 focus:ring-sky-50'
+                                                            }`}
                                                         placeholder="Type to search ICD-10 database..."
                                                         value={diseaseQuery}
                                                         onChange={(e) => setDiseaseQuery(e.target.value)}
@@ -900,6 +1105,9 @@ export default function DoctorSection() {
                                                         );
                                                     })}
                                                 </div>
+                                                {fieldErrors.selectedDiseases ? (
+                                                    <p className="text-xs font-semibold text-rose-600">{fieldErrors.selectedDiseases}</p>
+                                                ) : null}
                                             </div>
 
                                             <div className="space-y-2">
@@ -998,24 +1206,48 @@ export default function DoctorSection() {
                                             </div>
 
                                             {/* Add Drug Row */}
-                                            <div className="flex flex-col gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200 lg:flex-row lg:items-end">
+                                            <div className="flex flex-col gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200 lg:flex-row lg:items-start">
                                                 <div className="relative flex-1">
                                                     <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">Drug Name</label>
                                                     <input
-                                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                                                        className={`w-full rounded-xl border bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:ring-2 ${fieldErrors.drug_name
+                                                            ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100'
+                                                            : 'border-slate-200 focus:border-sky-400 focus:ring-sky-100'
+                                                            }`}
                                                         placeholder="e.g. Paracetamol"
                                                         value={clinicalDrugForm.name}
-                                                        onChange={(e) => setClinicalDrugForm((prev) => ({ ...prev, name: e.target.value }))}
+                                                        onChange={(e) => {
+                                                            setClinicalDrugForm((prev) => ({ ...prev, name: e.target.value }));
+                                                            setShowDrugSuggestions(true);
+                                                            setFieldErrors((prev) => {
+                                                                const next = { ...prev };
+                                                                delete next.drug_name;
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        onFocus={() => setShowDrugSuggestions(true)}
+                                                        onBlur={() => {
+                                                            window.setTimeout(() => {
+                                                                setShowDrugSuggestions(false);
+                                                            }, 100);
+                                                        }}
                                                         onKeyDown={handleDrugFormKeyDown}
                                                     />
+                                                    <p className={`mt-1 min-h-4 whitespace-nowrap text-xs font-semibold ${fieldErrors.drug_name ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.drug_name ?? 'placeholder'}
+                                                    </p>
                                                     {/* Autocomplete for Drug Name */}
-                                                    {clinicalDrugForm.name && filteredDrugSuggestions.length > 0 && (
+                                                    {showDrugSuggestions && clinicalDrugForm.name && filteredDrugSuggestions.length > 0 && (
                                                         <div className="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200">
-                                                            {filteredDrugSuggestions.map((s) => (
+                                                            {filteredDrugSuggestions.map((s, index) => (
                                                                 <button
-                                                                    key={s}
+                                                                    key={`${s}-${index}`}
                                                                     type="button"
-                                                                    onClick={() => setClinicalDrugForm((prev) => ({ ...prev, name: s }))}
+                                                                    onMouseDown={(event) => event.preventDefault()}
+                                                                    onClick={() => {
+                                                                        setClinicalDrugForm((prev) => ({ ...prev, name: s }));
+                                                                        setShowDrugSuggestions(false);
+                                                                    }}
                                                                     className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                                                                 >
                                                                     {s}
@@ -1027,12 +1259,19 @@ export default function DoctorSection() {
 
                                                 <div className="w-28">
                                                     <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">Dose</label>
-                                                    <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-0.5">
+                                                    <div className={`flex rounded-xl border bg-slate-50 p-0.5 ${fieldErrors.drug_doseValue ? 'border-rose-400' : 'border-slate-200'}`}>
                                                         <input
                                                             className="w-full min-w-0 bg-transparent px-2 py-1.5 text-center text-sm font-semibold outline-none"
                                                             placeholder="500"
                                                             value={clinicalDrugForm.doseValue}
-                                                            onChange={(e) => setClinicalDrugForm((prev) => ({ ...prev, doseValue: e.target.value }))}
+                                                            onChange={(e) => {
+                                                                setClinicalDrugForm((prev) => ({ ...prev, doseValue: e.target.value.replace(/[^0-9.]/g, '') }));
+                                                                setFieldErrors((prev) => {
+                                                                    const next = { ...prev };
+                                                                    delete next.drug_doseValue;
+                                                                    return next;
+                                                                });
+                                                            }}
                                                             onKeyDown={handleDrugFormKeyDown}
                                                         />
                                                         <button
@@ -1043,11 +1282,14 @@ export default function DoctorSection() {
                                                             {clinicalDrugForm.doseUnit}
                                                         </button>
                                                     </div>
+                                                    <p className={`mt-1 min-h-4 whitespace-nowrap text-xs font-semibold ${fieldErrors.drug_doseValue ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.drug_doseValue ?? 'placeholder'}
+                                                    </p>
                                                 </div>
 
                                                 <div className="flex-[1.5]">
                                                     <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">Frequency</label>
-                                                    <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-0.5">
+                                                    <div className={`flex rounded-xl border bg-slate-50 p-0.5 ${fieldErrors.drug_termsValue ? 'border-rose-400' : 'border-slate-200'}`}>
                                                         <button
                                                             type="button"
                                                             onClick={toggleTerms}
@@ -1059,48 +1301,78 @@ export default function DoctorSection() {
                                                             className="w-full min-w-0 bg-transparent px-2 py-1.5 text-sm font-semibold outline-none"
                                                             placeholder="e.g. 3 x 4"
                                                             value={clinicalDrugForm.termsValue}
-                                                            onChange={(e) => setClinicalDrugForm((prev) => ({ ...prev, termsValue: e.target.value }))}
+                                                            onChange={(e) => {
+                                                                setClinicalDrugForm((prev) => ({ ...prev, termsValue: e.target.value }));
+                                                                setFieldErrors((prev) => {
+                                                                    const next = { ...prev };
+                                                                    delete next.drug_termsValue;
+                                                                    return next;
+                                                                });
+                                                            }}
                                                             onKeyDown={handleDrugFormKeyDown}
                                                         />
                                                     </div>
+                                                    <p className={`mt-1 min-h-4 whitespace-nowrap text-xs font-semibold ${fieldErrors.drug_termsValue ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.drug_termsValue ?? 'placeholder'}
+                                                    </p>
                                                 </div>
 
                                                 <div className="w-20">
                                                     <label className="mb-1 block text-[10px] font-bold uppercase text-slate-400">Qty</label>
                                                     <input
-                                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-sm font-semibold outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                                                        className={`w-full rounded-xl border bg-slate-50 px-3 py-2 text-center text-sm font-semibold outline-none focus:ring-2 ${fieldErrors.drug_amount
+                                                            ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100'
+                                                            : 'border-slate-200 focus:border-sky-400 focus:ring-sky-100'
+                                                            }`}
                                                         placeholder="12"
                                                         value={clinicalDrugForm.amount}
                                                         onChange={(e) =>
-                                                            setClinicalDrugForm((prev) => ({ ...prev, amount: e.target.value.replace(/[^0-9]/g, '') }))
+                                                            {
+                                                                setClinicalDrugForm((prev) => ({ ...prev, amount: e.target.value.replace(/[^0-9.]/g, '') }));
+                                                                setFieldErrors((prev) => {
+                                                                    const next = { ...prev };
+                                                                    delete next.drug_amount;
+                                                                    return next;
+                                                                });
+                                                            }
                                                         }
                                                         onKeyDown={handleDrugFormKeyDown}
                                                     />
+                                                    <p className={`mt-1 min-h-4 whitespace-nowrap text-xs font-semibold ${fieldErrors.drug_amount ? 'text-rose-600' : 'invisible'}`}>
+                                                        {fieldErrors.drug_amount ?? 'placeholder'}
+                                                    </p>
                                                 </div>
 
-                                                <div className="flex w-32 items-center justify-end gap-2 pb-0.5">
-                                                    <button
-                                                        type="button"
-                                                        onClick={toggleDrugSource}
-                                                        className={`h-10 flex-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition ${clinicalDrugForm.source === 'Clinical'
-                                                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100'
-                                                            : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
-                                                            }`}
-                                                    >
-                                                        {clinicalDrugForm.source}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={addClinicalDrug}
-                                                        className="flex size-10 items-center justify-center rounded-xl bg-slate-900 text-white hover:bg-slate-700"
-                                                    >
-                                                        +
-                                                    </button>
+                                                <div className="flex w-32 flex-col">
+                                                    <span className="mb-1 block h-[14px]" />
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={toggleDrugSource}
+                                                            className={`h-10 flex-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition ${clinicalDrugForm.source === 'Clinical'
+                                                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100'
+                                                                : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
+                                                                }`}
+                                                        >
+                                                            {clinicalDrugForm.source}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={addClinicalDrug}
+                                                            className="flex size-10 items-center justify-center rounded-xl bg-slate-900 text-white hover:bg-slate-700"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                    <span className="mt-1 block min-h-4" />
                                                 </div>
                                             </div>
 
                                             {/* Rx List */}
                                             <div className="flex flex-col gap-2">
+                                                {fieldErrors.rxRows ? (
+                                                    <p className="text-xs font-semibold text-rose-600">{fieldErrors.rxRows}</p>
+                                                ) : null}
                                                 {rxRows.length === 0 && (
                                                     <div className="py-4 text-center text-sm italic text-slate-400">No drugs added yet.</div>
                                                 )}
@@ -1189,10 +1461,12 @@ export default function DoctorSection() {
                                             </div>
 
                                             <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-                                                <p className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Doctor's Notes</p>
+                                                <p className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Doctor&apos;s Notes</p>
                                                 <textarea
                                                     className="h-24 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800 shadow-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50"
                                                     placeholder="Add clinical notes here..."
+                                                    value={doctorNotes}
+                                                    onChange={(e) => setDoctorNotes(e.target.value)}
                                                 />
                                             </div>
                                         </div>

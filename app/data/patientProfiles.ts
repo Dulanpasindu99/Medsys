@@ -173,9 +173,17 @@ export function getPatientProfile(id: string): PatientProfile | undefined {
     return patientProfiles[id];
 }
 
-export function getProfileIdByNicOrName(nic: string, name: string): string | undefined {
-    const profile = Object.values(patientProfiles).find(
-        (p) => p.nic === nic || p.name.toLowerCase() === name.toLowerCase()
-    );
+export function getProfileIdByNicOrName(nic?: string | null, name?: string | null): string | undefined {
+    const normalizedNic = String(nic ?? '').trim();
+    const normalizedName = String(name ?? '').trim().toLowerCase();
+    const profile = Object.values(patientProfiles).find((p) => {
+        if (normalizedNic && p.nic === normalizedNic) {
+            return true;
+        }
+        if (!normalizedName) {
+            return false;
+        }
+        return p.name.toLowerCase() === normalizedName;
+    });
     return profile?.id;
 }
