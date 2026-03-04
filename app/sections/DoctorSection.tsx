@@ -3,14 +3,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { IconRenderer } from '../components/NavigationPanel';
-import { getProfileIdByNicOrName } from '../data/patientProfiles';
+import { getPatientProfile, getProfileIdByNicOrName } from '../data/patientProfiles';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { DIAGNOSIS_MAPPING } from '../data/diagnosisMapping';
 import { ApiClientError, appointmentsApi, patientsApi } from '@/app/lib/api-client';
 import { getAccessToken, getRefreshToken } from '@/app/lib/auth-store';
+import type { PatientRecord } from '@/app/lib/types';
 import {
     addDrugSchema,
     doctorFormSchema,
+    newPatientFormSchema,
     rxRowSchema,
 } from '@/app/utils/schema-validation/doctor-section.schema';
 
@@ -25,6 +27,11 @@ interface Patient {
     age: number;
     gender: string;
     profileId?: string;
+    allergies?: {
+        id: string | number;
+        allergy_name: string;
+        severity: 'low' | 'moderate' | 'high' | null;
+    }[];
 }
 
 interface ClinicalDrug {
@@ -34,6 +41,8 @@ interface ClinicalDrug {
     amount: string;
     source: 'Clinical' | 'Outside';
 }
+
+type GenderLabel = 'Male' | 'Female' | 'Other';
 
 const SHADOWS = {
     card: 'shadow-[0_20px_48px_rgba(15,23,42,0.12)]',
@@ -150,10 +159,11 @@ export default function DoctorSection() {
                             }),
                             reason: String(appointment.reason ?? 'Consultation'),
                             age: toAge(patient.dob),
-                            gender: patient.gender === 'female' ? 'Female' : 'Male',
+                            gender: patient.gender === 'female' ? 'Female' : patient.gender === 'other' ? 'Other' : 'Male',
                             profileId: patient.nic
                                 ? getProfileIdByNicOrName(patient.nic, patient.full_name)
                                 : undefined,
+                            allergies: patient.allergies ?? [],
                         } as Patient;
                     })
                     .filter((entry): entry is Patient => Boolean(entry));
@@ -166,10 +176,11 @@ export default function DoctorSection() {
                     time: 'N/A',
                     reason: 'General',
                     age: toAge(patient.dob),
-                    gender: patient.gender === 'female' ? 'Female' : 'Male',
+                    gender: patient.gender === 'female' ? 'Female' : patient.gender === 'other' ? 'Other' : 'Male',
                     profileId: patient.nic
                         ? getProfileIdByNicOrName(patient.nic, patient.full_name)
                         : undefined,
+                    allergies: patient.allergies ?? [],
                 })) as Patient[];
 
                 if (!mounted) return;
@@ -199,8 +210,17 @@ export default function DoctorSection() {
     const [patientAge, setPatientAge] = useState('');
     const [nicNumber, setNicNumber] = useState('');
     const [currentPatientNumber, setCurrentPatientNumber] = useState<number | null>(null);
-    const [gender, setGender] = useState<'Male' | 'Female'>('Male');
+    const [gender, setGender] = useState<GenderLabel>('Male');
     const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+    const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+    const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+    const [newPatientFirstName, setNewPatientFirstName] = useState('');
+    const [newPatientLastName, setNewPatientLastName] = useState('');
+    const [newPatientDob, setNewPatientDob] = useState('');
+    const [newPatientPhone, setNewPatientPhone] = useState('');
+    const [newPatientAddress, setNewPatientAddress] = useState('');
+    const [newPatientBloodGroup, setNewPatientBloodGroup] = useState('');
+    const [nicLookupMessage, setNicLookupMessage] = useState<string | null>(null);
     const [doctorNotes, setDoctorNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -663,22 +683,58 @@ export default function DoctorSection() {
         );
     }, [allPatients, search]);
 
-    const patientVitals = useMemo(
-        () => [
-            { label: 'Blood Pressure', value: '118 / 76 mmHg' },
-            { label: 'Heart Rate', value: '74 bpm' },
-        ],
-        []
+    const profile = useMemo(
+        () => (selectedProfileId ? getPatientProfile(selectedProfileId) : undefined),
+        [selectedProfileId]
     );
 
-    const patientAllergies = useMemo(
-        () => [
-            { name: 'Penicillin', severity: 'High', tone: 'rose', dot: 'bg-rose-400', pill: 'bg-rose-50 text-rose-700 ring-rose-100' },
-            { name: 'Peanuts', severity: 'Medium', tone: 'amber', dot: 'bg-amber-400', pill: 'bg-amber-50 text-amber-700 ring-amber-100' },
-            { name: 'Latex', severity: 'Low', tone: 'emerald', dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-100' },
-        ],
-        []
-    );
+    const patientVitals = useMemo(() => {
+        const latestBp = profile?.timeline
+            ?.slice()
+            .reverse()
+            .find((entry) => entry.kind === 'bp' && entry.value)?.value;
+
+        return [
+            { label: 'Blood Pressure', value: latestBp ?? null },
+            { label: 'Heart Rate', value: null },
+        ];
+    }, [profile]);
+
+    const patientAllergies = useMemo(() => {
+        const severityToUi = (severity: 'low' | 'moderate' | 'high' | null | undefined) => {
+            if (severity === 'high') {
+                return { severity: 'High', dot: 'bg-rose-400', pill: 'bg-rose-50 text-rose-700 ring-rose-100' };
+            }
+            if (severity === 'low') {
+                return { severity: 'Low', dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-100' };
+            }
+            return { severity: 'Medium', dot: 'bg-amber-400', pill: 'bg-amber-50 text-amber-700 ring-amber-100' };
+        };
+
+        const fromApi = (selectedPatient?.allergies ?? []).map((item) => {
+            const ui = severityToUi(item.severity);
+            return {
+                name: item.allergy_name,
+                severity: ui.severity,
+                dot: ui.dot,
+                pill: ui.pill,
+            };
+        });
+        if (fromApi.length > 0) {
+            return fromApi;
+        }
+
+        const fromProfile = (profile?.allergies ?? []).map((name) => {
+            const ui = severityToUi(null);
+            return {
+                name,
+                severity: ui.severity,
+                dot: ui.dot,
+                pill: ui.pill,
+            };
+        });
+        return fromProfile;
+    }, [profile, selectedPatient]);
 
     // ------ Header derived state ------
     const occupancy = Math.min(patients.length, CAPACITY);
@@ -686,16 +742,17 @@ export default function DoctorSection() {
     const newPatients = patients.length === 0 ? 0 : Math.ceil(patients.length * 0.4);
     const existingPatients = Math.max(0, patients.length - newPatients);
 
-    const handleSearchSelect = (patient: Patient) => {
+    const applyPatientSelection = (patient: Patient) => {
         const profileId = patient.profileId || getProfileIdByNicOrName(patient.nic, patient.name);
-        if (profileId) {
-            setSelectedProfileId(profileId);
-        }
+        setSelectedProfileId(profileId ?? null);
+        setSelectedPatient(patient);
+        setShowNewPatientForm(false);
+        setNicLookupMessage(null);
         setCurrentPatientNumber(patient.patientNumber);
         setPatientName(String(patient.name ?? ''));
         setNicNumber(String(patient.nic ?? ''));
         setPatientAge(String(patient.age ?? ''));
-        setGender(patient.gender === 'Female' ? 'Female' : 'Male');
+        setGender(patient.gender === 'Female' ? 'Female' : patient.gender === 'Other' ? 'Other' : 'Male');
         setFieldErrors((prev) => {
             const next = { ...prev };
             delete next.nicNumber;
@@ -705,11 +762,172 @@ export default function DoctorSection() {
         });
     };
 
+    const clearSelectedPatientContext = () => {
+        setSelectedPatient(null);
+        setSelectedProfileId(null);
+        setCurrentPatientNumber(null);
+    };
+
+    const resetNewPatientForm = () => {
+        setNewPatientFirstName('');
+        setNewPatientLastName('');
+        setNewPatientDob('');
+        setNewPatientPhone('');
+        setNewPatientAddress('');
+        setNewPatientBloodGroup('');
+    };
+
+    const handleSearchSelect = (patient: Patient) => {
+        applyPatientSelection(patient);
+    };
+
+    const getNicValidationError = (value: string) => {
+        const parsed = doctorFormSchema.shape.nicNumber.safeParse(value.trim());
+        if (parsed.success) return null;
+        return parsed.error.issues[0]?.message ?? 'Invalid NIC';
+    };
+
+    const mapPatientRecordToPatient = (record: PatientRecord, fallbackNumber: number): Patient => {
+        const rawRecord = record as PatientRecord & Record<string, unknown>;
+        const firstName = String(
+            (rawRecord.first_name as string | undefined) ??
+            (rawRecord.firstName as string | undefined) ??
+            ''
+        ).trim();
+        const lastName = String(
+            (rawRecord.last_name as string | undefined) ??
+            (rawRecord.lastName as string | undefined) ??
+            ''
+        ).trim();
+        const combinedName = `${firstName} ${lastName}`.trim();
+        const fullName = combinedName || String(
+            (rawRecord.full_name as string | undefined) ??
+            (rawRecord.fullName as string | undefined) ??
+            ''
+        ).trim();
+        const dobValue =
+            (rawRecord.dob as string | null | undefined) ??
+            (rawRecord.date_of_birth as string | null | undefined) ??
+            (rawRecord.dateOfBirth as string | null | undefined) ??
+            null;
+        const dobDate = dobValue ? new Date(dobValue) : null;
+        const ageFromBackendRaw = rawRecord.age as number | string | null | undefined;
+        const ageFromBackend =
+            typeof ageFromBackendRaw === 'number'
+                ? ageFromBackendRaw
+                : typeof ageFromBackendRaw === 'string'
+                    ? Number(ageFromBackendRaw)
+                    : NaN;
+        const computedAge =
+            dobDate && !Number.isNaN(dobDate.getTime())
+                ? Math.max(0, new Date().getFullYear() - dobDate.getFullYear())
+                : 0;
+        const age = Number.isFinite(ageFromBackend) && ageFromBackend >= 0
+            ? Math.floor(ageFromBackend)
+            : computedAge;
+        const parsedId = Number(record.id);
+        const patientNumber = Number.isFinite(parsedId) && parsedId > 0 ? parsedId : fallbackNumber;
+
+        return {
+            id: `patient-${record.id}`,
+            patientNumber,
+            name: fullName,
+            nic: String(record.nic ?? 'N/A'),
+            time: 'N/A',
+            reason: 'General',
+            age,
+            gender: record.gender === 'female' ? 'Female' : record.gender === 'other' ? 'Other' : 'Male',
+            profileId: record.nic ? getProfileIdByNicOrName(record.nic, fullName) : undefined,
+            allergies: record.allergies ?? [],
+        };
+    };
+
+    const lookupPatientByNic = async (nic: string) => {
+        const normalized = nic.trim();
+        if (!normalized) return null;
+
+        const firstPage = await patientsApi.list(1, 20);
+        const firstMatch = firstPage.data.find((entry) => String(entry.nic ?? '').trim() === normalized);
+        if (firstMatch) return firstMatch;
+
+        const total = firstPage.meta?.total ?? firstPage.data.length;
+        const totalPages = Math.max(1, Math.ceil(total / 20));
+        for (let page = 2; page <= totalPages; page += 1) {
+            const pageData = await patientsApi.list(page, 20);
+            const matched = pageData.data.find((entry) => String(entry.nic ?? '').trim() === normalized);
+            if (matched) {
+                return matched;
+            }
+        }
+        return null;
+    };
+
+    const handleNicEnterLookup = async () => {
+        const nic = nicNumber.trim();
+        const nicError = getNicValidationError(nic);
+        if (nicError) {
+            setFieldErrors((prev) => ({ ...prev, nicNumber: nicError }));
+            return;
+        }
+        try {
+            const matchedRecord = await lookupPatientByNic(nic);
+            if (!matchedRecord) {
+                clearSelectedPatientContext();
+                setShowNewPatientForm(true);
+                setNicLookupMessage('There are no user under that NIC.');
+                return;
+            }
+
+            const detailedRecord = await patientsApi.findById(matchedRecord.id);
+            const mapped = mapPatientRecordToPatient(detailedRecord, allPatients.length + 1);
+            setAllPatients((prev) => {
+                const index = prev.findIndex((entry) => entry.id === mapped.id);
+                if (index === -1) {
+                    return [...prev, mapped];
+                }
+                const next = [...prev];
+                next[index] = mapped;
+                return next;
+            });
+            applyPatientSelection(mapped);
+            setShowNewPatientForm(false);
+            setNicLookupMessage(null);
+            resetNewPatientForm();
+            setSaveError(null);
+        } catch (error) {
+            setSaveError(error instanceof Error ? error.message : 'Failed to lookup patient.');
+        }
+    };
+
+    useEffect(() => {
+        const nic = nicNumber.trim();
+        const matchedPatient = allPatients.find((patient) => String(patient.nic ?? '').trim() === nic);
+        if (!matchedPatient) {
+            if (selectedPatient) {
+                clearSelectedPatientContext();
+            }
+            return;
+        }
+
+        if (selectedPatient?.id !== matchedPatient.id) {
+            applyPatientSelection(matchedPatient);
+            setShowNewPatientForm(false);
+            setNicLookupMessage(null);
+            resetNewPatientForm();
+        }
+    }, [allPatients, nicNumber, selectedPatient]);
+
     const nextPatientNumber = useMemo(
         () => Math.max(0, ...allPatients.map((patient) => patient.patientNumber || 0)) + 1,
         [allPatients]
     );
     const displayedPatientNumber = currentPatientNumber ?? nextPatientNumber;
+
+    const toAgeFromDob = (dobText: string) => {
+        const dob = new Date(dobText);
+        if (Number.isNaN(dob.getTime())) return '';
+        return String(Math.max(0, new Date().getFullYear() - dob.getFullYear()));
+    };
 
     const toDobFromAge = (ageText: string) => {
         const age = Number(ageText);
@@ -720,14 +938,38 @@ export default function DoctorSection() {
     };
 
     const handleSaveAndPrint = async () => {
-        const fullName = patientName.trim();
+        const fullName = showNewPatientForm
+            ? `${newPatientFirstName.trim()} ${newPatientLastName.trim()}`.trim()
+            : patientName.trim();
+        const ageText = showNewPatientForm ? toAgeFromDob(newPatientDob) : patientAge.trim();
         const formValidation = doctorFormSchema.safeParse({
             nicNumber: nicNumber.trim(),
             patientName: fullName,
-            patientAge: patientAge.trim(),
+            patientAge: ageText,
             selectedDiseases,
         });
         const validationErrors: Record<string, string> = {};
+        if (showNewPatientForm) {
+            const newPatientValidation = newPatientFormSchema.safeParse({
+                firstName: newPatientFirstName,
+                lastName: newPatientLastName,
+                dob: newPatientDob,
+                phone: newPatientPhone,
+                address: newPatientAddress,
+                gender,
+                bloodGroup: newPatientBloodGroup || undefined,
+            });
+            if (!newPatientValidation.success) {
+                for (const issue of newPatientValidation.error.issues) {
+                    const key = String(issue.path[0] ?? 'newPatient');
+                    if (key === 'firstName') validationErrors.newPatientFirstName = issue.message;
+                    if (key === 'lastName') validationErrors.newPatientLastName = issue.message;
+                    if (key === 'dob') validationErrors.newPatientDob = issue.message;
+                    if (key === 'phone') validationErrors.newPatientPhone = issue.message;
+                    if (key === 'address') validationErrors.newPatientAddress = issue.message;
+                }
+            }
+        }
         if (!formValidation.success) {
             for (const issue of formValidation.error.issues) {
                 const key = String(issue.path[0] ?? 'form');
@@ -751,9 +993,11 @@ export default function DoctorSection() {
         const payload = {
             full_name: fullName,
             nic: nicNumber.trim() || undefined,
-            gender: (gender === 'Male' ? 'male' : 'female') as 'male' | 'female',
-            dob: toDobFromAge(patientAge),
-            address: doctorNotes.trim() || undefined,
+            gender: (gender === 'Male' ? 'male' : gender === 'Female' ? 'female' : 'other') as 'male' | 'female' | 'other',
+            dob: showNewPatientForm ? newPatientDob : toDobFromAge(patientAge),
+            phone: showNewPatientForm ? newPatientPhone.trim() || undefined : undefined,
+            address: showNewPatientForm ? newPatientAddress.trim() || undefined : doctorNotes.trim() || undefined,
+            blood_group: showNewPatientForm ? newPatientBloodGroup || undefined : undefined,
         };
 
         setIsSaving(true);
@@ -795,10 +1039,10 @@ export default function DoctorSection() {
     };
 
     return (
-        <section id="doctor" className="flex min-h-screen items-start justify-center px-4 py-8 text-slate-900">
-            <div className="w-full flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+        <section id="doctor" className="flex w-full min-h-screen items-start justify-center overflow-x-hidden px-4 py-8 text-slate-900">
+            <div className="w-full flex-1 overflow-x-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
                 <div>
-                    <div className="relative flex flex-1 flex-col px-6 pb-20 pt-6 lg:px-10">
+                    <div className="relative flex flex-1 flex-col px-6 pb-6 pt-6">
                         {loadError ? (
                             <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
                                 {loadError}
@@ -808,7 +1052,7 @@ export default function DoctorSection() {
                             {/* Two-column layout: LEFT = detailed sheet, RIGHT = search/list */}
                             <div className="grid w-full grid-cols-12 gap-6">
                                 {/* RIGHT: Search + standalone patient suggestion box */}
-                                <div className="order-2 col-span-12 flex flex-col gap-4 pl-1 pr-1 lg:order-2 lg:col-span-3">
+                                <div className="order-2 col-span-12 flex flex-col gap-4 lg:order-2 lg:col-span-3">
                                     <Card className="flex min-h-0 flex-col p-5">
                                         <SectionTitle title="Search Patients" sub="Name / NIC" />
                                         <div className="relative mt-4 rounded-2xl bg-slate-50/70 p-4 ring-1 ring-white/60">
@@ -870,7 +1114,7 @@ export default function DoctorSection() {
                                                     className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
                                                 >
                                                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{vital.label}</p>
-                                                    <p className="mt-1 text-xl font-bold text-slate-900">{vital.value}</p>
+                                                    <p className="mt-1 text-xl font-bold text-slate-900">{vital.value ?? 'N/A'}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -885,23 +1129,29 @@ export default function DoctorSection() {
                                         </div>
 
                                         <div className="space-y-3">
-                                            {patientAllergies.map((allergy) => (
-                                                <div
-                                                    key={allergy.name}
-                                                    className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-white/70 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
-                                                >
-                                                    <div>
-                                                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Allergy</p>
-                                                        <p className="text-base font-semibold text-slate-900">{allergy.name}</p>
-                                                    </div>
-                                                    <span
-                                                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${allergy.pill}`}
-                                                    >
-                                                        <span className={`size-2 rounded-full ${allergy.dot}`} />
-                                                        {allergy.severity}
-                                                    </span>
+                                            {patientAllergies.length === 0 ? (
+                                                <div className="rounded-2xl bg-white/90 px-4 py-3 text-sm font-semibold text-slate-500 ring-1 ring-white/70 shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
+                                                    No allergies for this patient.
                                                 </div>
-                                            ))}
+                                            ) : (
+                                                patientAllergies.map((allergy, index) => (
+                                                    <div
+                                                        key={`${allergy.name}-${allergy.severity}-${index}`}
+                                                        className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-white/70 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                                                    >
+                                                        <div>
+                                                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Allergy</p>
+                                                            <p className="text-base font-semibold text-slate-900">{allergy.name}</p>
+                                                        </div>
+                                                        <span
+                                                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${allergy.pill}`}
+                                                        >
+                                                            <span className={`size-2 rounded-full ${allergy.dot}`} />
+                                                            {allergy.severity}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
 
                                     </Card>
@@ -926,7 +1176,7 @@ export default function DoctorSection() {
                                 </div>
 
                                 {/* LEFT: Full detailed sheet */}
-                                <div className="order-1 col-span-12 flex flex-col gap-4 pr-0 lg:order-1 lg:col-span-9 lg:pr-4">
+                                <div className="order-1 col-span-12 flex flex-col gap-4 lg:order-1 lg:col-span-9">
                                     <div className="flex flex-col gap-6 rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
                                         {/* Patient quick info */}
                                         <div className="space-y-3">
@@ -941,26 +1191,32 @@ export default function DoctorSection() {
                                                         value={nicNumber}
                                                         onChange={(event) => {
                                                             setCurrentPatientNumber(null);
-                                                            const nextNic = event.target.value.replace(/\D/g, '').slice(0, 15);
+                                                            const nextNic = event.target.value;
                                                             setNicNumber(nextNic);
                                                             setFieldErrors((prev) => {
                                                                 const next = { ...prev };
-                                                                if (!nextNic) {
+                                                                const nicErrorMessage = getNicValidationError(nextNic);
+                                                                if (!nicErrorMessage) {
                                                                     delete next.nicNumber;
-                                                                } else if (nextNic.length < 10) {
-                                                                    next.nicNumber = 'NIC must be at least 10 digits';
-                                                                } else if (nextNic.length > 15) {
-                                                                    next.nicNumber = 'NIC must be at most 15 digits';
                                                                 } else {
-                                                                    delete next.nicNumber;
+                                                                    next.nicNumber = nicErrorMessage;
                                                                 }
                                                                 return next;
                                                             });
+                                                        }}
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === 'Enter') {
+                                                                event.preventDefault();
+                                                                void handleNicEnterLookup();
+                                                            }
                                                         }}
                                                     />
                                                     <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.nicNumber ? 'text-rose-600' : 'invisible'}`}>
                                                         {fieldErrors.nicNumber ?? 'placeholder'}
                                                     </p>
+                                                    {nicLookupMessage ? (
+                                                        <p className="mt-1 text-xs font-semibold text-amber-700">{nicLookupMessage}</p>
+                                                    ) : null}
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
@@ -989,60 +1245,142 @@ export default function DoctorSection() {
                                                     >
                                                         Female
                                                     </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setGender('Other')}
+                                                        className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider transition ${gender === 'Other'
+                                                            ? 'bg-violet-600 text-white shadow-md'
+                                                            : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-violet-50'
+                                                            }`}
+                                                    >
+                                                        Other
+                                                    </button>
                                                 </div>
 
                                                 <div className="flex-1" />
                                                 <img src="/assets/brand-logo.png" alt="Brand Logo" className="h-10 w-auto object-contain opacity-90" />
                                             </div>
 
-                                            <div className="flex items-start gap-4">
+                                            {showNewPatientForm ? (
+                                                <div className="grid grid-cols-1 gap-3 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/60 to-cyan-50/40 p-4 md:grid-cols-2">
+                                                    <div>
+                                                        <input
+                                                            className={`w-full rounded-2xl border bg-white px-4 py-2.5 text-base font-medium text-slate-900 placeholder-slate-400 outline-none transition ${fieldErrors.newPatientFirstName ? 'border-rose-400' : 'border-slate-200 focus:border-sky-400'}`}
+                                                            placeholder="First Name"
+                                                            value={newPatientFirstName}
+                                                            onChange={(e) => setNewPatientFirstName(e.target.value.replace(/[^A-Za-z ]/g, ''))}
+                                                        />
+                                                        {fieldErrors.newPatientFirstName ? <p className="mt-1 text-xs font-semibold text-rose-600">{fieldErrors.newPatientFirstName}</p> : null}
+                                                    </div>
+                                                    <div>
+                                                        <input
+                                                            className={`w-full rounded-2xl border bg-white px-4 py-2.5 text-base font-medium text-slate-900 placeholder-slate-400 outline-none transition ${fieldErrors.newPatientLastName ? 'border-rose-400' : 'border-slate-200 focus:border-cyan-400'}`}
+                                                            placeholder="Last Name"
+                                                            value={newPatientLastName}
+                                                            onChange={(e) => setNewPatientLastName(e.target.value.replace(/[^A-Za-z ]/g, ''))}
+                                                        />
+                                                        {fieldErrors.newPatientLastName ? <p className="mt-1 text-xs font-semibold text-rose-600">{fieldErrors.newPatientLastName}</p> : null}
+                                                    </div>
+                                                    <div>
+                                                        <input
+                                                            type="date"
+                                                            className={`w-full rounded-2xl border bg-white px-4 py-2.5 text-base font-medium text-slate-900 outline-none transition ${fieldErrors.newPatientDob ? 'border-rose-400' : 'border-slate-200 focus:border-violet-400'}`}
+                                                            value={newPatientDob}
+                                                            onChange={(e) => setNewPatientDob(e.target.value)}
+                                                        />
+                                                        {fieldErrors.newPatientDob ? <p className="mt-1 text-xs font-semibold text-rose-600">{fieldErrors.newPatientDob}</p> : null}
+                                                    </div>
+                                                    <div>
+                                                        <input
+                                                            className={`w-full rounded-2xl border bg-white px-4 py-2.5 text-base font-medium text-slate-900 placeholder-slate-400 outline-none transition ${fieldErrors.newPatientPhone ? 'border-rose-400' : 'border-slate-200 focus:border-teal-400'}`}
+                                                            placeholder="Phone"
+                                                            value={newPatientPhone}
+                                                            onChange={(e) => setNewPatientPhone(e.target.value)}
+                                                        />
+                                                        {fieldErrors.newPatientPhone ? <p className="mt-1 text-xs font-semibold text-rose-600">{fieldErrors.newPatientPhone}</p> : null}
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <input
+                                                            className={`w-full rounded-2xl border bg-white px-4 py-2.5 text-base font-medium text-slate-900 placeholder-slate-400 outline-none transition ${fieldErrors.newPatientAddress ? 'border-rose-400' : 'border-slate-200 focus:border-emerald-400'}`}
+                                                            placeholder="Address"
+                                                            value={newPatientAddress}
+                                                            onChange={(e) => setNewPatientAddress(e.target.value)}
+                                                        />
+                                                        {fieldErrors.newPatientAddress ? <p className="mt-1 text-xs font-semibold text-rose-600">{fieldErrors.newPatientAddress}</p> : null}
+                                                    </div>
+                                                    <div>
+                                                        <select
+                                                            className={`w-full rounded-2xl border bg-white px-4 py-2.5 text-base font-medium outline-none transition focus:border-indigo-400 ${newPatientBloodGroup ? 'text-slate-900 border-slate-200' : 'text-slate-400 border-slate-200'}`}
+                                                            value={newPatientBloodGroup}
+                                                            onChange={(e) => setNewPatientBloodGroup(e.target.value)}
+                                                        >
+                                                            <option value="" disabled hidden>
+                                                                Blood Group (Optional)
+                                                            </option>
+                                                            <option value="A+">A+</option>
+                                                            <option value="A-">A-</option>
+                                                            <option value="B+">B+</option>
+                                                            <option value="B-">B-</option>
+                                                            <option value="AB+">AB+</option>
+                                                            <option value="AB-">AB-</option>
+                                                            <option value="O+">O+</option>
+                                                            <option value="O-">O-</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex items-center text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                                                        Patient No: <span className="ml-2 text-slate-900">{displayedPatientNumber}</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-start gap-4">
                                                 <div className="flex-1">
                                                     <input
-                                                        className={`w-full rounded-xl border bg-slate-50/50 px-4 py-2 text-lg font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 transition focus:bg-white focus:ring-2 ${fieldErrors.patientName
+                                                        className={`w-full rounded-xl border bg-slate-50/50 px-4 py-2 text-base font-medium text-slate-900 placeholder-slate-300 outline-none ring-1 transition focus:bg-white focus:ring-2 ${fieldErrors.patientName
                                                             ? 'border-rose-400 ring-rose-200 focus:ring-rose-100'
                                                             : 'border-transparent ring-slate-200/50 focus:ring-sky-100'
                                                             }`}
-                                                        placeholder="Patient Name"
-                                                        value={patientName ?? ''}
-                                                        onChange={(e) => {
-                                                            setCurrentPatientNumber(null);
-                                                            setPatientName(e.target.value.replace(/[^A-Za-z ]/g, '').replace(/\s{2,}/g, ' '));
-                                                            setFieldErrors((prev) => {
-                                                                const next = { ...prev };
-                                                                delete next.patientName;
-                                                                return next;
-                                                            });
-                                                        }}
-                                                    />
-                                                    <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.patientName ? 'text-rose-600' : 'invisible'}`}>
-                                                        {fieldErrors.patientName ?? 'placeholder'}
-                                                    </p>
-                                                </div>
+                                                            placeholder="Patient Name"
+                                                            value={patientName ?? ''}
+                                                            onChange={(e) => {
+                                                                setCurrentPatientNumber(null);
+                                                                setPatientName(e.target.value.replace(/[^A-Za-z ]/g, '').replace(/\s{2,}/g, ' '));
+                                                                setFieldErrors((prev) => {
+                                                                    const next = { ...prev };
+                                                                    delete next.patientName;
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        />
+                                                        <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.patientName ? 'text-rose-600' : 'invisible'}`}>
+                                                            {fieldErrors.patientName ?? 'placeholder'}
+                                                        </p>
+                                                    </div>
                                                 <div className="w-20">
                                                     <input
-                                                        className={`w-full rounded-xl border bg-slate-50/50 px-3 py-2 text-center text-lg font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 transition focus:bg-white focus:ring-2 ${fieldErrors.patientAge
+                                                        className={`w-full rounded-xl border bg-slate-50/50 px-3 py-2 text-center text-base font-medium text-slate-900 placeholder-slate-300 outline-none ring-1 transition focus:bg-white focus:ring-2 ${fieldErrors.patientAge
                                                             ? 'border-rose-400 ring-rose-200 focus:ring-rose-100'
                                                             : 'border-transparent ring-slate-200/50 focus:ring-sky-100'
                                                             }`}
-                                                        placeholder="Age"
-                                                        value={patientAge ?? ''}
-                                                        onChange={(e) => {
-                                                            setPatientAge(e.target.value.replace(/[^0-9]/g, '').slice(0, 3));
-                                                            setFieldErrors((prev) => {
-                                                                const next = { ...prev };
-                                                                delete next.patientAge;
-                                                                return next;
-                                                            });
-                                                        }}
-                                                    />
-                                                    <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.patientAge ? 'text-rose-600' : 'invisible'}`}>
-                                                        {fieldErrors.patientAge ?? 'placeholder'}
-                                                    </p>
+                                                            placeholder="Age"
+                                                            value={patientAge ?? ''}
+                                                            onChange={(e) => {
+                                                                setPatientAge(e.target.value.replace(/[^0-9]/g, '').slice(0, 3));
+                                                                setFieldErrors((prev) => {
+                                                                    const next = { ...prev };
+                                                                    delete next.patientAge;
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        />
+                                                        <p className={`mt-1 min-h-4 text-xs font-semibold ${fieldErrors.patientAge ? 'text-rose-600' : 'invisible'}`}>
+                                                            {fieldErrors.patientAge ?? 'placeholder'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="pl-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                                                        Patient No: <span className="text-slate-900">{displayedPatientNumber}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="pl-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-                                                    Patient No: <span className="text-slate-900">{displayedPatientNumber}</span>
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
 
                                         <div className="h-px w-full bg-slate-100" />
