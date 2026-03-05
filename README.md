@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Medsys Frontend
 
-## Getting Started
+Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with iOS-style UI and server-side session authentication.
 
-First, run the development server:
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript (strict)
+- Tailwind CSS 4
+
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quality Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm run test
+```
 
-## Learn More
+`test` currently runs lint + strict typecheck as the baseline CI gate.
 
-To learn more about Next.js, take a look at the following resources:
+## Authentication Model
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Session cookie: `medsys_session` (httpOnly, sameSite=lax, secure in production)
+- Login endpoint: `POST /api/auth/login`
+- Logout endpoint: `POST /api/auth/logout`
+- Current session: `GET /api/auth/me`
+- Bootstrap status: `GET /api/auth/status`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+First-time setup:
+- If there are no users, the first owner is created through `POST /api/auth/register` with role `owner`.
+- Login page supports this bootstrap flow automatically.
 
-## Deploy on Vercel
+## Authorization Rules
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `owner` only:
+  - `GET/POST /api/users`
+  - `DELETE /api/patients/[id]`
+  - `/owner` page
+- authenticated (`owner|doctor|assistant`):
+  - patient list/details/history APIs
+  - `/patient`, `/analytics`, `/inventory`, `/ai`
+- authenticated (`owner|doctor`):
+  - `/` doctor workspace
+- authenticated (`owner|assistant`):
+  - `/assistant`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Important Paths
+
+- API auth and guards:
+  - `app/lib/session.ts`
+  - `app/lib/api-auth.ts`
+  - `app/lib/page-auth.ts`
+- API client:
+  - `app/lib/api-client.ts`
+- Validation:
+  - `app/utils/schema-validation/doctor-section.schema.ts`
+- Feature sections:
+  - `app/sections/DoctorSection.tsx`
+  - `app/sections/AssistantSection.tsx`
+  - `app/sections/OwnerSection.tsx`
+  - `app/sections/PatientSection.tsx`
+
+## Notes
+
+- ICD-10 suggestion requests are proxied through `GET /api/clinical/icd10` (server-side), not called directly from browser to third-party.
+- One lint warning remains in `DoctorSection` for `<img>` usage (`next/image` recommendation).

@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createPatient, listPatients } from "@/app/lib/store";
+import { requireRole } from "@/app/lib/api-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
   const patients = listPatients().map((patient) => ({
     id: patient.id,
     name: patient.name,
@@ -14,7 +20,12 @@ export async function GET() {
   return NextResponse.json({ patients });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
   const body = await request.json();
   const { name, dateOfBirth, phone, address } = body ?? {};
 

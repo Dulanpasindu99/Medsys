@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   createPatientHistory,
   findPatientById,
   findUserById,
   listPatientHistory,
 } from "@/app/lib/store";
+import { requireRole } from "@/app/lib/api-auth";
 
 function parseId(idParam: string) {
   const id = Number(idParam);
@@ -12,10 +13,15 @@ function parseId(idParam: string) {
 }
 
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
+  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { id: idParam } = await params;
   const id = parseId(idParam);
   if (!id) {
     return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
@@ -37,17 +43,22 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
+  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { id: idParam } = await params;
   const id = parseId(idParam);
   if (!id) {
     return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
   }
 
   const body = await request.json();
-  const { note, createdByUserId } = body ?? {};
+  const { note } = body ?? {};
 
   if (!note) {
     return NextResponse.json({ error: "History note is required." }, { status: 400 });
@@ -58,23 +69,21 @@ export async function POST(
     return NextResponse.json({ error: "Patient not found." }, { status: 404 });
   }
 
-  if (createdByUserId) {
-    const user = findUserById(Number(createdByUserId));
-    if (!user) {
-      return NextResponse.json({ error: "Created by user not found." }, { status: 404 });
-    }
+  const user = findUserById(auth.session!.userId);
+  if (!user) {
+    return NextResponse.json({ error: "Session user not found." }, { status: 404 });
   }
 
   const created = createPatientHistory({
     patientId: id,
     note,
-    createdByUserId: createdByUserId ?? null,
+    createdByUserId: auth.session!.userId,
   });
 
   return NextResponse.json({
     id: created.id,
     patientId: id,
     note,
-    createdByUserId: createdByUserId ?? null,
+    createdByUserId: auth.session!.userId,
   });
 }

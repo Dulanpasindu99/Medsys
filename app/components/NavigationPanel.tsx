@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
-export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
+export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
 
 const iconProps = {
   viewBox: '0 0 24 24',
@@ -113,8 +113,8 @@ export default function NavigationPanel({
 }: {
   className?: string;
 }) {
-  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const doctorName = 'Dr. Charuka Gamage';
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
@@ -125,14 +125,15 @@ export default function NavigationPanel({
     return pathname.startsWith(item.href);
   })?.id || 'doctor';
 
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    router.push('/login');
+    router.refresh();
+  };
+
   const [indicatorOffset, setIndicatorOffset] = useState(0);
 
-  // Only render portal on client-side to avoid hydration mismatch
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const updateIndicator = () => {
+  const updateIndicator = useCallback(() => {
     const list = navListRef.current;
     if (!list) return;
 
@@ -150,7 +151,7 @@ export default function NavigationPanel({
       linkRect.top - listRect.top + (linkRect.height - indicatorHeight) / 2;
 
     setIndicatorOffset(centeredOffset);
-  };
+  }, [activeId]);
 
   useLayoutEffect(() => {
     // Initial calculation
@@ -176,7 +177,7 @@ export default function NavigationPanel({
       observer.disconnect();
       clearTimeout(timeoutId);
     };
-  }, [activeId]);
+  }, [updateIndicator]);
 
   const doctorInitials = doctorName
     .split(' ')
@@ -254,6 +255,7 @@ export default function NavigationPanel({
         <button
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
           aria-label="Logout"
+          onClick={handleLogout}
         >
           <LogoutIcon className="size-5" />
           <span
@@ -266,6 +268,7 @@ export default function NavigationPanel({
     </aside>
   );
 
-  if (!isMounted) return null;
+  if (pathname === '/login') return null;
+  if (typeof document === 'undefined') return null;
   return createPortal(content, document.body);
 }

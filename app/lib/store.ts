@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-type Role = "owner" | "doctor" | "assistant";
+export type Role = "owner" | "doctor" | "assistant";
 
 type User = {
   id: number;
@@ -102,7 +102,6 @@ function saveData(store: Store) {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __medsysStore: Store | undefined;
 }
 

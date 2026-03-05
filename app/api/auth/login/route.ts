@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { findUserByEmail } from "@/app/lib/store";
 import { verifyPassword } from "@/app/lib/auth";
+import { attachSessionCookie } from "@/app/lib/session";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const body = await request.json();
   const { email, password } = body ?? {};
 
@@ -16,10 +17,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
   });
+
+  attachSessionCookie(response, {
+    userId: user.id,
+    role: user.role,
+    email: user.email,
+    name: user.name,
+  });
+
+  return response;
 }

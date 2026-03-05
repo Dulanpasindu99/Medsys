@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   deletePatient,
   findPatientById,
@@ -6,6 +6,7 @@ import {
   listPatientHistory,
   updatePatient,
 } from "@/app/lib/store";
+import { requireRole } from "@/app/lib/api-auth";
 
 function parseId(idParam: string) {
   const id = Number(idParam);
@@ -13,10 +14,15 @@ function parseId(idParam: string) {
 }
 
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
+  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { id: idParam } = await params;
   const id = parseId(idParam);
   if (!id) {
     return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
@@ -54,10 +60,15 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
+  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { id: idParam } = await params;
   const id = parseId(idParam);
   if (!id) {
     return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
@@ -95,10 +106,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
+  const auth = requireRole(request, ["owner"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { id: idParam } = await params;
   const id = parseId(idParam);
   if (!id) {
     return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });

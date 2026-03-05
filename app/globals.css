@@ -91,7 +91,7 @@ body {
 }
 
 .ios-button-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 py-3 text-sm font-semibold text-white transition-all duration-200 ease-out;
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-200 ease-out;
   box-shadow: 0 14px 32px rgba(10, 132, 255, 0.32);
 }
 

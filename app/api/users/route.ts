@@ -1,12 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createUser, findUserByEmail, listUsers } from "@/app/lib/store";
 import { hashPassword } from "@/app/lib/auth";
+import { requireRole } from "@/app/lib/api-auth";
 
 const ALLOWED_ROLES = ["owner", "doctor", "assistant"] as const;
 
 type Role = (typeof ALLOWED_ROLES)[number];
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, ["owner"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role");
 
@@ -25,7 +31,12 @@ export async function GET(request: Request) {
   return NextResponse.json({ users });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = requireRole(request, ["owner"]);
+  if (auth.error) {
+    return auth.error;
+  }
+
   const body = await request.json();
   const { name, email, password, role } = body ?? {};
 

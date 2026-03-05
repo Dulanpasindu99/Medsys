@@ -1,9 +1,9 @@
-'use client';
-
-import React from 'react';
 import AnalyticsSection from '../sections/AnalyticsSection';
+import { requirePageSession } from '../lib/page-auth';
 
-export default function AnalyticsPage() {
+export default async function AnalyticsPage() {
+    await requirePageSession(['owner', 'doctor', 'assistant']);
+
     return (
         <div className="h-full w-full">
             <div className="page-width mx-auto">

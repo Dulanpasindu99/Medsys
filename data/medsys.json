@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "createdAt": "2026-03-05T12:25:33.115Z",
+      "name": "owner1",
+      "email": "owner1@medsys.local",
+      "passwordHash": "d58e5a068f4a450e0dbdba3f39e24b24:2ad5d08bf687ef655b02e6023523504340185112a5718ac9a286d67749974f2c25b6afd876ae371312dc03d109c0d1407ab556808d6677977e4b20d02a2d2380",
+      "role": "owner"
+    }
+  ],
+  "patients": [],
+  "history": [],
+  "counters": {
+    "users": 1,
+    "patients": 0,
+    "history": 0
+  }
+}
