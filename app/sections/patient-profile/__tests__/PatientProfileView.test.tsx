@@ -1,8 +1,7 @@
-/**
- * Patient profile feature test scaffold.
- * Suggested scenarios:
- * 1. Unknown profile id renders not-found state.
- * 2. Timeline entries are sorted descending by date.
- * 3. Family and allergy cards render fallback labels when empty.
- */
-export {};
+import { describe, it } from "vitest";
+
+describe("PatientProfileView", () => {
+  it.todo("renders a not-found state for an unknown profile id");
+  it.todo("sorts timeline entries in descending date order");
+  it.todo("renders fallback labels for empty family and allergy data");
+});

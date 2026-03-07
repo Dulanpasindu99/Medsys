@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -108,6 +108,11 @@ export const navigationItems: NavigationItem[] = [
 
 const NAV_TOOLTIP = 'shadow-[0_12px_24px_rgba(10,132,255,0.18)]';
 const NAV_ROSE_TOOLTIP = 'shadow-[0_12px_24px_rgba(244,63,94,0.25)]';
+const subscribe = () => () => {};
+
+function useIsHydrated() {
+  return useSyncExternalStore(subscribe, () => true, () => false);
+}
 
 export default function NavigationPanel({
   className = '',
@@ -119,6 +124,7 @@ export default function NavigationPanel({
   const doctorName = 'Dr. Charuka Gamage';
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
+  const mounted = useIsHydrated();
 
   // Determine active ID based on pathname
   const activeId = navigationItems.find(item => {
@@ -269,7 +275,6 @@ export default function NavigationPanel({
     </aside>
   );
 
-  if (pathname === '/login') return null;
-  if (typeof document === 'undefined') return null;
+  if (pathname === '/login' || !mounted) return null;
   return createPortal(content, document.body);
 }

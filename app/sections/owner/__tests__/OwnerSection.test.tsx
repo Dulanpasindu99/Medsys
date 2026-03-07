@@ -1,8 +1,7 @@
-/**
- * Owner access test scaffold.
- * Suggested scenarios:
- * 1. Role presets update permission selections.
- * 2. Create action appends a new staff record.
- * 3. Remove action deletes the selected staff record.
- */
-export {};
+import { describe, it } from "vitest";
+
+describe("OwnerSection", () => {
+  it.todo("updates permission selections from role presets");
+  it.todo("appends a new staff record on create");
+  it.todo("removes the selected staff record");
+});

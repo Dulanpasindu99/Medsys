@@ -1,8 +1,7 @@
-/**
- * Doctor feature test scaffold.
- * Suggested scenarios:
- * 1. Search selection opens patient profile modal.
- * 2. ICD suggestions can be added and removed.
- * 3. RX rows can be created, edited, and cleared.
- */
-export {};
+import { describe, it } from "vitest";
+
+describe("DoctorSection", () => {
+  it.todo("opens the patient profile modal from search selection");
+  it.todo("adds and removes ICD suggestions");
+  it.todo("creates, edits, and clears RX rows");
+});

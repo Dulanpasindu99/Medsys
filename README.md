@@ -44,10 +44,11 @@ This avoids CORS issues during local development when backend CORS is not enable
 ```bash
 npm run lint
 npm run typecheck
+npm run test:unit
 npm run test
 ```
 
-`test` currently runs lint + strict typecheck as the baseline CI gate.
+`test` runs lint + strict typecheck + unit/component tests.
 
 ## Authentication Model
 

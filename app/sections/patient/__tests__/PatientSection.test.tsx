@@ -1,8 +1,7 @@
-/**
- * Patient directory test scaffold.
- * Suggested scenarios:
- * 1. Filter chips narrow visible patient cards.
- * 2. Search text matches by name and NIC.
- * 3. View Profile triggers modal with the correct profile id.
- */
-export {};
+import { describe, it } from "vitest";
+
+describe("PatientSection", () => {
+  it.todo("narrows visible patient cards with filter chips");
+  it.todo("matches search text by patient name and NIC");
+  it.todo("opens the correct profile from the directory");
+});

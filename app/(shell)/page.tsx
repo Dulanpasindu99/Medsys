@@ -1,4 +1,4 @@
-import DoctorSection from './sections/DoctorSection';
+import DoctorSection from '../sections/DoctorSection';
 
 export default async function Home() {
   return (
@@ -9,4 +9,3 @@ export default async function Home() {
     </div>
   );
 }
-
