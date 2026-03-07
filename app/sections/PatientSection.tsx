@@ -21,6 +21,7 @@ export default function PatientSection() {
         patients,
         filteredPatients,
         families,
+        syncError,
     } = usePatientDirectory();
     const popup = usePatientProfilePopup();
 
@@ -28,6 +29,11 @@ export default function PatientSection() {
         <div id="patients" className="px-4 py-8 md:px-8">
             <div className="mx-auto flex flex-col gap-6">
                 <PatientHeader />
+                {syncError ? (
+                    <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
+                        {syncError}
+                    </p>
+                ) : null}
 
                 <SectionShell>
                     <PatientFilters
@@ -60,7 +66,11 @@ export default function PatientSection() {
 
                     <div className="mt-5 space-y-4">
                         {filteredPatients.map((patient) => (
-                            <PatientRecordCard key={patient.id} patient={patient} onViewProfile={popup.openProfile} />
+                            <PatientRecordCard
+                                key={patient.patientId ?? `${patient.nic}-${patient.name}`}
+                                patient={patient}
+                                onViewProfile={popup.openProfile}
+                            />
                         ))}
                     </div>
                 </SectionShell>

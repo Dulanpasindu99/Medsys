@@ -4,6 +4,7 @@ import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { logoutUser } from '../lib/api-client';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
 
@@ -126,7 +127,7 @@ export default function NavigationPanel({
   })?.id || 'doctor';
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    await logoutUser();
     router.push('/login');
     router.refresh();
   };

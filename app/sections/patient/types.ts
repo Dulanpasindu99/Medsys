@@ -1,7 +1,7 @@
-export type Gender = "Male" | "Female";
+export type Gender = "Male" | "Female" | "Other";
 
 export type Patient = {
-  id: string;
+  patientId?: number;
   name: string;
   nic: string;
   age: number;

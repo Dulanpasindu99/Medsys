@@ -9,7 +9,7 @@ import { AllergyCard } from './components/AllergyCard';
 import { CoverageCard } from './components/CoverageCard';
 
 export function PatientProfileView({ profileId }: { profileId: string }) {
-    const { profile, timeline, totalProfiles, formatDate } = usePatientProfileData(profileId);
+    const { profile, timeline, totalProfiles, formatDate, syncError } = usePatientProfileData(profileId);
 
     if (!profile) {
         return (
@@ -38,6 +38,11 @@ export function PatientProfileView({ profileId }: { profileId: string }) {
             <SurfaceCard className="p-6 md:p-7">
                 <ProfileHeader profile={profile} timelineCount={timeline.length} formatDate={formatDate} />
             </SurfaceCard>
+            {syncError ? (
+                <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
+                    {syncError}
+                </p>
+            ) : null}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                 <SurfaceCard className="p-6 md:p-7">

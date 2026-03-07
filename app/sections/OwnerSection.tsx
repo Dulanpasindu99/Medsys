@@ -23,6 +23,9 @@ export default function OwnerSection() {
         presets,
         togglePermission,
         handleCreate,
+        syncError,
+        isSyncing,
+        refresh,
     } = useOwnerAccess();
 
     return (
@@ -43,11 +46,28 @@ export default function OwnerSection() {
                             >
                                 Back to login
                             </Link>
+                            <button
+                                type="button"
+                                onClick={refresh}
+                                className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:-translate-y-0.5"
+                                disabled={isSyncing}
+                            >
+                                {isSyncing ? 'Refreshing...' : 'Refresh live staff'}
+                            </button>
                             <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-2 font-semibold text-sky-800 ring-1 ring-sky-100">
                                 Owner only
                             </span>
                         </div>
                     </header>
+                    {syncError ? (
+                        <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
+                            {syncError}
+                        </p>
+                    ) : (
+                        <p className="rounded-2xl bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 ring-1 ring-sky-100">
+                            Staff list is synced from audit and appointment activity. Create user adds a local draft until a staff-create API is available.
+                        </p>
+                    )}
 
                     <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                         <OwnerStaffFormCard

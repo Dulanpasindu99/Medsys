@@ -12,7 +12,7 @@ export function PatientRecordCard({ patient, onViewProfile }: PatientRecordCardP
         <div className="flex flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(71,85,105,0.3)]">
-              {patient.id}
+              #{patient.patientId ?? "--"}
               <span className="text-slate-300">|</span>
               {patient.name}
             </div>

@@ -11,6 +11,7 @@ import { useAssistantWorkflow } from './assistant/hooks/useAssistantWorkflow';
 
 export default function AssistantSection() {
     const {
+        pendingPatients,
         activePrescription,
         formState,
         setFormState,
@@ -22,6 +23,7 @@ export default function AssistantSection() {
         addPatient,
         addAllergy,
         markDoneAndNext,
+        syncError,
     } = useAssistantWorkflow();
     const popup = usePatientProfilePopup();
 
@@ -33,6 +35,11 @@ export default function AssistantSection() {
                         <div className="mx-auto flex w-full flex-col gap-6">
                             <div className="flex-1 space-y-6">
                                 <AssistantHeader stats={stats} />
+                                {syncError ? (
+                                    <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
+                                        {syncError}
+                                    </p>
+                                ) : null}
 
                                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_2.2fr_1fr]">
                                     <AssistantPanelShell>
@@ -40,7 +47,11 @@ export default function AssistantSection() {
                                     </AssistantPanelShell>
 
                                     <AssistantPanelShell>
-                                        <AssistantPickupPanel activePrescription={activePrescription} onDoneAndNext={markDoneAndNext} />
+                                        <AssistantPickupPanel
+                                            activePrescription={activePrescription}
+                                            queueCount={pendingPatients.length}
+                                            onDoneAndNext={markDoneAndNext}
+                                        />
                                     </AssistantPanelShell>
 
                                     <AssistantPanelShell>

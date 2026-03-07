@@ -1,14 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  getAuthStatus,
-  loginUser,
-  registerUser,
-  type ApiClientError,
-} from "../lib/api-client";
+import { loginUser, type ApiClientError } from "../lib/api-client";
 import { validateDoctorLoginInput } from "../utils/schema-validation/doctor-section.schema";
 
 const SHADOWS = {
@@ -334,7 +329,6 @@ export default function Login() {
   const [activeSubmission, setActiveSubmission] = useState<
     "owner" | "doctor" | "assistant" | null
   >(null);
-  const [isBootstrapping, setIsBootstrapping] = useState(false);
 
   type ActiveModal = "owner" | "doctor" | "assistant" | null;
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
@@ -357,19 +351,6 @@ export default function Login() {
     assistant: "/assistant",
   } as const;
 
-  useEffect(() => {
-    const loadAuthStatus = async () => {
-      try {
-        const status = await getAuthStatus();
-        setIsBootstrapping(status.bootstrapping);
-      } catch {
-        setIsBootstrapping(false);
-      }
-    };
-
-    loadAuthStatus();
-  }, []);
-
   const handleSignIn = async (
     role: Exclude<ActiveModal, null>,
     email: string,
@@ -384,22 +365,7 @@ export default function Login() {
 
     try {
       setActiveSubmission(role);
-      if (role === "owner" && isBootstrapping) {
-        const ownerName = email.split("@")[0]?.trim() || "Clinic Owner";
-        const created = await registerUser({
-          name: ownerName,
-          email: parsed.value.email,
-          password: parsed.value.password,
-          role: "owner",
-        });
-        setIsBootstrapping(false);
-        setActiveModal(null);
-        router.push(routeByRole[created.role]);
-        router.refresh();
-        return;
-      }
-
-      const user = await loginUser(parsed.value.email, parsed.value.password);
+      const user = await loginUser(parsed.value.email, parsed.value.password, role);
       if (role === "owner" && user.role !== "owner") {
         setRoleError(role, "Owner credentials are required for this panel.");
         return;
@@ -526,12 +492,6 @@ export default function Login() {
                 so owners, doctors, and assistants can land exactly where they
                 need without friction.
               </p>
-              {isBootstrapping ? (
-                <p className="max-w-2xl text-sm font-semibold text-amber-700">
-                  First-time setup: submitting the owner panel will create the
-                  initial owner account.
-                </p>
-              ) : null}
             </div>
 
             <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 ring-1 ring-white/70 shadow-[0_18px_38px_rgba(15,23,42,0.12)]">

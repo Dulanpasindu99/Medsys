@@ -1,7 +1,9 @@
 import type { ClinicalDrug } from "../../data/diagnosisMapping";
 
 export type Patient = {
-  id: string;
+  patientId?: number;
+  appointmentId?: number;
+  doctorId?: number;
   name: string;
   nic: string;
   time: string;

@@ -1,6 +1,6 @@
 # Medsys Frontend
 
-Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with iOS-style UI and server-side session authentication.
+Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with backend-token authentication aligned to `@medsys/api`.
 
 ## Stack
 
@@ -18,6 +18,27 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Backend Integration (Current)
+
+Set these env values in frontend runtime:
+
+```bash
+# frontend -> backend API base
+# default in code is /backend (recommended for local dev via Next rewrites)
+NEXT_PUBLIC_API_BASE_URL=/backend
+
+# optional, defaults to the medsys dev org id
+NEXT_PUBLIC_ORGANIZATION_ID=11111111-1111-1111-1111-111111111111
+
+# server-side rewrite target for /backend/*
+BACKEND_URL=http://localhost:4000
+```
+
+Rewrites are configured in `next.config.ts`:
+- `/backend/:path*` -> `${BACKEND_URL}/:path*`
+
+This avoids CORS issues during local development when backend CORS is not enabled.
+
 ## Quality Commands
 
 ```bash
@@ -30,38 +51,42 @@ npm run test
 
 ## Authentication Model
 
-- Session cookie: `medsys_session` (httpOnly, sameSite=lax, secure in production)
-- Login endpoint: `POST /api/auth/login`
-- Logout endpoint: `POST /api/auth/logout`
-- Current session: `GET /api/auth/me`
-- Bootstrap status: `GET /api/auth/status`
+- Access token + refresh token are stored client-side (`localStorage`).
+- Login endpoint: `POST /v1/auth/login`
+- Refresh endpoint: `POST /v1/auth/refresh`
+- API client auto-attaches:
+  - `Authorization: Bearer <accessToken>`
+  - `Content-Type: application/json`
+  - `x-request-id: <uuid>`
+- On `401`, client automatically attempts one refresh and retries.
 
-First-time setup:
-- If there are no users, the first owner is created through `POST /api/auth/register` with role `owner`.
-- Login page supports this bootstrap flow automatically.
+Primary auth client:
+- `app/lib/api-client.ts`
 
-## Authorization Rules
+## API Scope (frontend mapped)
 
-- `owner` only:
-  - `GET/POST /api/users`
-  - `DELETE /api/patients/[id]`
-  - `/owner` page
-- authenticated (`owner|doctor|assistant`):
-  - patient list/details/history APIs
-  - `/patient`, `/analytics`, `/inventory`, `/ai`
-- authenticated (`owner|doctor`):
-  - `/` doctor workspace
-- authenticated (`owner|assistant`):
-  - `/assistant`
+- Auth:
+  - `/v1/auth/login`
+  - `/v1/auth/refresh`
+- Patients:
+  - `/v1/patients`
+  - `/v1/patients/:id/profile`
+- Appointments:
+  - `/v1/appointments`
+- Encounters:
+  - `/v1/encounters`
+- Prescriptions:
+  - `/v1/prescriptions/queue/pending-dispense`
+  - `/v1/prescriptions/:id/dispense`
 
 ## Important Paths
 
-- API auth and guards:
-  - `app/lib/session.ts`
-  - `app/lib/api-auth.ts`
-  - `app/lib/page-auth.ts`
 - API client:
   - `app/lib/api-client.ts`
+- Navigation/logout:
+  - `app/components/NavigationPanel.tsx`
+- Login flow:
+  - `app/login/page.tsx`
 - Validation:
   - `app/utils/schema-validation/doctor-section.schema.ts`
 - Feature sections:
@@ -73,4 +98,4 @@ First-time setup:
 ## Notes
 
 - ICD-10 suggestion requests are proxied through `GET /api/clinical/icd10` (server-side), not called directly from browser to third-party.
-- One lint warning remains in `DoctorSection` for `<img>` usage (`next/image` recommendation).
+- `npm run test` currently runs lint + typecheck as baseline quality gate.

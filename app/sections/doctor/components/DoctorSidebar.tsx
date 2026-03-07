@@ -10,6 +10,7 @@ type DoctorSidebarProps = {
     patientVitals: PatientVital[];
     patientAllergies: AllergyAlert[];
     onSaveRecord: () => void;
+    saveFeedback?: { tone: 'info' | 'success' | 'error'; message: string } | null;
 };
 
 const inputInsetShadow = 'shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]';
@@ -45,6 +46,7 @@ export function DoctorSidebar({
     patientVitals,
     patientAllergies,
     onSaveRecord,
+    saveFeedback,
 }: DoctorSidebarProps) {
     return (
         <div className="order-2 col-span-12 flex flex-col gap-4 pl-1 pr-1 lg:order-2 lg:col-span-3">
@@ -68,7 +70,7 @@ export function DoctorSidebar({
                             ) : (
                                 searchMatches.map((patient) => (
                                     <button
-                                        key={patient.id}
+                                        key={`${patient.patientId ?? 'unknown'}-${patient.appointmentId ?? patient.nic}`}
                                         type="button"
                                         onClick={() => onSearchSelect(patient)}
                                         className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm text-slate-800 transition hover:bg-sky-50"
@@ -148,6 +150,18 @@ export function DoctorSidebar({
                     Save & Print Record
                 </button>
             </div>
+            {saveFeedback ? (
+                <p
+                    className={`mt-2 text-sm font-semibold ${saveFeedback.tone === 'success'
+                            ? 'text-emerald-700'
+                            : saveFeedback.tone === 'error'
+                                ? 'text-rose-700'
+                                : 'text-slate-600'
+                        }`}
+                >
+                    {saveFeedback.message}
+                </p>
+            ) : null}
         </div>
     );
 }

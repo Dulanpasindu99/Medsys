@@ -1,5 +1,7 @@
 export interface Prescription {
-  id: string;
+  prescriptionId?: number;
+  appointmentId?: number;
+  patientId?: number;
   patient: string;
   nic: string;
   age: number;
@@ -8,6 +10,7 @@ export interface Prescription {
   clinical: { name: string; dose: string; terms: string; amount: number }[];
   outside: { name: string; dose: string; terms: string; amount: number }[];
   allergies: string[];
+  dispenseItems?: { inventoryItemId: number; quantity: number }[];
 }
 
 export type CompletedPatient = {

@@ -2,6 +2,7 @@ import type { Prescription } from '../types';
 
 type AssistantPickupPanelProps = {
     activePrescription?: Prescription;
+    queueCount: number;
     onDoneAndNext: () => void;
 };
 
@@ -39,13 +40,13 @@ function DrugColumn({
     );
 }
 
-export function AssistantPickupPanel({ activePrescription, onDoneAndNext }: AssistantPickupPanelProps) {
+export function AssistantPickupPanel({ activePrescription, queueCount, onDoneAndNext }: AssistantPickupPanelProps) {
     return (
         <>
             <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-slate-900">Doctor Checked Patient</h2>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">03</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{queueCount}</span>
                     <span className="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.28)]">Patient</span>
                 </div>
             </div>
@@ -55,7 +56,9 @@ export function AssistantPickupPanel({ activePrescription, onDoneAndNext }: Assi
                         <div className="flex items-center justify-between text-xs text-slate-600">
                             <div className="flex items-center gap-3">
                                 <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">Patient No</span>
-                                <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">{activePrescription.id}</span>
+                                <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">
+                                    {activePrescription.prescriptionId ?? "--"}
+                                </span>
                             </div>
                             <span className="rounded-full bg-lime-100 px-3 py-1 font-semibold text-lime-700">Bill paid</span>
                         </div>

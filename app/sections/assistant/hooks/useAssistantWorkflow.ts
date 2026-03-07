@@ -1,39 +1,242 @@
-import { useMemo, useState } from "react";
-import { getProfileIdByNicOrName } from "../../../data/patientProfiles";
+import { useEffect, useMemo, useState } from "react";
+import {
+  createPatient,
+  dispensePrescription,
+  getAnalyticsOverview,
+  getCurrentUser,
+  listAppointments,
+  listPatients,
+  listPendingDispenseQueue,
+  type ApiClientError,
+} from "../../../lib/api-client";
 import type { AssistantFormState, CompletedPatient, Prescription } from "../types";
 
-export function useAssistantWorkflow() {
-  const [pendingPatients, setPendingPatients] = useState<Prescription[]>([
-    {
-      id: "MH0001",
-      patient: "Ranil Wickramasinghe",
-      nic: "156546658V",
-      age: 70,
-      gender: "Male",
-      diagnosis: "Fever, head ache",
-      clinical: [
-        { name: "Cough Syrup", dose: "20ml", terms: "3 x 4", amount: 1 },
-        { name: "Cough Strops", dose: "1", terms: "4", amount: 7 },
-      ],
-      outside: [
-        { name: "Zink", dose: "2", terms: "3 x 4", amount: 24 },
-        { name: "Paracetamol", dose: "500mg", terms: "2 x 4", amount: 16 },
-      ],
-      allergies: ["Penicillin", "Piriton"],
-    },
-    {
-      id: "MH0002",
-      patient: "Chathura Deshan",
-      nic: "865637762V",
-      age: 32,
-      gender: "Male",
-      diagnosis: "Flu",
-      clinical: [{ name: "Napa", dose: "500mg", terms: "2 x 5", amount: 10 }],
-      outside: [{ name: "Vitamin C", dose: "500mg", terms: "Daily", amount: 7 }],
-      allergies: ["-"],
-    },
-  ]);
+type AnyRecord = Record<string, unknown>;
 
+function asRecord(value: unknown): AnyRecord | null {
+  return value && typeof value === "object" ? (value as AnyRecord) : null;
+}
+
+function asArray(value: unknown): AnyRecord[] {
+  if (Array.isArray(value)) {
+    return value.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
+  }
+  const record = asRecord(value);
+  if (!record) return [];
+  const candidates = [record.data, record.items, record.rows];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
+    }
+  }
+  return [];
+}
+
+function toString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
+    return Number(value);
+  }
+  return null;
+}
+
+function toUiGender(value: unknown): "Male" | "Female" {
+  return toString(value).toLowerCase() === "female" ? "Female" : "Male";
+}
+
+function toDisplayTime(value: unknown) {
+  const raw = toString(value);
+  if (!raw) return "-";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function normalizePatientsById(rawPatients: unknown) {
+  const map = new Map<number, AnyRecord>();
+  asArray(rawPatients).forEach((row) => {
+    const id = toNumber(row.id ?? row.patientId ?? row.patient_id);
+    if (id !== null) {
+      map.set(id, row);
+    }
+  });
+  return map;
+}
+
+function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRecord>): Prescription[] {
+  return asArray(rawQueue).map((row, index) => {
+    const prescriptionId = toNumber(row.id ?? row.prescriptionId ?? row.prescription_id) ?? undefined;
+    const appointmentId = toNumber(row.appointmentId ?? row.appointment_id) ?? undefined;
+    const patientId =
+      toNumber(row.patientId ?? row.patient_id ?? asRecord(row.patient)?.id) ?? undefined;
+    const patientRow = patientId ? patientById.get(patientId) : null;
+    const nestedPatient = asRecord(row.patient) ?? null;
+
+    const patient = toString(
+      row.patientName ??
+      row.patient_name ??
+      nestedPatient?.name ??
+      nestedPatient?.fullName ??
+      patientRow?.name ??
+      patientRow?.fullName,
+      `Patient ${patientId ?? index + 1}`
+    );
+
+    const nic = toString(
+      row.nic ??
+      row.patientNic ??
+      row.patient_nic ??
+      nestedPatient?.nic ??
+      patientRow?.nic,
+      "N/A"
+    );
+
+    const age =
+      toNumber(
+        row.age ??
+        row.patientAge ??
+        row.patient_age ??
+        nestedPatient?.age ??
+        patientRow?.age
+      ) ?? 0;
+
+    const gender = toUiGender(
+      row.gender ??
+      row.patientGender ??
+      row.patient_gender ??
+      nestedPatient?.gender ??
+      patientRow?.gender
+    );
+
+    const diagnosis = toString(row.diagnosis ?? row.reason ?? asRecord(row.encounter)?.notes, "Awaiting dispense");
+
+    const itemRows = asArray(row.items ?? row.prescriptionItems ?? row.drugs);
+    const normalizedItems = itemRows.map((item, itemIndex) => {
+      const source = toString(item.source ?? item.drugSource, "clinical").toLowerCase();
+      return {
+        name: toString(item.drugName ?? item.name, `Drug ${itemIndex + 1}`),
+        dose: toString(item.dose, "-"),
+        terms: toString(item.frequency ?? item.terms ?? item.duration, "-"),
+        amount: toNumber(item.quantity ?? item.amount) ?? 0,
+        source: source === "outside" ? "outside" : "clinical",
+        inventoryItemId: toNumber(item.inventoryItemId ?? item.inventory_item_id),
+      };
+    });
+
+    const clinical = normalizedItems
+      .filter((item) => item.source === "clinical")
+      .map((item) => ({ name: item.name, dose: item.dose, terms: item.terms, amount: item.amount }));
+    const outside = normalizedItems
+      .filter((item) => item.source === "outside")
+      .map((item) => ({ name: item.name, dose: item.dose, terms: item.terms, amount: item.amount }));
+
+    const allergyRows = asArray(row.allergies);
+    const allergies = allergyRows.length
+      ? allergyRows.map((entry) => toString(entry.name ?? entry.allergyName, "")).filter(Boolean)
+      : [];
+
+    const dispenseItems = normalizedItems
+      .filter((item) => item.inventoryItemId !== null && item.amount > 0)
+      .map((item) => ({ inventoryItemId: item.inventoryItemId as number, quantity: item.amount }));
+
+    return {
+      prescriptionId,
+      appointmentId,
+      patientId,
+      patient,
+      nic,
+      age,
+      gender,
+      diagnosis,
+      clinical,
+      outside,
+      allergies,
+      dispenseItems,
+    } satisfies Prescription;
+  });
+}
+
+function normalizeCompletedPatients(rawCompletedAppointments: unknown, patientById: Map<number, AnyRecord>): CompletedPatient[] {
+  return asArray(rawCompletedAppointments).map((row, index) => {
+    const patientId = toNumber(row.patientId ?? row.patient_id ?? asRecord(row.patient)?.id);
+    const nestedPatient = asRecord(row.patient) ?? null;
+    const patientRow = patientId !== null ? patientById.get(patientId) : null;
+    const name = toString(
+      row.patientName ??
+      row.patient_name ??
+      nestedPatient?.name ??
+      nestedPatient?.fullName ??
+      patientRow?.name ??
+      patientRow?.fullName,
+      `Patient ${index + 1}`
+    );
+    const nic = toString(
+      row.nic ??
+      row.patientNic ??
+      row.patient_nic ??
+      nestedPatient?.nic ??
+      patientRow?.nic,
+      "N/A"
+    );
+    const age =
+      toNumber(
+        row.age ??
+        row.patientAge ??
+        row.patient_age ??
+        nestedPatient?.age ??
+        patientRow?.age
+      ) ?? 0;
+    const resolvedProfileId = patientId !== null ? String(patientId) : undefined;
+    const time = toDisplayTime(row.completedAt ?? row.updatedAt ?? row.scheduledAt ?? row.checkedAt);
+    return {
+      name,
+      age,
+      nic,
+      time,
+      profileId: resolvedProfileId,
+    } satisfies CompletedPatient;
+  });
+}
+
+function normalizeDoctorAvailability(rawAppointments: unknown) {
+  const doctorMap = new Map<string, { name: string; status: string }>();
+  asArray(rawAppointments).forEach((row, index) => {
+    const nestedDoctor = asRecord(row.doctor);
+    const doctorName = toString(
+      row.doctorName ??
+      row.doctor_name ??
+      nestedDoctor?.name,
+      `Doctor ${toNumber(row.doctorId ?? row.doctor_id) ?? index + 1}`
+    );
+    const statusRaw = toString(row.status, "");
+    const isOnline = statusRaw === "waiting" || statusRaw === "in_consultation";
+    const current = doctorMap.get(doctorName);
+    if (!current || (current.status !== "Online" && isOnline)) {
+      doctorMap.set(doctorName, { name: doctorName, status: isOnline ? "Online" : "Offline" });
+    }
+  });
+  return Array.from(doctorMap.values());
+}
+
+function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
+  const analytics = asRecord(rawAnalytics) ?? {};
+  const patients = asArray(rawPatients);
+  const total = toNumber(analytics.totalPatients ?? analytics.total ?? analytics.patientCount) ?? patients.length;
+  const male = toNumber(analytics.totalMale ?? analytics.male ?? analytics.malePatients) ??
+    patients.filter((patient) => toString(patient.gender).toLowerCase() === "male").length;
+  const female = toNumber(analytics.totalFemale ?? analytics.female ?? analytics.femalePatients) ??
+    patients.filter((patient) => toString(patient.gender).toLowerCase() === "female").length;
+  const existing = toNumber(analytics.existingPatients ?? analytics.existing) ?? Math.max(total - 1, 0);
+  const addedToday = toNumber(analytics.newPatients ?? analytics.new ?? analytics.todayNewPatients) ?? 1;
+  return { total, male, female, existing, new: addedToday };
+}
+
+export function useAssistantWorkflow() {
+  const [pendingPatients, setPendingPatients] = useState<Prescription[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const activePrescription = pendingPatients[activeIndex];
 
@@ -50,81 +253,92 @@ export function useAssistantWorkflow() {
   });
 
   const [completedSearch, setCompletedSearch] = useState("");
+  const [completed, setCompleted] = useState<CompletedPatient[]>([]);
+  const [stats, setStats] = useState({ total: 0, male: 0, female: 0, existing: 0, new: 0 });
+  const [availableDoctors, setAvailableDoctors] = useState<{ name: string; status: string }[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const stats = useMemo(() => ({ total: 101, male: 20, female: 81, existing: 79, new: 22 }), []);
+  const loadAssistantData = async () => {
+    setIsSyncing(true);
+    try {
+      const [queueResponse, allAppointmentsResponse, completedAppointmentsResponse, patientsResponse, analyticsResponse, user] =
+        await Promise.all([
+          listPendingDispenseQueue(),
+          listAppointments(),
+          listAppointments({ status: "completed" }),
+          listPatients(),
+          getAnalyticsOverview().catch(() => ({})),
+          getCurrentUser(),
+        ]);
 
-  const availableDoctors = useMemo(
-    () => [
-      { name: "Dr. Malith", status: "Online" },
-      { name: "Dr. Jay", status: "Online" },
-      { name: "Dr. Naveen", status: "Offline" },
-    ],
-    []
+      const patientById = normalizePatientsById(patientsResponse);
+      setPendingPatients(normalizePendingQueue(queueResponse, patientById));
+      setCompleted(normalizeCompletedPatients(completedAppointmentsResponse, patientById));
+      setAvailableDoctors(normalizeDoctorAvailability(allAppointmentsResponse));
+      setStats(normalizeStats(analyticsResponse, patientsResponse));
+      setCurrentUserId(user?.id ?? null);
+      setSyncError(null);
+    } catch (error) {
+      const message = (error as ApiClientError)?.message ?? "Unable to sync assistant data.";
+      setSyncError(message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAssistantData();
+  }, []);
+
+  useEffect(() => {
+    if (!pendingPatients.length) {
+      setActiveIndex(0);
+      return;
+    }
+    setActiveIndex((prev) => (prev >= pendingPatients.length ? pendingPatients.length - 1 : prev));
+  }, [pendingPatients.length]);
+
+  const filteredCompleted = useMemo(
+    () => completed.filter((entry) => `${entry.name} ${entry.nic}`.toLowerCase().includes(completedSearch.toLowerCase())),
+    [completed, completedSearch]
   );
 
-  const completed = useMemo<CompletedPatient[]>(
-    () => [
-      {
-        name: "Rani Fernando",
-        age: 34,
-        nic: "856456456V",
-        time: "5.45 PM",
-        profileId: getProfileIdByNicOrName("856456456V", "Rani Fernando"),
-      },
-      {
-        name: "Sathya Dev",
-        age: 65,
-        nic: "222343222V",
-        time: "5.25 PM",
-        profileId: getProfileIdByNicOrName("222343222V", "Sathya Dev"),
-      },
-      {
-        name: "Chathura Deshan",
-        age: 32,
-        nic: "865637762V",
-        time: "5.00 PM",
-        profileId: getProfileIdByNicOrName("865637762V", "Chathura Deshan"),
-      },
-      {
-        name: "Rathmalie De Silva",
-        age: 42,
-        nic: "650002343V",
-        time: "4.15 PM",
-        profileId: getProfileIdByNicOrName("650002343V", "Rathmalie De Silva"),
-      },
-    ],
-    []
-  );
-
-  const filteredCompleted = completed.filter((entry) =>
-    `${entry.name} ${entry.nic}`.toLowerCase().includes(completedSearch.toLowerCase())
-  );
-
-  const addPatient = () => {
+  const addPatient = async () => {
     if (!formState.nic || !formState.name || !formState.age) return;
-    const next: Prescription = {
-      id: `MH${(pendingPatients.length + 1).toString().padStart(4, "0")}`,
-      patient: formState.name,
-      nic: formState.nic,
-      age: Number(formState.age),
-      gender: "Male",
-      diagnosis: "Awaiting doctor",
-      clinical: [],
-      outside: [],
-      allergies: formState.allergies,
-    };
-    setPendingPatients((prev) => [...prev, next]);
-    setFormState((prev) => ({
-      ...prev,
-      nic: "",
-      name: "",
-      mobile: "",
-      age: "",
-      allergyInput: "",
-      allergies: ["No allergies"],
-      regularDrug: "",
-      priority: "Normal",
-    }));
+    try {
+      setSyncError(null);
+      await createPatient({
+        name: formState.name,
+        nic: formState.nic,
+        age: Number(formState.age),
+        gender: "male",
+        mobile: formState.mobile || undefined,
+        priority:
+          formState.priority === "Critical"
+            ? "critical"
+            : formState.priority === "Urgent"
+            ? "high"
+            : "normal",
+      });
+
+      setFormState((prev) => ({
+        ...prev,
+        nic: "",
+        name: "",
+        mobile: "",
+        age: "",
+        allergyInput: "",
+        allergies: ["No allergies"],
+        regularDrug: "",
+        priority: "Normal",
+      }));
+      await loadAssistantData();
+    } catch (error) {
+      const message = (error as ApiClientError)?.message ?? "Failed to create patient.";
+      setSyncError(message);
+    }
   };
 
   const addAllergy = () => {
@@ -137,10 +351,27 @@ export function useAssistantWorkflow() {
     }));
   };
 
-  const markDoneAndNext = () => {
-    if (!pendingPatients.length) return;
-    const nextIndex = (activeIndex + 1) % pendingPatients.length;
-    setActiveIndex(nextIndex);
+  const markDoneAndNext = async () => {
+    if (!activePrescription) return;
+    if (!activePrescription.prescriptionId || !currentUserId) {
+      setActiveIndex((prev) => (pendingPatients.length ? (prev + 1) % pendingPatients.length : 0));
+      return;
+    }
+
+    try {
+      setSyncError(null);
+      await dispensePrescription(activePrescription.prescriptionId, {
+        assistantId: currentUserId,
+        dispensedAt: new Date().toISOString(),
+        status: "completed",
+        notes: "Dispensed from assistant queue",
+        items: activePrescription.dispenseItems ?? [],
+      });
+      await loadAssistantData();
+    } catch (error) {
+      const message = (error as ApiClientError)?.message ?? "Failed to mark dispense.";
+      setSyncError(message);
+    }
   };
 
   return {
@@ -156,5 +387,7 @@ export function useAssistantWorkflow() {
     addPatient,
     addAllergy,
     markDoneAndNext,
+    isSyncing,
+    syncError,
   };
 }
