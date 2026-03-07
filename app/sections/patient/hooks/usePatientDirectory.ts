@@ -8,6 +8,13 @@ import {
   listPatients,
   type ApiClientError,
 } from "../../../lib/api-client";
+import {
+  emptyLoadState,
+  errorLoadState,
+  loadingLoadState,
+  readyLoadState,
+  type LoadState,
+} from "../../../lib/async-state";
 import type { AgeBucketId, Gender, Patient } from "../types";
 
 type AnyRecord = Record<string, unknown>;
@@ -78,21 +85,28 @@ export function usePatientDirectory() {
   const [ageRange, setAgeRange] = useState<AgeBucketId>("all");
   const [gender, setGender] = useState<Gender | "all">("all");
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
 
   const loadPatients = async () => {
-    setIsSyncing(true);
+    setLoadState(loadingLoadState());
     try {
-      const [patientsResponse, familiesResponse, appointmentsResponse] = await Promise.all([
+      const [patientsResult, familiesResult, appointmentsResult] = await Promise.allSettled([
         listPatients(),
-        listFamilies().catch(() => []),
-        listAppointments().catch(() => []),
+        listFamilies(),
+        listAppointments(),
       ]);
 
-      const patientRows = asArray(patientsResponse);
-      const familyRows = asArray(familiesResponse);
-      const appointmentRows = asArray(appointmentsResponse);
+      if (patientsResult.status === "rejected") {
+        const message = (patientsResult.reason as ApiClientError)?.message ?? "Unable to load patients.";
+        setPatients([]);
+        setLoadState(errorLoadState(message));
+        return;
+      }
+
+      const patientRows = asArray(patientsResult.value);
+      const familyRows = familiesResult.status === "fulfilled" ? asArray(familiesResult.value) : [];
+      const appointmentRows =
+        appointmentsResult.status === "fulfilled" ? asArray(appointmentsResult.value) : [];
 
       const familyNameById = new Map<number, string>();
       familyRows.forEach((row) => {
@@ -102,6 +116,7 @@ export function usePatientDirectory() {
         }
       });
 
+      let detailFailures = 0;
       const normalized = await Promise.all(
         patientRows.map(async (row, index) => {
           const patientId = toNumber(row.id ?? row.patientId ?? row.patient_id) ?? undefined;
@@ -123,18 +138,33 @@ export function usePatientDirectory() {
           let allergies: string[] = [];
           let timelineRows: AnyRecord[] = [];
           if (patientId !== undefined) {
-            const [conditionsResponse, allergiesResponse, timelineResponse] = await Promise.all([
-              listPatientConditions(patientId).catch(() => []),
-              listPatientAllergies(patientId).catch(() => []),
-              listPatientTimeline(patientId).catch(() => []),
+            const [conditionsResult, allergiesResult, timelineResult] = await Promise.allSettled([
+              listPatientConditions(patientId),
+              listPatientAllergies(patientId),
+              listPatientTimeline(patientId),
             ]);
-            conditions = asArray(conditionsResponse)
+
+            if (
+              conditionsResult.status === "rejected" ||
+              allergiesResult.status === "rejected" ||
+              timelineResult.status === "rejected"
+            ) {
+              detailFailures += 1;
+            }
+
+            conditions = asArray(
+              conditionsResult.status === "fulfilled" ? conditionsResult.value : []
+            )
               .map((entry) => toString(entry.name ?? entry.conditionName ?? entry.diagnosisName))
               .filter(Boolean);
-            allergies = asArray(allergiesResponse)
+            allergies = asArray(
+              allergiesResult.status === "fulfilled" ? allergiesResult.value : []
+            )
               .map((entry) => toString(entry.name ?? entry.allergyName))
               .filter(Boolean);
-            timelineRows = asArray(timelineResponse);
+            timelineRows = asArray(
+              timelineResult.status === "fulfilled" ? timelineResult.value : []
+            );
           }
 
           const relatedAppointments = appointmentRows.filter((appointment) => {
@@ -177,18 +207,35 @@ export function usePatientDirectory() {
       );
 
       setPatients(normalized);
-      setSyncError(null);
+      const baseFeedFailure =
+        familiesResult.status === "rejected" || appointmentsResult.status === "rejected";
+      const detailNotice =
+        detailFailures > 0
+          ? "Some patient timeline or allergy details could not be loaded."
+          : null;
+      const feedNotice = baseFeedFailure
+        ? "Some patient family or appointment feeds failed and fallback data is being shown."
+        : null;
+      const notice = detailNotice ?? feedNotice;
+      if (!normalized.length) {
+        setLoadState(emptyLoadState(notice));
+      } else {
+        setLoadState(readyLoadState(notice));
+      }
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Unable to load patients.";
-      setSyncError(message);
       setPatients([]);
-    } finally {
-      setIsSyncing(false);
+      setLoadState(errorLoadState(message));
     }
   };
 
   useEffect(() => {
-    loadPatients();
+    const timeoutId = window.setTimeout(() => {
+      void loadPatients();
+    }, 0);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   const families = useMemo(() => {
@@ -227,8 +274,9 @@ export function usePatientDirectory() {
     patients,
     filteredPatients,
     families,
-    syncError,
-    isSyncing,
+    loadState,
+    syncError: loadState.error,
+    isSyncing: loadState.status === "loading",
     reload: loadPatients,
   };
 }

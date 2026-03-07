@@ -1,5 +1,6 @@
 'use client';
 
+import { AsyncNotice, AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { usePatientProfilePopup } from '../hooks/usePatientProfilePopup';
 import { PatientFilters } from './patient/components/PatientFilters';
@@ -21,19 +22,27 @@ export default function PatientSection() {
         patients,
         filteredPatients,
         families,
-        syncError,
+        loadState,
+        reload,
     } = usePatientDirectory();
     const popup = usePatientProfilePopup();
 
     return (
         <div id="patients" className="px-4 py-8 md:px-8">
             <div className="mx-auto flex flex-col gap-6">
-                <PatientHeader />
-                {syncError ? (
-                    <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
-                        {syncError}
-                    </p>
-                ) : null}
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <PatientHeader />
+                    <button
+                        type="button"
+                        onClick={reload}
+                        disabled={loadState.status === 'loading'}
+                        className="ios-button-primary rounded-2xl px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                        {loadState.status === 'loading' ? 'Refreshing...' : 'Refresh patients'}
+                    </button>
+                </div>
+                {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
+                {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
 
                 <SectionShell>
                     <PatientFilters
@@ -65,7 +74,37 @@ export default function PatientSection() {
                     </div>
 
                     <div className="mt-5 space-y-4">
-                        {filteredPatients.map((patient) => (
+                        {loadState.status === 'loading' ? (
+                            <AsyncStatePanel
+                                eyebrow="Loading"
+                                title="Loading patient records"
+                                description="Patient demographics, families, and timeline summaries are being prepared."
+                                tone="loading"
+                            />
+                        ) : loadState.status === 'error' && !patients.length ? (
+                            <AsyncStatePanel
+                                eyebrow="Error"
+                                title="Patient records could not be loaded"
+                                description={loadState.error ?? 'The patient directory is unavailable right now.'}
+                                tone="error"
+                                actionLabel="Retry patients"
+                                onAction={reload}
+                            />
+                        ) : loadState.status === 'empty' ? (
+                            <AsyncStatePanel
+                                eyebrow="Empty"
+                                title="No patients available"
+                                description="No patient records were returned for this workspace yet."
+                                tone="empty"
+                            />
+                        ) : filteredPatients.length === 0 ? (
+                            <AsyncStatePanel
+                                eyebrow="No matches"
+                                title="No patients match the current filters"
+                                description="Adjust the search text or filter chips to widen the result set."
+                                tone="empty"
+                            />
+                        ) : filteredPatients.map((patient) => (
                             <PatientRecordCard
                                 key={patient.patientId ?? `${patient.nic}-${patient.name}`}
                                 patient={patient}

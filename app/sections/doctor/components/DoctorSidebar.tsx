@@ -11,6 +11,7 @@ type DoctorSidebarProps = {
     patientAllergies: AllergyAlert[];
     onSaveRecord: () => void;
     saveFeedback?: { tone: 'info' | 'success' | 'error'; message: string } | null;
+    isSavingRecord?: boolean;
 };
 
 const inputInsetShadow = 'shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]';
@@ -47,6 +48,7 @@ export function DoctorSidebar({
     patientAllergies,
     onSaveRecord,
     saveFeedback,
+    isSavingRecord = false,
 }: DoctorSidebarProps) {
     return (
         <div className="order-2 col-span-12 flex flex-col gap-4 pl-1 pr-1 lg:order-2 lg:col-span-3">
@@ -145,9 +147,10 @@ export function DoctorSidebar({
                 <button
                     type="button"
                     onClick={onSaveRecord}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md"
+                    disabled={isSavingRecord}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                    Save & Print Record
+                    {isSavingRecord ? 'Saving record...' : 'Save & Print Record'}
                 </button>
             </div>
             {saveFeedback ? (

@@ -9,6 +9,18 @@ import {
   listPendingDispenseQueue,
   type ApiClientError,
 } from "../../../lib/api-client";
+import {
+  emptyLoadState,
+  errorMutationState,
+  errorLoadState,
+  idleMutationState,
+  loadingLoadState,
+  pendingMutationState,
+  readyLoadState,
+  successMutationState,
+  type LoadState,
+  type MutationState,
+} from "../../../lib/async-state";
 import type { AssistantFormState, CompletedPatient, Prescription } from "../types";
 
 type AnyRecord = Record<string, unknown>;
@@ -238,7 +250,6 @@ function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
 export function useAssistantWorkflow() {
   const [pendingPatients, setPendingPatients] = useState<Prescription[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const activePrescription = pendingPatients[activeIndex];
 
   const [formState, setFormState] = useState<AssistantFormState>({
     nic: "",
@@ -256,12 +267,13 @@ export function useAssistantWorkflow() {
   const [completed, setCompleted] = useState<CompletedPatient[]>([]);
   const [stats, setStats] = useState({ total: 0, male: 0, female: 0, existing: 0, new: 0 });
   const [availableDoctors, setAvailableDoctors] = useState<{ name: string; status: string }[]>([]);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
+  const [createPatientState, setCreatePatientState] = useState<MutationState>(idleMutationState());
+  const [dispenseState, setDispenseState] = useState<MutationState>(idleMutationState());
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const loadAssistantData = async () => {
-    setIsSyncing(true);
+    setLoadState(loadingLoadState());
     try {
       const [queueResponse, allAppointmentsResponse, completedAppointmentsResponse, patientsResponse, analyticsResponse, user] =
         await Promise.all([
@@ -279,26 +291,25 @@ export function useAssistantWorkflow() {
       setAvailableDoctors(normalizeDoctorAvailability(allAppointmentsResponse));
       setStats(normalizeStats(analyticsResponse, patientsResponse));
       setCurrentUserId(user?.id ?? null);
-      setSyncError(null);
+      const hasVisibleData =
+        patientById.size > 0 ||
+        normalizePendingQueue(queueResponse, patientById).length > 0 ||
+        normalizeCompletedPatients(completedAppointmentsResponse, patientById).length > 0;
+      setLoadState(hasVisibleData ? readyLoadState() : emptyLoadState());
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Unable to sync assistant data.";
-      setSyncError(message);
-    } finally {
-      setIsSyncing(false);
+      setLoadState(errorLoadState(message));
     }
   };
 
   useEffect(() => {
-    loadAssistantData();
+    const timeoutId = window.setTimeout(() => {
+      void loadAssistantData();
+    }, 0);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, []);
-
-  useEffect(() => {
-    if (!pendingPatients.length) {
-      setActiveIndex(0);
-      return;
-    }
-    setActiveIndex((prev) => (prev >= pendingPatients.length ? pendingPatients.length - 1 : prev));
-  }, [pendingPatients.length]);
 
   const filteredCompleted = useMemo(
     () => completed.filter((entry) => `${entry.name} ${entry.nic}`.toLowerCase().includes(completedSearch.toLowerCase())),
@@ -306,9 +317,14 @@ export function useAssistantWorkflow() {
   );
 
   const addPatient = async () => {
-    if (!formState.nic || !formState.name || !formState.age) return;
+    if (!formState.nic || !formState.name || !formState.age) {
+      setCreatePatientState(
+        errorMutationState("NIC, patient name, and age are required before adding a patient.")
+      );
+      return;
+    }
     try {
-      setSyncError(null);
+      setCreatePatientState(pendingMutationState());
       await createPatient({
         name: formState.name,
         nic: formState.nic,
@@ -335,9 +351,10 @@ export function useAssistantWorkflow() {
         priority: "Normal",
       }));
       await loadAssistantData();
+      setCreatePatientState(successMutationState("Patient added successfully."));
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Failed to create patient.";
-      setSyncError(message);
+      setCreatePatientState(errorMutationState(message));
     }
   };
 
@@ -352,14 +369,21 @@ export function useAssistantWorkflow() {
   };
 
   const markDoneAndNext = async () => {
+    const activePrescription =
+      pendingPatients[
+        pendingPatients.length ? Math.min(activeIndex, pendingPatients.length - 1) : 0
+      ];
     if (!activePrescription) return;
     if (!activePrescription.prescriptionId || !currentUserId) {
+      setDispenseState(
+        errorMutationState("Prescription or assistant identity is missing for this queue item.")
+      );
       setActiveIndex((prev) => (pendingPatients.length ? (prev + 1) % pendingPatients.length : 0));
       return;
     }
 
     try {
-      setSyncError(null);
+      setDispenseState(pendingMutationState());
       await dispensePrescription(activePrescription.prescriptionId, {
         assistantId: currentUserId,
         dispensedAt: new Date().toISOString(),
@@ -368,15 +392,19 @@ export function useAssistantWorkflow() {
         items: activePrescription.dispenseItems ?? [],
       });
       await loadAssistantData();
+      setDispenseState(successMutationState("Prescription marked as dispensed."));
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Failed to mark dispense.";
-      setSyncError(message);
+      setDispenseState(errorMutationState(message));
     }
   };
 
   return {
     pendingPatients,
-    activePrescription,
+    activePrescription:
+      pendingPatients[
+        pendingPatients.length ? Math.min(activeIndex, pendingPatients.length - 1) : 0
+      ],
     formState,
     setFormState,
     completedSearch,
@@ -387,7 +415,11 @@ export function useAssistantWorkflow() {
     addPatient,
     addAllergy,
     markDoneAndNext,
-    isSyncing,
-    syncError,
+    loadState,
+    createPatientState,
+    dispenseState,
+    reload: loadAssistantData,
+    isSyncing: loadState.status === "loading",
+    syncError: loadState.error ?? createPatientState.error ?? dispenseState.error,
   };
 }

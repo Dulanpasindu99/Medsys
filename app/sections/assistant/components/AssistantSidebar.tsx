@@ -6,6 +6,7 @@ type AssistantSidebarProps = {
   onCompletedSearchChange: (value: string) => void;
   filteredCompleted: CompletedPatient[];
   onOpenProfile: (profileId?: string | null) => void;
+  isLoading?: boolean;
 };
 
 export function AssistantSidebar({
@@ -14,6 +15,7 @@ export function AssistantSidebar({
   onCompletedSearchChange,
   filteredCompleted,
   onOpenProfile,
+  isLoading = false,
 }: AssistantSidebarProps) {
   return (
     <>
@@ -22,7 +24,9 @@ export function AssistantSidebar({
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Live</div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {availableDoctors.map((doc) => (
+        {isLoading ? (
+          <p className="text-sm font-semibold text-slate-500">Loading live doctor availability...</p>
+        ) : availableDoctors.length ? availableDoctors.map((doc) => (
           <span
             key={doc.name}
             className={`rounded-full px-4 py-2 text-xs font-semibold ${
@@ -31,7 +35,9 @@ export function AssistantSidebar({
           >
             {doc.name}
           </span>
-        ))}
+        )) : (
+          <p className="text-sm text-slate-500">No doctor availability is published yet.</p>
+        )}
       </div>
 
       <div className="mt-6 flex items-center justify-between text-sm font-semibold text-slate-900">
@@ -44,7 +50,7 @@ export function AssistantSidebar({
         />
       </div>
       <div className="mt-3 space-y-2">
-        {filteredCompleted.map((entry) => (
+        {filteredCompleted.length ? filteredCompleted.map((entry) => (
           <button
             key={entry.nic}
             type="button"
@@ -60,7 +66,9 @@ export function AssistantSidebar({
               <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{entry.time}</span>
             </div>
           </button>
-        ))}
+        )) : (
+          <p className="text-sm text-slate-500">No completed patients match the current search.</p>
+        )}
       </div>
     </>
   );

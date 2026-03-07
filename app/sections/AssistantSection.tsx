@@ -1,5 +1,6 @@
 'use client';
 
+import { AsyncNotice } from '../components/ui/AsyncStatePanel';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { usePatientProfilePopup } from '../hooks/usePatientProfilePopup';
 import { AssistantHeader } from './assistant/components/AssistantHeader';
@@ -23,7 +24,10 @@ export default function AssistantSection() {
         addPatient,
         addAllergy,
         markDoneAndNext,
-        syncError,
+        loadState,
+        createPatientState,
+        dispenseState,
+        reload,
     } = useAssistantWorkflow();
     const popup = usePatientProfilePopup();
 
@@ -34,16 +38,35 @@ export default function AssistantSection() {
                     <div className="relative flex flex-1 flex-col px-6 py-8 lg:px-10">
                         <div className="mx-auto flex w-full flex-col gap-6">
                             <div className="flex-1 space-y-6">
-                                <AssistantHeader stats={stats} />
-                                {syncError ? (
-                                    <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
-                                        {syncError}
-                                    </p>
-                                ) : null}
+                                <div className="flex flex-col gap-3">
+                                    <AssistantHeader stats={stats} />
+                                    <div className="flex flex-wrap gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={reload}
+                                            disabled={loadState.status === 'loading'}
+                                            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+                                        >
+                                            {loadState.status === 'loading' ? 'Refreshing...' : 'Refresh assistant data'}
+                                        </button>
+                                    </div>
+                                </div>
+                                {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
+                                {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
+                                {createPatientState.error ? <AsyncNotice tone="error" message={createPatientState.error} /> : null}
+                                {dispenseState.error ? <AsyncNotice tone="error" message={dispenseState.error} /> : null}
+                                {createPatientState.status === 'success' && createPatientState.message ? <AsyncNotice tone="success" message={createPatientState.message} /> : null}
+                                {dispenseState.status === 'success' && dispenseState.message ? <AsyncNotice tone="success" message={dispenseState.message} /> : null}
 
                                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_2.2fr_1fr]">
                                     <AssistantPanelShell>
-                                        <AssistantIntakePanel formState={formState} setFormState={setFormState} addAllergy={addAllergy} addPatient={addPatient} />
+                                        <AssistantIntakePanel
+                                            formState={formState}
+                                            setFormState={setFormState}
+                                            addAllergy={addAllergy}
+                                            addPatient={addPatient}
+                                            isSubmitting={createPatientState.status === 'pending'}
+                                        />
                                     </AssistantPanelShell>
 
                                     <AssistantPanelShell>
@@ -51,6 +74,8 @@ export default function AssistantSection() {
                                             activePrescription={activePrescription}
                                             queueCount={pendingPatients.length}
                                             onDoneAndNext={markDoneAndNext}
+                                            isSubmitting={dispenseState.status === 'pending'}
+                                            isLoading={loadState.status === 'loading'}
                                         />
                                     </AssistantPanelShell>
 
@@ -61,6 +86,7 @@ export default function AssistantSection() {
                                             onCompletedSearchChange={setCompletedSearch}
                                             filteredCompleted={filteredCompleted}
                                             onOpenProfile={popup.openProfile}
+                                            isLoading={loadState.status === 'loading'}
                                         />
                                     </AssistantPanelShell>
                                 </div>

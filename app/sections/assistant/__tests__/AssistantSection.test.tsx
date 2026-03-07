@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { idleMutationState, readyLoadState, errorLoadState } from "../../../lib/async-state";
 import AssistantSection from "../../AssistantSection";
 import { usePatientProfilePopup } from "../../../hooks/usePatientProfilePopup";
 import { useAssistantWorkflow } from "../hooks/useAssistantWorkflow";
@@ -72,6 +73,10 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     addPatient: vi.fn(),
     addAllergy: vi.fn(),
     markDoneAndNext: vi.fn(),
+    loadState: readyLoadState(),
+    createPatientState: idleMutationState(),
+    dispenseState: idleMutationState(),
+    reload: vi.fn(),
     isSyncing: false,
     syncError: null,
     ...overrides,
@@ -91,7 +96,10 @@ describe("AssistantSection", () => {
 
   it("renders the workflow error banner when sync fails", () => {
     mockedUseAssistantWorkflow.mockReturnValue(
-      buildWorkflowState({ syncError: "Unable to sync assistant data." })
+      buildWorkflowState({
+        loadState: errorLoadState("Unable to sync assistant data."),
+        syncError: "Unable to sync assistant data.",
+      })
     );
 
     render(<AssistantSection />);

@@ -1,5 +1,6 @@
 'use client';
 
+import { AsyncNotice, AsyncStatePanel } from '../../components/ui/AsyncStatePanel';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { usePatientProfileData } from './hooks/usePatientProfileData';
 import { ProfileHeader } from './components/ProfileHeader';
@@ -9,19 +10,57 @@ import { AllergyCard } from './components/AllergyCard';
 import { CoverageCard } from './components/CoverageCard';
 
 export function PatientProfileView({ profileId }: { profileId: string }) {
-    const { profile, timeline, totalProfiles, formatDate, syncError } = usePatientProfileData(profileId);
+    const { profile, timeline, totalProfiles, formatDate, loadState, reload } = usePatientProfileData(profileId);
 
-    if (!profile) {
+    if (loadState.status === 'loading') {
         return (
             <div className="flex flex-col gap-4 p-8">
                 <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
                     <span className="inline-flex h-2 w-2 rounded-full bg-slate-200" />
                     Patient profile
                 </div>
-                <SurfaceCard className="flex flex-col justify-center rounded-[24px] p-8 md:p-10">
-                    <h2 className="text-base font-bold text-slate-700">Profile not found.</h2>
-                    <p className="mt-1 text-sm text-slate-400">The selected patient is not registered yet.</p>
-                </SurfaceCard>
+                <AsyncStatePanel
+                    eyebrow="Loading"
+                    title="Loading patient profile"
+                    description="The patient summary, family data, and timeline are being loaded."
+                    tone="loading"
+                />
+            </div>
+        );
+    }
+
+    if (loadState.status === 'error') {
+        return (
+            <div className="flex flex-col gap-4 p-8">
+                <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-slate-200" />
+                    Patient profile
+                </div>
+                <AsyncStatePanel
+                    eyebrow="Error"
+                    title="Patient profile could not be loaded"
+                    description={loadState.error ?? 'The selected patient profile is unavailable right now.'}
+                    tone="error"
+                    actionLabel="Retry profile"
+                    onAction={reload}
+                />
+            </div>
+        );
+    }
+
+    if (!profile || loadState.status === 'empty') {
+        return (
+            <div className="flex flex-col gap-4 p-8">
+                <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-slate-200" />
+                    Patient profile
+                </div>
+                <AsyncStatePanel
+                    eyebrow="Not found"
+                    title="Profile not found"
+                    description="The selected patient is not registered yet or the profile reference is invalid."
+                    tone="empty"
+                />
             </div>
         );
     }
@@ -38,11 +77,7 @@ export function PatientProfileView({ profileId }: { profileId: string }) {
             <SurfaceCard className="p-6 md:p-7">
                 <ProfileHeader profile={profile} timelineCount={timeline.length} formatDate={formatDate} />
             </SurfaceCard>
-            {syncError ? (
-                <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
-                    {syncError}
-                </p>
-            ) : null}
+            {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                 <SurfaceCard className="p-6 md:p-7">

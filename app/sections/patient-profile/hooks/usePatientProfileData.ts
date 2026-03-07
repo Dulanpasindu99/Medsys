@@ -8,6 +8,13 @@ import {
   listPatientVitals,
   listPatients,
 } from "../../../lib/api-client";
+import {
+  emptyLoadState,
+  errorLoadState,
+  loadingLoadState,
+  readyLoadState,
+  type LoadState,
+} from "../../../lib/async-state";
 import type { PatientProfileRecord, PatientTimelineEntry } from "../types";
 
 type AnyRecord = Record<string, unknown>;
@@ -81,7 +88,12 @@ export function usePatientProfileData(profileId: string) {
   const hasInvalidProfileId = Number.isNaN(numericId);
   const [profile, setProfile] = useState<PatientProfileRecord | null>(null);
   const [totalProfiles, setTotalProfiles] = useState(0);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loadState, setLoadState] = useState<LoadState>(
+    hasInvalidProfileId
+      ? errorLoadState("Invalid patient profile reference.")
+      : loadingLoadState()
+  );
 
   useEffect(() => {
     if (hasInvalidProfileId) {
@@ -90,25 +102,50 @@ export function usePatientProfileData(profileId: string) {
 
     let active = true;
     const load = async () => {
+      setLoadState(loadingLoadState());
       try {
-        const [profileResponse, familyResponse, allergiesResponse, conditionsResponse, timelineResponse, vitalsResponse, patientsResponse] =
-          await Promise.all([
-            getPatientProfile(numericId).catch(() => ({})),
-            getPatientFamily(numericId).catch(() => ({})),
-            listPatientAllergies(numericId).catch(() => []),
-            listPatientConditions(numericId).catch(() => []),
-            listPatientTimeline(numericId).catch(() => []),
-            listPatientVitals(numericId).catch(() => []),
-            listPatients().catch(() => []),
-          ]);
+        const [
+          profileResult,
+          familyResult,
+          allergiesResult,
+          conditionsResult,
+          timelineResult,
+          vitalsResult,
+          patientsResult,
+        ] = await Promise.allSettled([
+          getPatientProfile(numericId),
+          getPatientFamily(numericId),
+          listPatientAllergies(numericId),
+          listPatientConditions(numericId),
+          listPatientTimeline(numericId),
+          listPatientVitals(numericId),
+          listPatients(),
+        ]);
 
         if (!active) return;
+
+        const profileResponse = profileResult.status === "fulfilled" ? profileResult.value : {};
+        const familyResponse = familyResult.status === "fulfilled" ? familyResult.value : {};
+        const allergiesResponse = allergiesResult.status === "fulfilled" ? allergiesResult.value : [];
+        const conditionsResponse = conditionsResult.status === "fulfilled" ? conditionsResult.value : [];
+        const timelineResponse = timelineResult.status === "fulfilled" ? timelineResult.value : [];
+        const vitalsResponse = vitalsResult.status === "fulfilled" ? vitalsResult.value : [];
+        const patientsResponse = patientsResult.status === "fulfilled" ? patientsResult.value : [];
 
         const profileRecord = asRecord(profileResponse) ?? {};
         const patientRows = asArray(patientsResponse);
         setTotalProfiles(patientRows.length);
         const patientRow =
           patientRows.find((row) => toNumber(row.id ?? row.patientId ?? row.patient_id) === numericId) ?? {};
+
+        const hasResolvedProfile =
+          Object.keys(profileRecord).length > 0 || Object.keys(patientRow).length > 0;
+        if (!hasResolvedProfile) {
+          setProfile(null);
+          setLoadState(emptyLoadState());
+          return;
+        }
+
         const familyRecord = asRecord(familyResponse) ?? asRecord(profileRecord.family) ?? {};
 
         const conditions = asArray(conditionsResponse)
@@ -143,20 +180,38 @@ export function usePatientProfileData(profileId: string) {
         };
 
         setProfile(nextProfile);
-        setSyncError(null);
+        const partialFailure =
+          familyResult.status === "rejected" ||
+          allergiesResult.status === "rejected" ||
+          conditionsResult.status === "rejected" ||
+          timelineResult.status === "rejected" ||
+          vitalsResult.status === "rejected" ||
+          patientsResult.status === "rejected";
+        setLoadState(
+          readyLoadState(
+            partialFailure
+              ? "Some profile details could not be loaded and fallback data is being shown."
+              : null
+          )
+        );
       } catch (error) {
         if (!active) return;
-        setSyncError((error as Error)?.message ?? "Unable to load patient profile.");
+        setLoadState(
+          errorLoadState((error as Error)?.message ?? "Unable to load patient profile.")
+        );
         setProfile(null);
         setTotalProfiles(0);
       }
     };
 
-    load();
+    const timeoutId = window.setTimeout(() => {
+      void load();
+    }, 0);
     return () => {
       active = false;
+      window.clearTimeout(timeoutId);
     };
-  }, [hasInvalidProfileId, numericId]);
+  }, [hasInvalidProfileId, numericId, reloadKey]);
 
   const timeline = useMemo(
     () =>
@@ -172,9 +227,19 @@ export function usePatientProfileData(profileId: string) {
       timeline: [] as PatientTimelineEntry[],
       totalProfiles: 0,
       formatDate,
+      loadState: errorLoadState("Invalid patient profile reference."),
       syncError: "Invalid patient profile reference.",
+      reload: () => setReloadKey((prev) => prev + 1),
     };
   }
 
-  return { profile, timeline, totalProfiles, formatDate, syncError };
+  return {
+    profile,
+    timeline,
+    totalProfiles,
+    formatDate,
+    loadState,
+    syncError: loadState.error,
+    reload: () => setReloadKey((prev) => prev + 1),
+  };
 }

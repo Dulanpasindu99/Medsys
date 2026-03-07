@@ -6,12 +6,13 @@ type AssistantIntakePanelProps = {
     setFormState: React.Dispatch<React.SetStateAction<AssistantFormState>>;
     addAllergy: () => void;
     addPatient: () => void;
+    isSubmitting?: boolean;
 };
 
 const bloodGroups = ['A+', 'A-', 'B+', 'O+', 'AB+'] as const;
 const priorityLevels = ['Normal', 'Urgent', 'Critical'] as const;
 
-export function AssistantIntakePanel({ formState, setFormState, addAllergy, addPatient }: AssistantIntakePanelProps) {
+export function AssistantIntakePanel({ formState, setFormState, addAllergy, addPatient, isSubmitting = false }: AssistantIntakePanelProps) {
     return (
         <>
             <div className="mb-4 flex items-center justify-between">
@@ -81,6 +82,7 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                             type="button"
                             className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white shadow-[0_10px_22px_rgba(16,185,129,0.22)] transition hover:bg-emerald-600"
                             onClick={addAllergy}
+                            disabled={isSubmitting}
                         >
                             Add
                         </button>
@@ -124,9 +126,10 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                     <button
                         type="button"
                         onClick={addPatient}
-                        className="rounded-2xl bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
+                        disabled={isSubmitting}
+                        className="rounded-2xl bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                        Add Patient
+                        {isSubmitting ? 'Adding patient...' : 'Add Patient'}
                     </button>
                 </div>
             </div>

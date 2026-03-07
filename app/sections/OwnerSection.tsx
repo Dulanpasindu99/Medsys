@@ -1,5 +1,6 @@
 'use client';
 
+import { AsyncNotice, AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import Link from 'next/link';
 import { OwnerBadge } from './owner/components/OwnerBadge';
 import { OwnerStaffFormCard } from './owner/components/OwnerStaffFormCard';
@@ -23,7 +24,8 @@ export default function OwnerSection() {
         presets,
         togglePermission,
         handleCreate,
-        syncError,
+        loadState,
+        createState,
         isSyncing,
         refresh,
     } = useOwnerAccess();
@@ -59,15 +61,18 @@ export default function OwnerSection() {
                             </span>
                         </div>
                     </header>
-                    {syncError ? (
-                        <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 ring-1 ring-rose-100">
-                            {syncError}
-                        </p>
-                    ) : (
-                        <p className="rounded-2xl bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 ring-1 ring-sky-100">
-                            Staff list is synced from audit and appointment activity. Create user adds a local draft until a staff-create API is available.
-                        </p>
-                    )}
+                    {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
+                    {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
+                    {createState.error ? <AsyncNotice tone="error" message={createState.error} /> : null}
+                    {createState.status === 'success' && createState.message ? (
+                        <AsyncNotice tone="success" message={createState.message} />
+                    ) : null}
+                    {!loadState.error && createState.status !== 'success' ? (
+                        <AsyncNotice
+                            tone="info"
+                            message="Staff list is synced from audit and appointment activity. Create user adds a local draft until a staff-create API is available."
+                        />
+                    ) : null}
 
                     <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                         <OwnerStaffFormCard
@@ -84,9 +89,28 @@ export default function OwnerSection() {
                             togglePermission={togglePermission}
                             presets={presets}
                             onCreate={handleCreate}
+                            isSubmitting={createState.status === 'pending'}
                         />
 
-                        <OwnerStaffListCard staffUsers={staffUsers} setStaffUsers={setStaffUsers} />
+                        {loadState.status === 'loading' ? (
+                            <AsyncStatePanel
+                                eyebrow="Loading"
+                                title="Loading staff access"
+                                description="Audit-derived staff activity and appointment ownership are being synchronized."
+                                tone="loading"
+                            />
+                        ) : loadState.status === 'error' && !staffUsers.length ? (
+                            <AsyncStatePanel
+                                eyebrow="Error"
+                                title="Staff access data could not be loaded"
+                                description={loadState.error ?? 'The owner staff workspace is unavailable right now.'}
+                                tone="error"
+                                actionLabel="Retry staff sync"
+                                onAction={refresh}
+                            />
+                        ) : (
+                            <OwnerStaffListCard staffUsers={staffUsers} setStaffUsers={setStaffUsers} />
+                        )}
                     </div>
                 </div>
             </div>

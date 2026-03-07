@@ -4,6 +4,8 @@ type AssistantPickupPanelProps = {
     activePrescription?: Prescription;
     queueCount: number;
     onDoneAndNext: () => void;
+    isSubmitting?: boolean;
+    isLoading?: boolean;
 };
 
 function DrugColumn({
@@ -29,7 +31,7 @@ function DrugColumn({
                         <div>
                             <p className="text-slate-900">{drug.name}</p>
                             <p className="text-[11px] text-slate-500">
-                                {drug.dose} · {drug.terms}
+                                {drug.dose} | {drug.terms}
                             </p>
                         </div>
                         <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">{drug.amount}</span>
@@ -40,7 +42,13 @@ function DrugColumn({
     );
 }
 
-export function AssistantPickupPanel({ activePrescription, queueCount, onDoneAndNext }: AssistantPickupPanelProps) {
+export function AssistantPickupPanel({
+    activePrescription,
+    queueCount,
+    onDoneAndNext,
+    isSubmitting = false,
+    isLoading = false,
+}: AssistantPickupPanelProps) {
     return (
         <>
             <div className="mb-4 flex items-center justify-between">
@@ -50,7 +58,9 @@ export function AssistantPickupPanel({ activePrescription, queueCount, onDoneAnd
                     <span className="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.28)]">Patient</span>
                 </div>
             </div>
-            {activePrescription ? (
+            {isLoading ? (
+                <p className="text-sm font-semibold text-slate-500">Loading dispense queue...</p>
+            ) : activePrescription ? (
                 <div className="space-y-4 text-sm text-slate-800">
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 shadow-inner">
                         <div className="flex items-center justify-between text-xs text-slate-600">
@@ -103,10 +113,11 @@ export function AssistantPickupPanel({ activePrescription, queueCount, onDoneAnd
                         </div>
                         <button
                             type="button"
-                            className="rounded-2xl bg-[var(--ioc-blue)] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
+                            className="rounded-2xl bg-[var(--ioc-blue)] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
                             onClick={onDoneAndNext}
+                            disabled={isSubmitting}
                         >
-                            Done & Next
+                            {isSubmitting ? 'Saving...' : 'Done & Next'}
                         </button>
                     </div>
                 </div>

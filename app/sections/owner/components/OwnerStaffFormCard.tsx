@@ -18,6 +18,7 @@ type OwnerStaffFormCardProps = {
   togglePermission: (key: PermissionKey) => void;
   presets: { label: string; set: () => void }[];
   onCreate: () => void;
+  isSubmitting?: boolean;
 };
 
 export function OwnerStaffFormCard({
@@ -34,6 +35,7 @@ export function OwnerStaffFormCard({
   togglePermission,
   presets,
   onCreate,
+  isSubmitting = false,
 }: OwnerStaffFormCardProps) {
   return (
     <div className="ios-surface p-7 shadow-[0_22px_52px_rgba(15,23,42,0.12)]">
@@ -123,9 +125,10 @@ export function OwnerStaffFormCard({
       <div className="mt-6 flex items-center justify-between gap-3">
         <button
           onClick={onCreate}
-          className="rounded-full bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[0_14px_30px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
+          disabled={isSubmitting}
+          className="rounded-full bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[0_14px_30px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Create user
+          {isSubmitting ? "Creating user..." : "Create user"}
         </button>
       </div>
     </div>
