@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginUser, type ApiClientError } from "../lib/api-client";
+import { getCurrentUser, loginUser, type ApiClientError } from "../lib/api-client";
+import { canAccessRoute, getDefaultRouteForRole } from "../lib/authorization";
 import { validateDoctorLoginInput } from "../utils/schema-validation/doctor-section.schema";
 
 const SHADOWS = {
@@ -11,6 +12,12 @@ const SHADOWS = {
   inset: "shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]",
   glow: "shadow-[0_18px_44px_rgba(10,132,255,0.28)]",
   tooltip: "shadow-[0_12px_24px_rgba(15,23,42,0.18)]",
+} as const;
+
+const WORKSPACE_ROUTE_BY_PANEL = {
+  owner: "ownerWorkspace",
+  doctor: "doctorHome",
+  assistant: "assistantWorkspace",
 } as const;
 
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -345,11 +352,22 @@ export default function Login() {
     if (role === "assistant") setAssistantError(message);
   };
 
-  const routeByRole = {
-    owner: "/owner",
-    doctor: "/",
-    assistant: "/assistant",
-  } as const;
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const user = await getCurrentUser();
+      if (!active || !user) {
+        return;
+      }
+
+      router.replace(getDefaultRouteForRole(user.role));
+      router.refresh();
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const handleSignIn = async (
     role: Exclude<ActiveModal, null>,
@@ -366,17 +384,17 @@ export default function Login() {
     try {
       setActiveSubmission(role);
       const user = await loginUser(parsed.value.email, parsed.value.password, role);
-      if (role === "owner" && user.role !== "owner") {
-        setRoleError(role, "Owner credentials are required for this panel.");
-        return;
-      }
-      if (role !== "owner" && user.role === "owner") {
-        setRoleError(role, "Use the owner panel for owner accounts.");
+      const requestedRoute = WORKSPACE_ROUTE_BY_PANEL[role];
+      if (!canAccessRoute(user.role, requestedRoute)) {
+        setRoleError(
+          role,
+          `This account does not have access to the ${role} workspace.`,
+        );
         return;
       }
 
       setActiveModal(null);
-      router.push(routeByRole[user.role]);
+      router.push(getDefaultRouteForRole(user.role));
       router.refresh();
     } catch (error) {
       const message =

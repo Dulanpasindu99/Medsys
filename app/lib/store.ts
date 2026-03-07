@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
+import type { AppRole } from "@/app/lib/roles";
 
-export type Role = "owner" | "doctor" | "assistant";
+export type Role = AppRole;
 
 type User = {
   id: number;

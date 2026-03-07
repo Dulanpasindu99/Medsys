@@ -50,6 +50,9 @@ export async function POST(
   if (auth.error) {
     return auth.error;
   }
+  if (!auth.session) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
 
   const { id: idParam } = await params;
   const id = parseId(idParam);
@@ -69,7 +72,12 @@ export async function POST(
     return NextResponse.json({ error: "Patient not found." }, { status: 404 });
   }
 
-  const user = findUserById(auth.session!.userId);
+  const sessionUserId = auth.session.userId;
+  if (sessionUserId === null) {
+    return NextResponse.json({ error: "Session user is missing." }, { status: 401 });
+  }
+
+  const user = findUserById(sessionUserId);
   if (!user) {
     return NextResponse.json({ error: "Session user not found." }, { status: 404 });
   }
@@ -77,13 +85,13 @@ export async function POST(
   const created = createPatientHistory({
     patientId: id,
     note,
-    createdByUserId: auth.session!.userId,
+    createdByUserId: sessionUserId,
   });
 
   return NextResponse.json({
     id: created.id,
     patientId: id,
     note,
-    createdByUserId: auth.session!.userId,
+    createdByUserId: sessionUserId,
   });
 }

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import type { NextRequest, NextResponse } from "next/server";
-import type { Role } from "@/app/lib/store";
+import type { AppRole } from "@/app/lib/roles";
 
 export const SESSION_COOKIE_NAME = "medsys_session";
 
@@ -8,12 +8,16 @@ const SESSION_TTL_SECONDS = 60 * 60 * 12; // 12 hours
 const HMAC_ALGORITHM = "sha256";
 
 export type SessionPayload = {
-  userId: number;
-  role: Role;
+  userId: number | null;
+  role: AppRole;
   email: string;
   name: string;
   iat: number;
   exp: number;
+};
+
+type SessionOptions = {
+  expiresAt?: number;
 };
 
 function getSessionSecret() {
@@ -32,12 +36,18 @@ function sign(rawPayload: string) {
   return crypto.createHmac(HMAC_ALGORITHM, getSessionSecret()).update(rawPayload).digest("base64url");
 }
 
-export function createSessionToken(data: Omit<SessionPayload, "iat" | "exp">) {
+export function createSessionToken(
+  data: Omit<SessionPayload, "iat" | "exp">,
+  options?: SessionOptions
+) {
   const now = Math.floor(Date.now() / 1000);
+  const exp = options?.expiresAt && options.expiresAt > now
+    ? options.expiresAt
+    : now + SESSION_TTL_SECONDS;
   const payload: SessionPayload = {
     ...data,
     iat: now,
-    exp: now + SESSION_TTL_SECONDS,
+    exp,
   };
 
   const payloadEncoded = toBase64Url(JSON.stringify(payload));
@@ -67,7 +77,7 @@ export function verifySessionToken(token: string): SessionPayload | null {
 
   try {
     const parsed = JSON.parse(fromBase64Url(payloadEncoded).toString("utf8")) as SessionPayload;
-    if (!parsed?.userId || !parsed?.role || !parsed?.exp) {
+    if (!parsed?.role || !parsed?.exp) {
       return null;
     }
 
@@ -92,9 +102,14 @@ export function readSessionFromRequest(request: NextRequest) {
 
 export function attachSessionCookie(
   response: NextResponse,
-  payload: Omit<SessionPayload, "iat" | "exp">
+  payload: Omit<SessionPayload, "iat" | "exp">,
+  options?: SessionOptions
 ) {
-  const token = createSessionToken(payload);
+  const token = createSessionToken(payload, options);
+  const now = Math.floor(Date.now() / 1000);
+  const maxAge = options?.expiresAt && options.expiresAt > now
+    ? options.expiresAt - now
+    : SESSION_TTL_SECONDS;
   response.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: token,
@@ -102,7 +117,7 @@ export function attachSessionCookie(
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge,
   });
 }
 

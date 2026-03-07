@@ -1,6 +1,6 @@
 # Medsys Frontend
 
-Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with backend-token authentication aligned to `@medsys/api`.
+Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with a same-origin backend API proxy and signed app sessions.
 
 ## Stack
 
@@ -23,21 +23,17 @@ Open `http://localhost:3000`.
 Set these env values in frontend runtime:
 
 ```bash
-# frontend -> backend API base
-# default in code is /backend (recommended for local dev via Next rewrites)
-NEXT_PUBLIC_API_BASE_URL=/backend
-
 # optional, defaults to the medsys dev org id
 NEXT_PUBLIC_ORGANIZATION_ID=11111111-1111-1111-1111-111111111111
 
-# server-side rewrite target for /backend/*
+# backend origin used by server-side auth + API proxy
 BACKEND_URL=http://localhost:4000
+
+# signed app session secret
+MEDSYS_SESSION_SECRET=change-me
 ```
 
-Rewrites are configured in `next.config.ts`:
-- `/backend/:path*` -> `${BACKEND_URL}/:path*`
-
-This avoids CORS issues during local development when backend CORS is not enabled.
+Frontend feature calls go to the internal proxy route `/api/backend/:path*`, which forwards to `BACKEND_URL` server-side and injects backend auth from secure cookies. The browser never receives backend access or refresh tokens directly.
 
 ## Quality Commands
 
@@ -52,38 +48,42 @@ npm run test
 
 ## Authentication Model
 
-- Access token + refresh token are stored client-side (`localStorage`).
-- Login endpoint: `POST /v1/auth/login`
-- Refresh endpoint: `POST /v1/auth/refresh`
-- API client auto-attaches:
-  - `Authorization: Bearer <accessToken>`
-  - `Content-Type: application/json`
-  - `x-request-id: <uuid>`
-- On `401`, client automatically attempts one refresh and retries.
-
-Primary auth client:
-- `app/lib/api-client.ts`
+- Login goes through `POST /api/auth/login`, which authenticates against the backend and sets:
+  - signed app session cookie
+  - secure `httpOnly` backend access-token cookie
+  - secure `httpOnly` backend refresh-token cookie
+- App identity is read from `GET /api/auth/me`.
+- Logout goes through `POST /api/auth/logout`.
+- Feature API requests go through `app/api/backend/[...path]/route.ts`.
+- On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
+- If refresh fails, backend cookies and the app session are cleared together.
 
 ## API Scope (frontend mapped)
 
 - Auth:
-  - `/v1/auth/login`
-  - `/v1/auth/refresh`
+  - `/api/auth/login`
+  - `/api/auth/logout`
+  - `/api/auth/me`
+  - `/api/backend/v1/auth/refresh` (server-side only)
 - Patients:
-  - `/v1/patients`
-  - `/v1/patients/:id/profile`
+  - `/api/backend/v1/patients`
+  - `/api/backend/v1/patients/:id/profile`
 - Appointments:
-  - `/v1/appointments`
+  - `/api/backend/v1/appointments`
 - Encounters:
-  - `/v1/encounters`
+  - `/api/backend/v1/encounters`
 - Prescriptions:
-  - `/v1/prescriptions/queue/pending-dispense`
-  - `/v1/prescriptions/:id/dispense`
+  - `/api/backend/v1/prescriptions/queue/pending-dispense`
+  - `/api/backend/v1/prescriptions/:id/dispense`
 
 ## Important Paths
 
 - API client:
   - `app/lib/api-client.ts`
+- Backend auth cookies:
+  - `app/lib/backend-auth-cookies.ts`
+- Backend proxy:
+  - `app/api/backend/[...path]/route.ts`
 - Navigation/logout:
   - `app/components/NavigationPanel.tsx`
 - Login flow:
