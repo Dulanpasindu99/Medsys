@@ -295,7 +295,7 @@ export async function getAnalyticsOverview() {
 }
 
 export async function listInventory() {
-  return apiFetch("/v1/inventory", { method: "GET" });
+  return apiFetch("/api/inventory", { method: "GET" });
 }
 
 export async function createInventoryItem(input: {
@@ -304,7 +304,7 @@ export async function createInventoryItem(input: {
   quantity: number;
   unit?: string;
 }) {
-  return apiFetch("/v1/inventory", {
+  return apiFetch("/api/inventory", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -314,7 +314,7 @@ export async function updateInventoryItem(
   inventoryId: number | string,
   input: Record<string, unknown>
 ) {
-  return apiFetch(`/v1/inventory/${inventoryId}`, {
+  return apiFetch(`/api/inventory/${inventoryId}`, {
     method: "PATCH",
     body: JSON.stringify(input),
   });
@@ -328,14 +328,14 @@ export async function createInventoryMovement(
     note?: string;
   }
 ) {
-  return apiFetch(`/v1/inventory/${inventoryId}/movements`, {
+  return apiFetch(`/api/inventory/${inventoryId}/movements`, {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export async function listInventoryMovements(inventoryId: number | string) {
-  return apiFetch(`/v1/inventory/${inventoryId}/movements`, { method: "GET" });
+  return apiFetch(`/api/inventory/${inventoryId}/movements`, { method: "GET" });
 }
 
 export async function listAuditLogs(input?: {
