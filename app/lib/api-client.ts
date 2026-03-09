@@ -234,7 +234,7 @@ export async function listPatientTimeline(patientId: number | string) {
 
 export async function listAppointments(input?: { status?: AppointmentStatus }) {
   const query = input?.status ? `?status=${encodeURIComponent(input.status)}` : "";
-  return apiFetch(`/v1/appointments${query}`, { method: "GET" });
+  return apiFetch(`/api/appointments${query}`, { method: "GET" });
 }
 
 export async function createAppointment(input: {
@@ -246,7 +246,7 @@ export async function createAppointment(input: {
   reason: string;
   priority: "low" | "normal" | "high" | "critical";
 }) {
-  return apiFetch("/v1/appointments", {
+  return apiFetch("/api/appointments", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -283,11 +283,11 @@ export async function listEncounters() {
 }
 
 export async function listPendingDispenseQueue() {
-  return apiFetch("/v1/prescriptions/queue/pending-dispense", { method: "GET" });
+  return apiFetch("/api/prescriptions/queue/pending-dispense", { method: "GET" });
 }
 
 export async function getPrescriptionById(prescriptionId: number | string) {
-  return apiFetch(`/v1/prescriptions/${prescriptionId}`, { method: "GET" });
+  return apiFetch(`/api/prescriptions/${prescriptionId}`, { method: "GET" });
 }
 
 export async function getAnalyticsOverview() {
@@ -365,7 +365,7 @@ export async function dispensePrescription(
     items: Array<{ inventoryItemId: number; quantity: number }>;
   }
 ) {
-  return apiFetch(`/v1/prescriptions/${prescriptionId}/dispense`, {
+  return apiFetch(`/api/prescriptions/${prescriptionId}/dispense`, {
     method: "POST",
     body: JSON.stringify(input),
   });

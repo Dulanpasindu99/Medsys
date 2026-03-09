@@ -461,6 +461,30 @@ export function validateUserRoleQuery(value: string | null) {
   return normalizeRole(value, "role");
 }
 
+export function validateAppointmentStatusQuery(value: string | null) {
+  if (value === null) {
+    return success<"waiting" | "in_consultation" | "completed" | "cancelled" | undefined>(
+      undefined
+    );
+  }
+
+  if (
+    value !== "waiting" &&
+    value !== "in_consultation" &&
+    value !== "completed" &&
+    value !== "cancelled"
+  ) {
+    return failure([
+      {
+        field: "status",
+        message: "Must be one of waiting, in_consultation, completed, cancelled.",
+      },
+    ]);
+  }
+
+  return success(value);
+}
+
 export function validateDiseaseSuggestionQuery(value: string | null) {
   const terms = normalizeRequiredString(value ?? "", "terms", { minLength: 2, maxLength: 100 });
   return terms.ok ? success({ terms: terms.value }) : terms;

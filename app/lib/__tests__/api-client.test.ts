@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createPatient,
+  dispensePrescription,
+  listAppointments,
   getAuthStatus,
   getCurrentUser,
   getPatientById,
+  getPrescriptionById,
   listPatients,
+  listPendingDispenseQueue,
   loginUser,
   registerUser,
 } from "../api-client";
@@ -92,6 +96,84 @@ describe("api client backend compatibility", () => {
       history: [expect.objectContaining({ id: 3, note: "Observed for 24 hours" })],
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/patients/7");
+  });
+
+  it("loads appointments through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([{ id: 10, patientId: 7, status: "waiting" }]),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listAppointments({ status: "waiting" })).resolves.toEqual([
+      { id: 10, patientId: 7, status: "waiting" },
+    ]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments?status=waiting");
+  });
+
+  it("loads the pending dispense queue through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([{ id: 101, patientId: 7, status: "pending_dispense" }]),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listPendingDispenseQueue()).resolves.toEqual([
+      { id: 101, patientId: 7, status: "pending_dispense" },
+    ]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/prescriptions/queue/pending-dispense");
+  });
+
+  it("loads prescription detail through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ id: 101, patientId: 7, items: [{ name: "Paracetamol" }] }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getPrescriptionById(101)).resolves.toEqual({
+      id: 101,
+      patientId: 7,
+      items: [{ name: "Paracetamol" }],
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/prescriptions/101");
+  });
+
+  it("dispenses prescriptions through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = {
+      assistantId: 42,
+      dispensedAt: "2026-03-09T10:00:00.000Z",
+      status: "completed" as const,
+      notes: "Dispensed",
+      items: [{ inventoryItemId: 99, quantity: 10 }],
+    };
+
+    await expect(dispensePrescription(101, payload)).resolves.toEqual({ success: true });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/prescriptions/101/dispense");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
   });
 
   it("throws a clear error when the current-user payload drifts from the frontend contract", async () => {
