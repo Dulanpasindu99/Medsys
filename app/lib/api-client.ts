@@ -1,4 +1,10 @@
 import type { AppRole } from "./roles";
+import {
+  adaptAuthStatusResponse,
+  adaptCreatedUserResponse,
+  adaptSessionIdentity,
+  type ApiContractError,
+} from "./backend-contract-adapters";
 
 export type ApiClientError = {
   message: string;
@@ -26,11 +32,25 @@ async function parseErrorMessage(response: Response) {
   }
 }
 
+function toApiClientError(error: unknown): ApiClientError {
+  const contractError = error as ApiContractError;
+  if (typeof contractError?.message === "string" && typeof contractError?.status === "number") {
+    return contractError;
+  }
+
+  return {
+    message: "An unexpected API client error occurred.",
+    status: 500,
+  };
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
   const url = /^https?:\/\//i.test(path)
+    ? path
+    : path.startsWith("/api/")
     ? path
     : `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
   const headers = new Headers(init.headers ?? {});
@@ -79,7 +99,11 @@ export async function loginUser(email: string, password: string, roleHint?: AppR
     throw { message, status: response.status } satisfies ApiClientError;
   }
 
-  return (await response.json()) as LoginResponse;
+  try {
+    return adaptSessionIdentity(await response.json()) as LoginResponse;
+  } catch (error) {
+    throw toApiClientError(error);
+  }
 }
 
 export async function logoutUser() {
@@ -111,39 +135,52 @@ export async function getCurrentUser() {
       throw { message, status: response.status } satisfies ApiClientError;
     }
 
-    const payload = (await response.json()) as {
-      id: number | null;
-      role: AppRole;
-      email: string;
-      name: string;
-    };
-    return payload;
+    return adaptSessionIdentity(await response.json());
   } catch (error) {
     if ((error as ApiClientError)?.status === 401) {
       return null;
     }
-    return null;
+    throw toApiClientError(error);
   }
 }
 
 export async function getAuthStatus() {
   try {
-    await apiFetch<{ status?: string }>("/healthz", { method: "GET" });
-    return { bootstrapping: false, users: 1 };
+    return adaptAuthStatusResponse(
+      await apiFetch("/api/auth/status", { method: "GET" })
+    );
   } catch {
     return { bootstrapping: false, users: 0 };
   }
 }
 
-export async function registerUser() {
-  throw {
-    message: "Registration is not exposed in the backend auth contract.",
-    status: 501,
-  } satisfies ApiClientError;
+export async function registerUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: AppRole;
+}) {
+  try {
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const message = await parseErrorMessage(response);
+      throw { message, status: response.status } satisfies ApiClientError;
+    }
+
+    return adaptCreatedUserResponse(await response.json());
+  } catch (error) {
+    throw toApiClientError(error);
+  }
 }
 
 export async function listPatients() {
-  return apiFetch("/v1/patients", { method: "GET" });
+  const response = await apiFetch<{ patients: unknown[] }>("/api/patients", { method: "GET" });
+  return response.patients;
 }
 
 export async function listFamilies() {
@@ -157,15 +194,18 @@ export async function createPatient(input: {
   gender: "male" | "female" | "other";
   mobile?: string;
   priority?: "low" | "normal" | "high" | "critical";
+  dateOfBirth?: string;
+  address?: string;
 }) {
-  return apiFetch("/v1/patients", {
+  const response = await apiFetch<{ patient: unknown }>("/api/patients", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  return response.patient;
 }
 
 export async function getPatientById(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}`, { method: "GET" });
 }
 
 export async function getPatientProfile(patientId: number | string) {

@@ -13,6 +13,17 @@ Companion execution tracker: `docs/contracts/backend-implementation-checklist.md
 
 This document describes the current internal API contract enforced by the Medsys Next.js application routes. It is intended as a backend handoff reference for validation rules, permission expectations, and response shapes currently enforced in the frontend application layer.
 
+Current implementation note:
+
+- `GET /api/auth/status`
+- `POST /api/auth/register`
+- `GET/POST /api/patients`
+- `GET/PATCH/DELETE /api/patients/:id`
+- `GET/POST /api/patients/:id/history`
+- `GET/POST /api/users`
+
+now run as backend-backed BFF routes over backend `/v1/...` endpoints. These routes validate browser payloads in the Next.js layer, call the backend with server-side credentials, and normalize backend responses before they reach the browser.
+
 ## 2. Authorization Model
 
 Internal route handlers use the shared permission model defined in `app/lib/authorization.ts` and enforced through `app/lib/api-auth.ts`.
@@ -146,6 +157,11 @@ Permission:
 
 - public route
 
+Behavior:
+
+- backend-backed BFF route over `GET /v1/auth/status`
+- used to determine first-user bootstrap state before registration and login UX decisions
+
 Success response:
 
 ```json
@@ -197,6 +213,10 @@ Response:
       "name": "Jane Doe",
       "date_of_birth": "1990-06-01",
       "phone": "555-2222",
+      "nic": "990011223V",
+      "age": 31,
+      "gender": "female",
+      "priority": "high",
       "address": "42 Main Street",
       "created_at": "2026-03-09T00:00:00.000Z"
     }
@@ -217,7 +237,12 @@ Accepted body:
   "name": "Jane Doe",
   "dateOfBirth": "1990-06-01",
   "phone": "555-2222",
-  "address": "42 Main Street"
+  "address": "42 Main Street",
+  "nic": "990011223V",
+  "age": 31,
+  "gender": "female",
+  "mobile": "555-2222",
+  "priority": "high"
 }
 ```
 
@@ -227,6 +252,11 @@ Validation rules:
 - `dateOfBirth` is optional, nullable, and if present must use `YYYY-MM-DD`
 - `phone` is optional, nullable, string, max 30 chars
 - `address` is optional, nullable, string, max 255 chars
+- `nic` is optional, nullable, string, max 32 chars
+- `age` is optional and if present must be an integer `>= 0`
+- `gender` is optional and if present must be one of `male | female | other`
+- `mobile` is optional, nullable, string, max 30 chars
+- `priority` is optional and if present must be one of `low | normal | high | critical`
 - extra keys are rejected
 
 Success response:
@@ -238,6 +268,11 @@ Success response:
     "name": "Jane Doe",
     "date_of_birth": "1990-06-01",
     "phone": "555-2222",
+    "mobile": "555-2222",
+    "nic": "990011223V",
+    "age": 31,
+    "gender": "female",
+    "priority": "high",
     "address": "42 Main Street",
     "created_at": "2026-03-09T00:00:00.000Z"
   }
@@ -263,6 +298,9 @@ Success response:
     "name": "Jane Doe",
     "date_of_birth": null,
     "phone": null,
+    "nic": "990011223V",
+    "age": 31,
+    "gender": "female",
     "address": null,
     "created_at": "2026-03-09T00:00:00.000Z"
   },
@@ -291,6 +329,11 @@ Accepted body keys:
 - `dateOfBirth`
 - `phone`
 - `address`
+- `nic`
+- `age`
+- `gender`
+- `mobile`
+- `priority`
 
 Validation rules:
 
@@ -308,6 +351,11 @@ Success response:
     "name": "Jane Doe",
     "date_of_birth": "1990-06-01",
     "phone": "555-2222",
+    "mobile": "555-2222",
+    "nic": "990011223V",
+    "age": 31,
+    "gender": "female",
+    "priority": "high",
     "address": "42 Main Street",
     "created_at": "2026-03-09T00:00:00.000Z"
   }
@@ -498,7 +546,10 @@ Success response:
 
 Bootstrapping behavior:
 
-- on first-owner registration, the application also sets the signed session cookie
+- on first-owner registration, the BFF registers through backend `/v1/auth/register`, then performs backend login and sets:
+  - backend access-token cookie
+  - backend refresh-token cookie
+  - signed app session cookie
 
 ## 4.16 `GET /api/clinical/icd10?terms=...`
 
@@ -526,7 +577,7 @@ Success response:
 - request and response schemas are implemented in the application layer, not yet in a shared backend package
 - route responses are now normalized for the listed internal routes, but not every application route has been migrated to the same level of domain validation depth
 - validation currently enforces structural correctness and basic field constraints, not deep clinical domain rules
-- store-backed routes are still prototype persistence and should not be treated as final production backend contracts
+- auth status/register, patient, patient-history, and user production-path browser flows are now backend-backed BFF routes, but some other internal routes still remain store-backed or partially adapted
 
 ## 6. Source Of Truth In Code
 

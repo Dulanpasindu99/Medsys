@@ -6,7 +6,13 @@ type PatientRecord = {
   dateOfBirth: string | null;
   phone: string | null;
   address: string | null;
-  createdAt: string;
+  createdAt: string | null;
+  nic?: string | null;
+  age?: number | null;
+  gender?: string | null;
+  priority?: string | null;
+  mobile?: string | null;
+  fullName?: string | null;
 };
 
 type UserRecord = {
@@ -14,7 +20,7 @@ type UserRecord = {
   name: string;
   email: string;
   role: Role;
-  createdAt: string;
+  createdAt: string | null;
 };
 
 type HistoryEntry = {
@@ -41,10 +47,20 @@ export function serializePatient(patient: PatientRecord) {
   return {
     id: patient.id,
     name: patient.name,
+    ...(patient.fullName && patient.fullName !== patient.name
+      ? { fullName: patient.fullName }
+      : {}),
     date_of_birth: patient.dateOfBirth,
     phone: patient.phone,
+    ...(patient.mobile && patient.mobile !== patient.phone
+      ? { mobile: patient.mobile }
+      : {}),
     address: patient.address,
-    created_at: patient.createdAt,
+    created_at: patient.createdAt ?? null,
+    ...(patient.nic != null ? { nic: patient.nic } : {}),
+    ...(patient.age != null ? { age: patient.age } : {}),
+    ...(patient.gender != null ? { gender: patient.gender } : {}),
+    ...(patient.priority != null ? { priority: patient.priority } : {}),
   };
 }
 
@@ -54,7 +70,7 @@ export function serializeUser(user: UserRecord) {
     name: user.name,
     email: user.email,
     role: user.role,
-    created_at: user.createdAt,
+    created_at: user.createdAt ?? null,
   };
 }
 

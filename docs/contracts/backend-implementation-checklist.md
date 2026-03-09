@@ -127,7 +127,7 @@ Recommended backend delivery order:
 
 ### BE-005 `GET /v1/patients`
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P0`
 - Contract source: `4.6 GET /api/patients`
 - Required outcomes:
@@ -146,11 +146,11 @@ Recommended backend delivery order:
   - authorization is enforced server-side
   - empty list behavior is defined and stable
 - Blockers:
-  - current backend route returns raw patient rows, not `{ patients: [...] }` with normalized `name`, `date_of_birth`, and `created_at`
+  - contract verification is still incomplete for the frontend validation and error-envelope behavior
 
 ### BE-006 `POST /v1/patients`
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P0`
 - Contract source: `4.7 POST /api/patients`
 - Required outcomes:
@@ -171,11 +171,11 @@ Recommended backend delivery order:
   - stored patient data round-trips correctly
   - success payload matches frontend expectation
 - Blockers:
-  - current backend request contract expects `firstName`, `lastName`, and `gender`, not the frontend contract of `name` plus optional `dateOfBirth`, `phone`, and `address`
+  - frontend-compatible payloads are now accepted, but validation-envelope alignment is not yet fully verified
 
 ### BE-007 `GET /v1/patients/:id`
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P0`
 - Contract source: `4.8 GET /api/patients/:id`
 - Required outcomes:
@@ -189,11 +189,11 @@ Recommended backend delivery order:
   - missing patient returns not-found response
   - response includes normalized history actor fields
 - Blockers:
-  - current backend route returns only the raw patient row, not `{ patient, history }`
+  - not yet fully verified against the frontend validation and error contract end-to-end
 
 ### BE-008 `PATCH /v1/patients/:id`
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P1`
 - Contract source: `4.9 PATCH /api/patients/:id`
 - Required outcomes:
@@ -208,7 +208,7 @@ Recommended backend delivery order:
   - empty patch body is rejected
   - partial update behavior is stable and documented
 - Blockers:
-  - current backend patch contract uses backend-native fields instead of the frontend contract fields
+  - contract verification is still incomplete for the final frontend error envelope
 
 ### BE-009 `DELETE /v1/patients/:id`
 
@@ -291,7 +291,7 @@ Recommended backend delivery order:
 
 ### BE-013 `POST /v1/users`
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P1`
 - Contract source: `4.14 POST /api/users`
 - Required outcomes:
@@ -307,11 +307,11 @@ Recommended backend delivery order:
   - duplicate email handling is deterministic
   - response shape matches contract
 - Blockers:
-  - current backend request expects `firstName` and `lastName`, not the frontend contract field `name`
+  - duplicate-email and validation-envelope behavior are not yet fully `Verified`
 
 ### BE-014 `POST /v1/auth/register`
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P1`
 - Contract source: `4.15 POST /api/auth/register`
 - Required outcomes:
@@ -326,7 +326,7 @@ Recommended backend delivery order:
   - first account can only be owner
   - subsequent registration behavior is explicit and secure
 - Blockers:
-  - request contract has the same mismatch as user create, and the response shape is not yet exactly aligned with the frontend contract
+  - frontend BFF bootstrap login/cookie alignment is now implemented, but end-to-end verification against the live backend is still pending
 
 ## 5.5 Clinical Terminology
 
@@ -397,20 +397,20 @@ Recommended backend delivery order:
 
 ### BE-020 Store Replacement
 
-- Status: `Not Started`
+- Status: `In Progress`
 - Priority: `P0`
 - Required outcomes:
   - production workflows no longer depend on `app/lib/store.ts`
   - backend becomes the source of truth for patient and user data
 - Current gap:
-  - from the backend repo alone, there is no proof the frontend has fully stopped depending on prototype internal/store-backed routes
+  - auth status/register, patient, patient-history, and user browser flows now use backend-backed BFF routes, but some other internal routes still depend on the prototype store path
 
 ## 7. What Is Actually Left
 
 The main remaining backend work is now contract alignment rather than missing route creation.
 
-- patient list, create, detail, and update need reshaping to the frontend contract
-- user create and auth register need to accept the frontend-style `name` field or the frontend contract must be changed deliberately
+- validation-envelope consistency still needs to be standardized across the whole backend surface
+- permission enforcement still needs to move from role checks to the documented permission strings
 - the validation error envelope is still not aligned uniformly
 - backend authorization is still role-based, not based on the documented permission strings
 - contract-level tests are still incomplete across validation, deny cases, and exact response shapes

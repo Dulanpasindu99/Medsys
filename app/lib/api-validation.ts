@@ -175,12 +175,60 @@ export function parsePositiveInteger(value: string, field: string) {
   return success(parsed);
 }
 
+function normalizeOptionalNonNegativeInteger(
+  value: unknown,
+  field: string
+): ValidationResult<number | undefined> {
+  if (value === undefined) {
+    return success(undefined);
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return failure([{ field, message: "Must be an integer." }]);
+  }
+
+  if (value < 0) {
+    return failure([{ field, message: "Must be zero or greater." }]);
+  }
+
+  return success(value);
+}
+
+function normalizePatientGender(value: unknown, field: string) {
+  if (value === undefined) {
+    return success<"male" | "female" | "other" | undefined>(undefined);
+  }
+
+  if (value !== "male" && value !== "female" && value !== "other") {
+    return failure([{ field, message: "Must be one of male, female, other." }]);
+  }
+
+  return success(value as "male" | "female" | "other");
+}
+
+function normalizePatientPriority(value: unknown, field: string) {
+  if (value === undefined) {
+    return success<"low" | "normal" | "high" | "critical" | undefined>(undefined);
+  }
+
+  if (value !== "low" && value !== "normal" && value !== "high" && value !== "critical") {
+    return failure([{ field, message: "Must be one of low, normal, high, critical." }]);
+  }
+
+  return success(value as "low" | "normal" | "high" | "critical");
+}
+
 export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
     "name",
     "dateOfBirth",
     "phone",
     "address",
+    "nic",
+    "age",
+    "gender",
+    "mobile",
+    "priority",
   ]);
 
   const name = normalizeRequiredString(payload.name, "name", { maxLength: 120 });
@@ -195,15 +243,49 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const address = normalizeOptionalString(payload.address, "address", { maxLength: 255, allowEmpty: false });
   if (!address.ok) issues.push(...address.issues);
 
-  if (issues.length > 0 || !name.ok || !dateOfBirth.ok || !phone.ok || !address.ok) {
+  const nic = normalizeOptionalString(payload.nic, "nic", { maxLength: 32, allowEmpty: false });
+  if (!nic.ok) issues.push(...nic.issues);
+
+  const age = normalizeOptionalNonNegativeInteger(payload.age, "age");
+  if (!age.ok) issues.push(...age.issues);
+
+  const gender = normalizePatientGender(payload.gender, "gender");
+  if (!gender.ok) issues.push(...gender.issues);
+
+  const mobile = normalizeOptionalString(payload.mobile, "mobile", {
+    maxLength: 30,
+    allowEmpty: false,
+  });
+  if (!mobile.ok) issues.push(...mobile.issues);
+
+  const priority = normalizePatientPriority(payload.priority, "priority");
+  if (!priority.ok) issues.push(...priority.issues);
+
+  if (
+    issues.length > 0 ||
+    !name.ok ||
+    !dateOfBirth.ok ||
+    !phone.ok ||
+    !address.ok ||
+    !nic.ok ||
+    !age.ok ||
+    !gender.ok ||
+    !mobile.ok ||
+    !priority.ok
+  ) {
     return failure(issues);
   }
 
   return success({
     name: name.value,
     dateOfBirth: dateOfBirth.value ?? null,
-    phone: phone.value ?? null,
+    phone: phone.value ?? mobile.value ?? null,
     address: address.value ?? null,
+    nic: nic.value ?? null,
+    age: age.value,
+    gender: gender.value,
+    mobile: mobile.value ?? phone.value ?? null,
+    priority: priority.value,
   });
 }
 
@@ -213,6 +295,11 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     "dateOfBirth",
     "phone",
     "address",
+    "nic",
+    "age",
+    "gender",
+    "mobile",
+    "priority",
   ]);
 
   if (Object.keys(payload).length === 0) {
@@ -224,6 +311,11 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     dateOfBirth?: string | null;
     phone?: string | null;
     address?: string | null;
+    nic?: string | null;
+    age?: number;
+    gender?: "male" | "female" | "other";
+    mobile?: string | null;
+    priority?: "low" | "normal" | "high" | "critical";
   } = {};
 
   if ("name" in payload) {
@@ -259,6 +351,57 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
       issues.push(...address.issues);
     } else {
       result.address = address.value ?? null;
+    }
+  }
+
+  if ("nic" in payload) {
+    const nic = normalizeOptionalString(payload.nic, "nic", { maxLength: 32, allowEmpty: false });
+    if (!nic.ok) {
+      issues.push(...nic.issues);
+    } else {
+      result.nic = nic.value ?? null;
+    }
+  }
+
+  if ("age" in payload) {
+    const age = normalizeOptionalNonNegativeInteger(payload.age, "age");
+    if (!age.ok) {
+      issues.push(...age.issues);
+    } else if (age.value !== undefined) {
+      result.age = age.value;
+    }
+  }
+
+  if ("gender" in payload) {
+    const gender = normalizePatientGender(payload.gender, "gender");
+    if (!gender.ok) {
+      issues.push(...gender.issues);
+    } else if (gender.value !== undefined) {
+      result.gender = gender.value;
+    }
+  }
+
+  if ("mobile" in payload) {
+    const mobile = normalizeOptionalString(payload.mobile, "mobile", {
+      maxLength: 30,
+      allowEmpty: false,
+    });
+    if (!mobile.ok) {
+      issues.push(...mobile.issues);
+    } else {
+      result.mobile = mobile.value ?? null;
+      if (!("phone" in payload)) {
+        result.phone = mobile.value ?? null;
+      }
+    }
+  }
+
+  if ("priority" in payload) {
+    const priority = normalizePatientPriority(payload.priority, "priority");
+    if (!priority.ok) {
+      issues.push(...priority.issues);
+    } else if (priority.value !== undefined) {
+      result.priority = priority.value;
     }
   }
 

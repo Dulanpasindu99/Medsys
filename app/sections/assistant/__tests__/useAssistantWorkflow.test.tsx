@@ -29,6 +29,31 @@ const mockedListAppointments = vi.mocked(listAppointments);
 const mockedListPatients = vi.mocked(listPatients);
 const mockedListPendingDispenseQueue = vi.mocked(listPendingDispenseQueue);
 
+function buildPatientFixture(input: {
+  id: number;
+  name: string;
+  nic: string;
+  age: number;
+  gender: string;
+}) {
+  return {
+    id: input.id,
+    name: input.name,
+    fullName: input.name,
+    dateOfBirth: null,
+    date_of_birth: null,
+    phone: null,
+    mobile: null,
+    address: null,
+    createdAt: "2026-03-09T00:00:00.000Z",
+    created_at: "2026-03-09T00:00:00.000Z",
+    nic: input.nic,
+    age: input.age,
+    gender: input.gender,
+    priority: null,
+  };
+}
+
 describe("useAssistantWorkflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,7 +66,22 @@ describe("useAssistantWorkflow", () => {
       email: "assistant@medsys.test",
       name: "Assistant",
     });
-    mockedCreatePatient.mockResolvedValue({});
+    mockedCreatePatient.mockResolvedValue({
+      id: 99,
+      name: "Created Patient",
+      fullName: "Created Patient",
+      dateOfBirth: null,
+      date_of_birth: null,
+      phone: null,
+      mobile: null,
+      address: null,
+      createdAt: "2026-03-09T00:00:00.000Z",
+      created_at: "2026-03-09T00:00:00.000Z",
+      nic: null,
+      age: null,
+      gender: null,
+      priority: null,
+    });
     mockedDispensePrescription.mockResolvedValue({});
     mockedListAppointments.mockImplementation(async (input?: { status?: string }) => {
       if (input?.status === "completed") {
@@ -70,7 +110,13 @@ describe("useAssistantWorkflow", () => {
       },
     ]);
     mockedListPatients.mockResolvedValue([
-      { id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" },
+      buildPatientFixture({
+        id: 7,
+        name: "Jane Doe",
+        nic: "990011223V",
+        age: 31,
+        gender: "female",
+      }),
     ]);
     mockedGetAnalyticsOverview.mockResolvedValue({
       totalPatients: 12,
@@ -165,8 +211,20 @@ describe("useAssistantWorkflow", () => {
       },
     ]);
     mockedListPatients.mockResolvedValue([
-      { id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" },
-      { id: 8, name: "John Doe", nic: "881234567V", age: 29, gender: "male" },
+      buildPatientFixture({
+        id: 7,
+        name: "Jane Doe",
+        nic: "990011223V",
+        age: 31,
+        gender: "female",
+      }),
+      buildPatientFixture({
+        id: 8,
+        name: "John Doe",
+        nic: "881234567V",
+        age: 29,
+        gender: "male",
+      }),
     ]);
     mockedGetCurrentUser.mockResolvedValue(null);
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUser, findUserByEmail, listUsers } from "@/app/lib/store";
-import { hashPassword } from "@/app/lib/auth";
 import { requirePermission } from "@/app/lib/api-auth";
+import { adaptCreatedUserResponse, adaptUserCollectionResponse } from "@/app/lib/backend-contract-adapters";
+import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
 import { serializeUser } from "@/app/lib/api-serializers";
 import {
   parseJsonBody,
@@ -9,6 +9,13 @@ import {
   validateUserWritePayload,
   validationErrorResponse,
 } from "@/app/lib/api-validation";
+
+function contractMismatchResponse() {
+  return NextResponse.json(
+    { error: "Backend contract mismatch for the user route." },
+    { status: 502 }
+  );
+}
 
 export async function GET(request: NextRequest) {
   const auth = requirePermission(request, "user.read");
@@ -22,9 +29,23 @@ export async function GET(request: NextRequest) {
     return validationErrorResponse(role.issues);
   }
 
-  const users = listUsers(role.value).map(serializeUser);
+  const backend = await callBackendRoute(request, "/v1/users");
+  if (!backend.ok) {
+    return backend.response;
+  }
 
-  return NextResponse.json({ users });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to load users.");
+  }
+
+  try {
+    const users = adaptUserCollectionResponse(await backend.response.json()).map(serializeUser);
+    const response = NextResponse.json({ users });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -43,18 +64,23 @@ export async function POST(request: NextRequest) {
     return validationErrorResponse(validated.issues);
   }
 
-  const existing = findUserByEmail(validated.value.email);
-  if (existing) {
-    return NextResponse.json({ error: "Email already exists." }, { status: 409 });
+  const backend = await callBackendRoute(request, "/v1/users", {
+    body: JSON.stringify(validated.value),
+  });
+  if (!backend.ok) {
+    return backend.response;
   }
 
-  const passwordHash = hashPassword(validated.value.password);
-  const created = createUser({
-    name: validated.value.name,
-    email: validated.value.email,
-    passwordHash,
-    role: validated.value.role,
-  });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to create user.");
+  }
 
-  return NextResponse.json({ user: serializeUser(created) });
+  try {
+    const created = adaptCreatedUserResponse(await backend.response.json());
+    const response = NextResponse.json({ user: serializeUser(created) });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }

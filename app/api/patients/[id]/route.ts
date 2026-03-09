@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  deletePatient,
-  findPatientById,
-  findUserById,
-  listPatientHistory,
-  updatePatient,
-} from "@/app/lib/store";
 import { requirePermission } from "@/app/lib/api-auth";
-import { serializeHistoryEntry, serializePatient } from "@/app/lib/api-serializers";
+import { adaptPatientDetailResponse, adaptSinglePatientResponse } from "@/app/lib/backend-contract-adapters";
+import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
+import { serializePatient } from "@/app/lib/api-serializers";
 import {
   parseJsonBody,
   parsePositiveInteger,
   validatePatientUpdatePayload,
   validationErrorResponse,
 } from "@/app/lib/api-validation";
+
+function contractMismatchResponse() {
+  return NextResponse.json(
+    { error: "Backend contract mismatch for the patient detail route." },
+    { status: 502 }
+  );
+}
 
 export async function GET(
   request: NextRequest,
@@ -30,21 +32,35 @@ export async function GET(
     return validationErrorResponse(id.issues);
   }
 
-  const patient = findPatientById(id.value);
-
-  if (!patient) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+  const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+    includeSearch: false,
+  });
+  if (!backend.ok) {
+    return backend.response;
   }
 
-  const history = listPatientHistory(id.value).map((entry) => {
-    const createdBy = entry.createdByUserId ? findUserById(entry.createdByUserId) : undefined;
-    return serializeHistoryEntry(entry, createdBy);
-  });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to load patient.");
+  }
 
-  return NextResponse.json({
-    patient: serializePatient(patient),
-    history,
-  });
+  try {
+    const detail = adaptPatientDetailResponse(await backend.response.json());
+    const response = NextResponse.json({
+      patient: serializePatient(detail.patient),
+      history: detail.history.map((entry) => ({
+        id: entry.id,
+        note: entry.note,
+        created_at: entry.created_at,
+        created_by_user_id: entry.created_by_user_id,
+        created_by_name: entry.created_by_name,
+        created_by_role: entry.created_by_role,
+      })),
+    });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }
 
 export async function PATCH(
@@ -72,20 +88,28 @@ export async function PATCH(
     return validationErrorResponse(validated.issues);
   }
 
-  const patient = findPatientById(id.value);
-  if (!patient) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
-  }
-
-  const updated = updatePatient(id.value, validated.value);
-
-  if (!updated) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    patient: serializePatient(updated),
+  const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+    body: JSON.stringify(validated.value),
+    includeSearch: false,
   });
+  if (!backend.ok) {
+    return backend.response;
+  }
+
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to update patient.");
+  }
+
+  try {
+    const updated = adaptSinglePatientResponse(await backend.response.json());
+    const response = NextResponse.json({
+      patient: serializePatient(updated),
+    });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }
 
 export async function DELETE(
@@ -103,10 +127,18 @@ export async function DELETE(
     return validationErrorResponse(id.issues);
   }
 
-  const deleted = deletePatient(id.value);
-  if (!deleted) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+  const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+    includeSearch: false,
+  });
+  if (!backend.ok) {
+    return backend.response;
   }
 
-  return NextResponse.json({ success: true });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to delete patient.");
+  }
+
+  const response = NextResponse.json({ success: true });
+  backend.applyTo(response);
+  return response;
 }

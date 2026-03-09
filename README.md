@@ -33,7 +33,12 @@ BACKEND_URL=http://localhost:4000
 MEDSYS_SESSION_SECRET=change-me
 ```
 
-Frontend feature calls go to the internal proxy route `/api/backend/:path*`, which forwards to `BACKEND_URL` server-side and injects backend auth from secure cookies. The browser never receives backend access or refresh tokens directly.
+Frontend feature calls now use two server-side paths:
+
+- dedicated BFF contract routes such as `/api/auth/status`, `/api/auth/register`, `/api/patients`, `/api/patients/:id`, `/api/patients/:id/history`, and `/api/users`
+- the generic authenticated proxy `/api/backend/:path*` for the remaining `/v1/...` surface
+
+Both paths forward to `BACKEND_URL` server-side and keep backend access and refresh tokens in secure cookies. The browser never receives backend access or refresh tokens directly.
 
 ## Quality Commands
 
@@ -54,7 +59,8 @@ npm run test
   - secure `httpOnly` backend refresh-token cookie
 - App identity is read from `GET /api/auth/me`.
 - Logout goes through `POST /api/auth/logout`.
-- Feature API requests go through `app/api/backend/[...path]/route.ts`.
+- Auth status/register, patient, patient-history, and user browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize backend `/v1/...` responses before returning them to the UI.
+- Remaining feature API requests go through `app/api/backend/[...path]/route.ts`.
 - On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
 - If refresh fails, backend cookies and the app session are cleared together.
 - Page routing and nav visibility are driven by the shared policy in `app/lib/authorization.ts`.
@@ -63,6 +69,7 @@ npm run test
   - request validation: `app/lib/api-validation.ts`
   - response mapping: `app/lib/api-serializers.ts`
 - Auth login and backend refresh flows now validate backend token-pair payloads before setting or rotating cookies.
+- Frontend-to-backend compatibility adapters now live in `app/lib/backend-contract-adapters.ts` for remaining routes that still need temporary normalization outside the BFF boundary.
 - Current internal API permission coverage includes:
   - patient read/write/delete
   - patient history read/write
@@ -76,10 +83,16 @@ npm run test
   - `/api/auth/login`
   - `/api/auth/logout`
   - `/api/auth/me`
+  - `/api/auth/status`
+  - `/api/auth/register`
   - `/api/backend/v1/auth/refresh` (server-side only)
 - Patients:
-  - `/api/backend/v1/patients`
+  - `/api/patients`
+  - `/api/patients/:id`
+  - `/api/patients/:id/history`
   - `/api/backend/v1/patients/:id/profile`
+- Users:
+  - `/api/users`
 - Appointments:
   - `/api/backend/v1/appointments`
 - Encounters:
@@ -100,6 +113,10 @@ npm run test
   - `app/lib/api-validation.ts`
 - API serializers:
   - `app/lib/api-serializers.ts`
+- Backend-backed BFF route client:
+  - `app/lib/backend-route-client.ts`
+- Backend contract adapters:
+  - `app/lib/backend-contract-adapters.ts`
 - Backend auth cookies:
   - `app/lib/backend-auth-cookies.ts`
 - Backend proxy:

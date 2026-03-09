@@ -23,6 +23,8 @@ Current strengths:
 - Shared page and API authorization policy now exists for shell routes and selected internal route handlers
 - Same-origin auth proxy and signed session integration are in place
 - Shared structural validation and response normalization now exist for selected internal route handlers
+- Auth status/register, patient, patient-history, and user browser flows now run through backend-backed `/api/...` BFF routes instead of the prototype store path
+- Frontend compatibility adapters can now absorb only the remaining backend contract mismatches without spreading route-specific hacks through feature hooks
 - Feature hooks are being used instead of placing all logic directly in components
 
 Current gaps:
@@ -33,6 +35,7 @@ Current gaps:
 - No mature server-state caching/invalidation layer
 - Test coverage is improving, but still incomplete for critical healthcare workflows
 - API schema validation is not yet complete across all backend-facing workflows
+- Some backend-facing flows still require temporary frontend compatibility adapters because the backend contract is only partially aligned
 - No visible audit logging, access governance, or compliance workflow
 
 ## Guiding Principles
@@ -325,7 +328,7 @@ These should happen before broad feature expansion.
 
 1. Expand permission coverage and schema validation to all backend-facing workflows.
 2. Define and align target backend contracts for patients, appointments, encounters, prescriptions, and inventory.
-3. Remove reliance on `app/lib/store.ts` for anything considered production-path.
+3. Remove the remaining reliance on `app/lib/store.ts` for anything considered production-path.
 4. Introduce a shared query/mutation layer for remote data.
 5. Add audit logging for sensitive access and mutation flows.
 6. Add integration and end-to-end coverage for authorization-sensitive and validation-sensitive workflows.

@@ -355,7 +355,7 @@ export default function Login() {
   useEffect(() => {
     let active = true;
     void (async () => {
-      const user = await getCurrentUser();
+      const user = await getCurrentUser().catch(() => null);
       if (!active || !user) {
         return;
       }
