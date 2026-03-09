@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/app/lib/api-auth";
+import { requirePermission } from "@/app/lib/api-auth";
+import {
+  validateDiseaseSuggestionQuery,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
 const MAX_LIST = 10;
 const BASE_URL = "https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search";
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  const auth = requirePermission(request, "clinical.icd10.read");
   if (auth.error) {
     return auth.error;
   }
@@ -15,9 +19,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ suggestions: [] });
   }
 
+  const validatedQuery = validateDiseaseSuggestionQuery(terms);
+  if (!validatedQuery.ok) {
+    return validationErrorResponse(validatedQuery.issues);
+  }
+
   try {
     const upstream = await fetch(
-      `${BASE_URL}?sf=code,name&maxList=${MAX_LIST}&terms=${encodeURIComponent(terms)}`,
+      `${BASE_URL}?sf=code,name&maxList=${MAX_LIST}&terms=${encodeURIComponent(validatedQuery.value.terms)}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },

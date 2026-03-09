@@ -5,38 +5,33 @@ import {
   findUserById,
   listPatientHistory,
 } from "@/app/lib/store";
-import { requireRole } from "@/app/lib/api-auth";
-
-function parseId(idParam: string) {
-  const id = Number(idParam);
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
+import { requirePermission } from "@/app/lib/api-auth";
+import { serializeHistoryEntry } from "@/app/lib/api-serializers";
+import {
+  parseJsonBody,
+  parsePositiveInteger,
+  validatePatientHistoryPayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  const auth = requirePermission(request, "patient.history.read");
   if (auth.error) {
     return auth.error;
   }
 
   const { id: idParam } = await params;
-  const id = parseId(idParam);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
+  const id = parsePositiveInteger(idParam, "id");
+  if (!id.ok) {
+    return validationErrorResponse(id.issues);
   }
 
-  const history = listPatientHistory(id).map((entry) => {
+  const history = listPatientHistory(id.value).map((entry) => {
     const createdBy = entry.createdByUserId ? findUserById(entry.createdByUserId) : undefined;
-    return {
-      id: entry.id,
-      note: entry.note,
-      created_at: entry.createdAt,
-      created_by_user_id: createdBy?.id ?? null,
-      created_by_name: createdBy?.name ?? null,
-      created_by_role: createdBy?.role ?? null,
-    };
+    return serializeHistoryEntry(entry, createdBy);
   });
 
   return NextResponse.json({ history });
@@ -46,7 +41,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  const auth = requirePermission(request, "patient.history.write");
   if (auth.error) {
     return auth.error;
   }
@@ -55,19 +50,22 @@ export async function POST(
   }
 
   const { id: idParam } = await params;
-  const id = parseId(idParam);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
+  const id = parsePositiveInteger(idParam, "id");
+  if (!id.ok) {
+    return validationErrorResponse(id.issues);
   }
 
-  const body = await request.json();
-  const { note } = body ?? {};
-
-  if (!note) {
-    return NextResponse.json({ error: "History note is required." }, { status: 400 });
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
   }
 
-  const patient = findPatientById(id);
+  const validated = validatePatientHistoryPayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
+
+  const patient = findPatientById(id.value);
   if (!patient) {
     return NextResponse.json({ error: "Patient not found." }, { status: 404 });
   }
@@ -83,15 +81,15 @@ export async function POST(
   }
 
   const created = createPatientHistory({
-    patientId: id,
-    note,
+    patientId: id.value,
+    note: validated.value.note,
     createdByUserId: sessionUserId,
   });
 
   return NextResponse.json({
     id: created.id,
-    patientId: id,
-    note,
+    patientId: id.value,
+    note: validated.value.note,
     createdByUserId: sessionUserId,
   });
 }

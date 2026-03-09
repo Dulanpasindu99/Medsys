@@ -18,6 +18,31 @@ describe("POST /api/auth/login", () => {
     vi.restoreAllMocks();
   });
 
+  it("rejects invalid login payloads with a validation envelope", async () => {
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "not-an-email",
+        password: "short",
+        roleHint: "admin",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      error: "Validation failed.",
+      issues: expect.arrayContaining([
+        { field: "email", message: "Must be a valid email address." },
+        { field: "password", message: "Must be at least 8 characters." },
+        { field: "roleHint", message: "Must be one of owner, doctor, assistant." },
+      ]),
+    });
+  });
+
   it("sets secure backend auth cookies and a signed app session", async () => {
     const accessToken = createJwt({
       userId: 42,
@@ -51,7 +76,7 @@ describe("POST /api/auth/login", () => {
       method: "POST",
       body: JSON.stringify({
         email: "doctor@example.com",
-        password: "secret",
+        password: "secret-123",
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -69,5 +94,43 @@ describe("POST /api/auth/login", () => {
     expect(response.cookies.get(BACKEND_ACCESS_COOKIE_NAME)?.value).toBe(accessToken);
     expect(response.cookies.get(BACKEND_REFRESH_COOKIE_NAME)?.value).toBe(refreshToken);
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBeTruthy();
+  });
+
+  it("returns 502 when the backend login payload is malformed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accessToken: "",
+            refreshToken: "refresh-token",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    );
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "doctor@example.com",
+        password: "secret-123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(body).toEqual({
+      error: "Authentication service returned an invalid token payload.",
+      issues: expect.arrayContaining([
+        { field: "accessToken", message: "Is required." },
+      ]),
+    });
   });
 });

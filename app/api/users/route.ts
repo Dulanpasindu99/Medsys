@@ -1,65 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, findUserByEmail, listUsers } from "@/app/lib/store";
 import { hashPassword } from "@/app/lib/auth";
-import { requireRole } from "@/app/lib/api-auth";
-
-const ALLOWED_ROLES = ["owner", "doctor", "assistant"] as const;
-
-type Role = (typeof ALLOWED_ROLES)[number];
+import { requirePermission } from "@/app/lib/api-auth";
+import { serializeUser } from "@/app/lib/api-serializers";
+import {
+  parseJsonBody,
+  validateUserRoleQuery,
+  validateUserWritePayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, ["owner"]);
+  const auth = requirePermission(request, "user.read");
   if (auth.error) {
     return auth.error;
   }
 
   const { searchParams } = new URL(request.url);
-  const role = searchParams.get("role");
-
-  if (role && !ALLOWED_ROLES.includes(role as Role)) {
-    return NextResponse.json({ error: "Invalid role." }, { status: 400 });
+  const role = validateUserRoleQuery(searchParams.get("role"));
+  if (!role.ok) {
+    return validationErrorResponse(role.issues);
   }
 
-  const users = listUsers(role as Role | undefined).map((user) => ({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    created_at: user.createdAt,
-  }));
+  const users = listUsers(role.value).map(serializeUser);
 
   return NextResponse.json({ users });
 }
 
 export async function POST(request: NextRequest) {
-  const auth = requireRole(request, ["owner"]);
+  const auth = requirePermission(request, "user.write");
   if (auth.error) {
     return auth.error;
   }
 
-  const body = await request.json();
-  const { name, email, password, role } = body ?? {};
-
-  if (!name || !email || !password || !role) {
-    return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
   }
 
-  if (!ALLOWED_ROLES.includes(role)) {
-    return NextResponse.json({ error: "Invalid role." }, { status: 400 });
+  const validated = validateUserWritePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
   }
 
-  const existing = findUserByEmail(email);
+  const existing = findUserByEmail(validated.value.email);
   if (existing) {
     return NextResponse.json({ error: "Email already exists." }, { status: 409 });
   }
 
-  const passwordHash = hashPassword(password);
-  const created = createUser({ name, email, passwordHash, role });
-
-  return NextResponse.json({
-    id: created.id,
-    name,
-    email,
-    role,
+  const passwordHash = hashPassword(validated.value.password);
+  const created = createUser({
+    name: validated.value.name,
+    email: validated.value.email,
+    passwordHash,
+    role: validated.value.role,
   });
+
+  return NextResponse.json({ user: serializeUser(created) });
 }

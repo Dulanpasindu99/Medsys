@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachBackendAuthCookies } from "@/app/lib/backend-auth-cookies";
+import { serializeSessionIdentity } from "@/app/lib/api-serializers";
+import {
+  parseJsonBody,
+  validateAuthLoginPayload,
+  validateBackendTokenPairPayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 import { attachSessionCookie } from "@/app/lib/session";
 import { readTokenClaims } from "@/app/lib/token-claims";
-
-type BackendLoginResponse = {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-};
 
 function getBackendLoginUrl() {
   const origin = process.env.BACKEND_URL ?? "http://localhost:4000";
@@ -24,12 +25,17 @@ async function parseErrorMessage(response: Response) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { email, password, roleHint, organizationId } = body ?? {};
-
-  if (!email || !password) {
-    return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
   }
+
+  const validated = validateAuthLoginPayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
+
+  const { email, password, roleHint, organizationId } = validated.value;
 
   let backendResponse: Response;
   try {
@@ -55,9 +61,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: backendResponse.status });
   }
 
-  const payload = (await backendResponse.json()) as BackendLoginResponse;
-  const claims = readTokenClaims(payload.accessToken);
-  const refreshClaims = readTokenClaims(payload.refreshToken);
+  const payload = validateBackendTokenPairPayload(await backendResponse.json());
+  if (!payload.ok) {
+    return NextResponse.json(
+      {
+        error: "Authentication service returned an invalid token payload.",
+        issues: payload.issues,
+      },
+      { status: 502 }
+    );
+  }
+
+  const tokenPair = payload.value;
+  const claims = readTokenClaims(tokenPair.accessToken);
+  const refreshClaims = readTokenClaims(tokenPair.refreshToken);
   const role = claims.role ?? roleHint ?? null;
   const name = claims.name ?? email.split("@")[0] ?? "User";
   const resolvedEmail = claims.email ?? email;
@@ -69,18 +86,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.json({
-    id: claims.userId,
-    name,
-    email: resolvedEmail,
-    role,
-  });
+  const response = NextResponse.json(
+    serializeSessionIdentity({
+      id: claims.userId,
+      name,
+      email: resolvedEmail,
+      role,
+    })
+  );
 
   attachBackendAuthCookies(
     response,
     {
-      accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken,
+      accessToken: tokenPair.accessToken,
+      refreshToken: tokenPair.refreshToken,
     },
     {
       accessExpiresAt: claims.exp,

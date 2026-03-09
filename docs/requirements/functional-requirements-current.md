@@ -53,6 +53,7 @@ The current product recognizes the following application roles:
 - owner
 
 Role-based route checks currently control access to selected pages and redirect unauthorized users to the default route for their role.
+The current product also uses a shared permission matrix to drive shell route access, navigation visibility, and selected internal API route authorization.
 
 ## 6. Functional Requirements
 
@@ -68,11 +69,11 @@ FR-004. The system shall store backend access and refresh tokens in httpOnly coo
 
 FR-005. The system shall provide a session check endpoint to identify the current authenticated user.
 
-FR-006. The system shall redirect unauthenticated users to the login page before protected shell routes render.
+FR-006. The system shall redirect unauthenticated users to the login page before protected shell routes render and shall use the shared authorization policy to evaluate protected shell access.
 
 FR-007. The system shall provide a logout action that clears the application session and backend authentication cookies.
 
-FR-008. The system shall redirect authenticated users away from the login page to the role-appropriate landing page.
+FR-008. The system shall redirect authenticated users away from the login page to the role-appropriate landing page and shall validate backend token-pair responses during login and refresh before rotating session or backend auth cookies.
 
 ## 6.2 Shell, Routing, And Navigation
 
@@ -236,6 +237,16 @@ FR-077. The system shall disable relevant actions while mutations are in progres
 
 FR-078. The system shall show partial-data warnings when non-critical data fails and fallback rendering is still possible.
 
+## 6.13 Internal API Contract Validation
+
+FR-079. The system shall validate selected internal API request bodies before store or backend operations are executed.
+
+FR-080. The system shall reject unknown fields in selected internal API write payloads.
+
+FR-081. The system shall return a consistent validation error envelope for selected internal API validation failures.
+
+FR-082. The system shall normalize selected internal API success responses through shared response serializers.
+
 ## 7. Current Functional Limitations And Exclusions
 
 The following limits are part of the current implemented behavior and should be treated as known gaps rather than completed enterprise functionality:
@@ -247,6 +258,8 @@ The following limits are part of the current implemented behavior and should be 
 - inventory operations are currently lightweight operational controls and not a full pharmacy inventory or controlled-substance management implementation
 - there is no patient self-service portal, billing module, claims workflow, laboratory integration, imaging integration, or discharge workflow in the current build
 - current role enforcement is page-oriented and not yet a full permission-matrix authorization model
+- the current permission matrix covers shell navigation and selected internal route handlers, but record-level, organization-level, and backend-domain authorization are not yet fully modeled
+- selected internal routes now use shared structural validation, but deep clinical validation and cross-system contract sharing are not yet implemented
 
 ## 8. Document Use
 

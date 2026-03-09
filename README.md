@@ -1,6 +1,6 @@
 # Medsys Frontend
 
-Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with a same-origin backend API proxy and signed app sessions.
+Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with a same-origin backend API proxy, signed app sessions, and a shared permission matrix for shell and internal API access.
 
 ## Stack
 
@@ -46,7 +46,7 @@ npm run test
 
 `test` runs lint + strict typecheck + unit/component tests.
 
-## Authentication Model
+## Authentication And Authorization Model
 
 - Login goes through `POST /api/auth/login`, which authenticates against the backend and sets:
   - signed app session cookie
@@ -57,6 +57,18 @@ npm run test
 - Feature API requests go through `app/api/backend/[...path]/route.ts`.
 - On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
 - If refresh fails, backend cookies and the app session are cleared together.
+- Page routing and nav visibility are driven by the shared policy in `app/lib/authorization.ts`.
+- Internal route handlers use permission checks from `app/lib/api-auth.ts` so API authorization follows the same shared policy as the shell.
+- Internal route handlers now also use shared request validation and response serialization helpers:
+  - request validation: `app/lib/api-validation.ts`
+  - response mapping: `app/lib/api-serializers.ts`
+- Auth login and backend refresh flows now validate backend token-pair payloads before setting or rotating cookies.
+- Current internal API permission coverage includes:
+  - patient read/write/delete
+  - patient history read/write
+  - user read/write
+  - ICD-10 lookup access
+- Validation failures return a consistent `400` envelope with `error` and `issues` fields.
 
 ## API Scope (frontend mapped)
 
@@ -80,6 +92,14 @@ npm run test
 
 - API client:
   - `app/lib/api-client.ts`
+- Shared authorization policy:
+  - `app/lib/authorization.ts`
+- API authorization helpers:
+  - `app/lib/api-auth.ts`
+- API validation helpers:
+  - `app/lib/api-validation.ts`
+- API serializers:
+  - `app/lib/api-serializers.ts`
 - Backend auth cookies:
   - `app/lib/backend-auth-cookies.ts`
 - Backend proxy:
@@ -90,6 +110,8 @@ npm run test
   - `app/login/page.tsx`
 - Validation:
   - `app/utils/schema-validation/doctor-section.schema.ts`
+  - `docs/contracts/internal-api-contract-current.md`
+  - `docs/contracts/backend-implementation-checklist.md`
 - Feature sections:
   - `app/sections/DoctorSection.tsx`
   - `app/sections/AssistantSection.tsx`

@@ -4,6 +4,7 @@ import {
   getDefaultRouteForRole,
   getNavigationIndexForPath,
   getNavigationItemsForRole,
+  hasPermission,
 } from "../authorization";
 
 describe("authorization policy", () => {
@@ -20,6 +21,13 @@ describe("authorization policy", () => {
     expect(canAccessRoute("assistant", "doctorHome")).toBe(false);
     expect(canAccessRoute("owner", "ownerWorkspace")).toBe(true);
     expect(canAccessRoute("owner", "doctorHome")).toBe(true);
+  });
+
+  it("reuses the same matrix for API permissions", () => {
+    expect(hasPermission("assistant", "patient.read")).toBe(true);
+    expect(hasPermission("assistant", "patient.delete")).toBe(false);
+    expect(hasPermission("doctor", "user.read")).toBe(false);
+    expect(hasPermission("owner", "user.write")).toBe(true);
   });
 
   it("returns role-specific navigation sets from the same policy", () => {

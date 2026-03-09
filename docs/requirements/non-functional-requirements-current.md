@@ -45,7 +45,7 @@ NFR-004. The system shall clear application and backend authentication cookies o
 
 NFR-005. The system shall deny protected shell access to unauthenticated users.
 
-NFR-006. The system shall enforce role-based page access for currently protected routes such as owner and assistant routes.
+NFR-006. The system shall enforce permission-based shell and selected internal API access through one shared authorization policy.
 
 NFR-007. The system shall generate a request identifier header for API calls when the client has not already provided one.
 
@@ -65,7 +65,7 @@ NFR-013. The system shall avoid showing the normal application shell on full-scr
 
 NFR-014. The system shall support retry behavior from pages or panels when data loading failures occur.
 
-NFR-015. The system shall refresh backend tokens through the application proxy when a backend request receives an authorization failure and refresh is still possible.
+NFR-015. The system shall refresh backend tokens through the application proxy when a backend request receives an authorization failure and refresh is still possible, and it shall reject malformed backend token-pair payloads during login or refresh instead of trusting them implicitly.
 
 NFR-016. The system shall clear stale authentication state when proxy refresh fails.
 
@@ -81,7 +81,7 @@ NFR-020. The system shall avoid silently swallowing partial healthcare data fail
 
 NFR-021. The system shall use no-store style fetching where current authenticated user or live backend access state is being checked.
 
-NFR-022. The current build shall be treated as not yet providing a complete end-to-end clinical data validation regime.
+NFR-022. Selected internal route handlers shall use shared structural validation and response normalization helpers to reduce contract drift, while the current build shall still be treated as not yet providing a complete end-to-end clinical data validation regime.
 
 ## 5.4 Performance And Responsiveness
 
@@ -147,7 +147,7 @@ NFR-047. The current build shall be treated as a healthcare-sensitive applicatio
 
 NFR-048. The current build shall not be represented as fully compliant with HIPAA, local privacy law, or healthcare regulatory controls solely on the basis of the present codebase.
 
-NFR-049. The current build shall not be represented as containing a complete permission-matrix authorization framework, formal consent management, or immutable audit trail enforcement.
+NFR-049. The current build shall not be represented as containing a complete record-level authorization framework, formal consent management, or immutable audit trail enforcement.
 
 NFR-050. The current build shall not be represented as having completed accessibility certification or localization coverage.
 
@@ -158,7 +158,8 @@ The following are current engineering limits that should be treated as known gap
 - no formal production SLOs, SLAs, or performance benchmark evidence are documented in the repository
 - no complete enterprise observability stack is present in the current codebase
 - no complete compliance framework or legal evidence package is present in the current codebase
-- no full permission-matrix authorization model is implemented yet
+- the shared permission matrix does not yet cover every backend-domain action, organization-scope rule, or record-level access rule
+- validation rules are shared inside the application codebase, but not yet published as a cross-service shared schema package
 - no formal server-state caching or query orchestration library has been introduced across all features
 - some feature workflows still depend on backend contract maturity and should not be treated as operationally complete
 - current documentation reflects implemented behavior, not regulatory sign-off or enterprise deployment readiness

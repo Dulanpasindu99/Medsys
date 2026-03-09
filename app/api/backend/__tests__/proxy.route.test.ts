@@ -126,4 +126,42 @@ describe("GET /api/backend/[...path]", () => {
     expect(response.cookies.get(BACKEND_REFRESH_COOKIE_NAME)?.value).toBe("");
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBe("");
   });
+
+  it("clears auth cookies when the refresh payload is malformed", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "expired" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            accessToken: "",
+            refreshToken: "refresh-token",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = buildRequest(
+      `${BACKEND_ACCESS_COOKIE_NAME}=expired; ${BACKEND_REFRESH_COOKIE_NAME}=refresh; ${SESSION_COOKIE_NAME}=session`
+    );
+
+    const response = await GET(request, {
+      params: Promise.resolve({ path: ["v1", "patients"] }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ error: "Unauthorized." });
+    expect(response.cookies.get(BACKEND_ACCESS_COOKIE_NAME)?.value).toBe("");
+    expect(response.cookies.get(BACKEND_REFRESH_COOKIE_NAME)?.value).toBe("");
+    expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBe("");
+  });
 });

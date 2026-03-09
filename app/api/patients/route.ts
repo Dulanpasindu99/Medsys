@@ -1,50 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPatient, listPatients } from "@/app/lib/store";
-import { requireRole } from "@/app/lib/api-auth";
+import { requirePermission } from "@/app/lib/api-auth";
+import { serializePatient } from "@/app/lib/api-serializers";
+import {
+  parseJsonBody,
+  validatePatientCreatePayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
 export async function GET(request: NextRequest) {
-  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  const auth = requirePermission(request, "patient.read");
   if (auth.error) {
     return auth.error;
   }
 
-  const patients = listPatients().map((patient) => ({
-    id: patient.id,
-    name: patient.name,
-    date_of_birth: patient.dateOfBirth,
-    phone: patient.phone,
-    address: patient.address,
-    created_at: patient.createdAt,
-  }));
+  const patients = listPatients().map(serializePatient);
 
   return NextResponse.json({ patients });
 }
 
 export async function POST(request: NextRequest) {
-  const auth = requireRole(request, ["owner", "doctor", "assistant"]);
+  const auth = requirePermission(request, "patient.write");
   if (auth.error) {
     return auth.error;
   }
 
-  const body = await request.json();
-  const { name, dateOfBirth, phone, address } = body ?? {};
-
-  if (!name) {
-    return NextResponse.json({ error: "Patient name is required." }, { status: 400 });
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
   }
 
-  const created = createPatient({
-    name,
-    dateOfBirth: dateOfBirth ?? null,
-    phone: phone ?? null,
-    address: address ?? null,
-  });
+  const validated = validatePatientCreatePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
 
-  return NextResponse.json({
-    id: created.id,
-    name,
-    dateOfBirth: dateOfBirth ?? null,
-    phone: phone ?? null,
-    address: address ?? null,
-  });
+  const created = createPatient(validated.value);
+
+  return NextResponse.json({ patient: serializePatient(created) });
 }

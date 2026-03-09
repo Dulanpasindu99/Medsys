@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { hasAnyPermission, hasPermission, type AppPermission } from "@/app/lib/authorization";
 import { readSessionFromRequest, type SessionPayload } from "@/app/lib/session";
-import type { Role } from "@/app/lib/store";
 
 export function unauthorized(message = "Unauthorized.") {
   return NextResponse.json({ error: message }, { status: 401 });
@@ -21,16 +21,32 @@ export function requireSession(request: NextRequest):
   return { session, error: null };
 }
 
-export function requireRole(
+export function requirePermission(
   request: NextRequest,
-  roles: Role[]
+  permission: AppPermission
 ): { session: SessionPayload | null; error: NextResponse | null } {
   const auth = requireSession(request);
   if (auth.error) {
     return auth;
   }
 
-  if (!roles.includes(auth.session.role)) {
+  if (!hasPermission(auth.session.role, permission)) {
+    return { session: null, error: forbidden() };
+  }
+
+  return auth;
+}
+
+export function requireAnyPermission(
+  request: NextRequest,
+  permissions: readonly AppPermission[]
+): { session: SessionPayload | null; error: NextResponse | null } {
+  const auth = requireSession(request);
+  if (auth.error) {
+    return auth;
+  }
+
+  if (!hasAnyPermission(auth.session.role, permissions)) {
     return { session: null, error: forbidden() };
   }
 

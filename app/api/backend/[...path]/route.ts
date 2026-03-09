@@ -10,13 +10,8 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionToken,
 } from "@/app/lib/session";
+import { validateBackendTokenPairPayload } from "@/app/lib/api-validation";
 import { readTokenClaims } from "@/app/lib/token-claims";
-
-type BackendTokenPair = {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn?: number;
-};
 
 const FORWARDED_HEADER_ALLOWLIST = [
   "accept",
@@ -90,7 +85,12 @@ async function refreshBackendTokens(refreshToken: string) {
     throw new Error(await parseRefreshError(response));
   }
 
-  return (await response.json()) as BackendTokenPair;
+  const payload = validateBackendTokenPairPayload(await response.json());
+  if (!payload.ok) {
+    throw new Error("Backend refresh response was invalid.");
+  }
+
+  return payload.value;
 }
 
 async function proxyRequest(

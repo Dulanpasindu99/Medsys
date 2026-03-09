@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, findUserByEmail, listUsers } from "@/app/lib/store";
 import { hashPassword } from "@/app/lib/auth";
-import { requireRole } from "@/app/lib/api-auth";
+import { requirePermission } from "@/app/lib/api-auth";
 import { attachSessionCookie } from "@/app/lib/session";
-
-const ALLOWED_ROLES = ["owner", "doctor", "assistant"] as const;
+import { serializeUser } from "@/app/lib/api-serializers";
+import {
+  parseJsonBody,
+  validateUserWritePayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { name, email, password, role } = body ?? {};
-
-  if (!name || !email || !password || !role) {
-    return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
   }
 
-  if (!ALLOWED_ROLES.includes(role)) {
-    return NextResponse.json({ error: "Invalid role." }, { status: 400 });
+  const validated = validateUserWritePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
   }
+
+  const { name, email, password, role } = validated.value;
 
   const userCount = listUsers().length;
   const isBootstrapping = userCount === 0;
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!isBootstrapping) {
-    const auth = requireRole(request, ["owner"]);
+    const auth = requirePermission(request, "user.write");
     if (auth.error) {
       return auth.error;
     }
@@ -42,12 +47,7 @@ export async function POST(request: NextRequest) {
   const passwordHash = hashPassword(password);
   const created = createUser({ name, email, passwordHash, role });
 
-  const response = NextResponse.json({
-    id: created.id,
-    name,
-    email,
-    role,
-  });
+  const response = NextResponse.json({ user: serializeUser(created) });
 
   if (isBootstrapping) {
     attachSessionCookie(response, {

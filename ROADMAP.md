@@ -10,7 +10,7 @@ It is intentionally practical and tied to the current repository state:
 - Current API access: `app/lib/api-client.ts`
 - Current feature sections: `app/sections/*`
 - Current local file-backed store: `app/lib/store.ts`
-- Current quality gate: lint + typecheck only
+- Current quality gate: lint + typecheck + unit/component/route tests
 
 ## Current State Summary
 
@@ -20,16 +20,19 @@ Current strengths:
 
 - Clear feature separation for owner, doctor, assistant, patient, and analytics sections
 - TypeScript and centralized API client
-- Some route handlers and auth integration already exist
+- Shared page and API authorization policy now exists for shell routes and selected internal route handlers
+- Same-origin auth proxy and signed session integration are in place
+- Shared structural validation and response normalization now exist for selected internal route handlers
 - Feature hooks are being used instead of placing all logic directly in components
 
 Current gaps:
 
 - File-based persistence is not suitable for concurrent production traffic
-- Frontend auth uses browser `localStorage`, which is weak for sensitive healthcare workloads
+- Authorization is still coarse for domain actions beyond the currently covered internal routes
 - Async state handling is inconsistent across features
 - No mature server-state caching/invalidation layer
-- Minimal automated test coverage
+- Test coverage is improving, but still incomplete for critical healthcare workflows
+- API schema validation is not yet complete across all backend-facing workflows
 - No visible audit logging, access governance, or compliance workflow
 
 ## Guiding Principles
@@ -182,7 +185,7 @@ Goal: meet the operational and regulatory expectations of a healthcare platform.
 Key changes:
 
 - Full audit trail for create, update, delete, login, logout, record access, export, and dispense actions
-- Role-based and permission-based authorization model
+- Shared permission-based authorization model expanded from shell and selected internal APIs to all sensitive workflows
 - Access review and permission administration workflows
 - Encryption for data in transit and at rest
 - Secrets management and environment segregation
@@ -320,13 +323,12 @@ Critical workflows that must be covered early:
 
 These should happen before broad feature expansion.
 
-1. Add real frontend test tooling and start covering critical sections.
-2. Refactor assistant and patient-profile hooks into explicit async state models.
-3. Introduce validation schemas for all major feature inputs.
-4. Define a target backend contract for patients, appointments, encounters, prescriptions, and inventory.
-5. Remove reliance on `app/lib/store.ts` for anything considered production-path.
-6. Redesign auth/session handling away from browser-managed token storage.
-7. Introduce a shared query/mutation layer for remote data.
+1. Expand permission coverage and schema validation to all backend-facing workflows.
+2. Define and align target backend contracts for patients, appointments, encounters, prescriptions, and inventory.
+3. Remove reliance on `app/lib/store.ts` for anything considered production-path.
+4. Introduce a shared query/mutation layer for remote data.
+5. Add audit logging for sensitive access and mutation flows.
+6. Add integration and end-to-end coverage for authorization-sensitive and validation-sensitive workflows.
 
 ## Suggested Delivery Sequence
 
