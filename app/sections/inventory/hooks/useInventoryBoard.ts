@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   createInventoryItem,
   createInventoryMovement,
-  listInventory,
-  listInventoryMovements,
   type ApiClientError,
 } from "../../../lib/api-client";
 import {
@@ -19,6 +17,10 @@ import {
   type LoadState,
   type MutationState,
 } from "../../../lib/async-state";
+import {
+  useInventoryMovementsQuery,
+  useInventoryQuery,
+} from "../../../lib/query-hooks";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -52,97 +54,90 @@ export function toString(value: unknown, fallback = "") {
 }
 
 export function useInventoryBoard() {
-  const [items, setItems] = useState<AnyRecord[]>([]);
+  const inventoryQuery = useInventoryQuery();
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [movementItemId, setMovementItemId] = useState<number | null>(null);
-  const [movements, setMovements] = useState<AnyRecord[]>([]);
-  const [movementLoadState, setMovementLoadState] = useState<LoadState>(idleLoadState());
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState("0");
-  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
   const [movementState, setMovementState] = useState<MutationState>(idleMutationState());
-  const [reloadKey, setReloadKey] = useState(0);
+  const [movementNotice, setMovementNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        setLoadState(loadingLoadState());
-        try {
-          const response = await listInventory();
-          if (!active) return;
+  const items = useMemo(() => asArray(inventoryQuery.data), [inventoryQuery.data]);
 
-          const rows = asArray(response);
-          setItems(rows);
+  const resolvedSelectedItemId = useMemo(() => {
+    if (!items.length) {
+      return null;
+    }
 
-          if (!rows.length) {
-            setSelectedItemId(null);
-            setLoadState(emptyLoadState());
-            return;
-          }
-
-          setSelectedItemId((current) => {
-            if (current !== null) {
-              const stillExists = rows.some(
-                (row) => toNumber(row.id ?? row.inventoryId ?? row.inventory_id) === current
-              );
-              if (stillExists) return current;
-            }
-            return toNumber(rows[0].id ?? rows[0].inventoryId ?? rows[0].inventory_id);
-          });
-          setLoadState(readyLoadState());
-        } catch (error) {
-          if (!active) return;
-          setItems([]);
-          setSelectedItemId(null);
-          setLoadState(
-            errorLoadState((error as ApiClientError)?.message ?? "Unable to load inventory.")
-          );
-        }
-      })();
-    }, 0);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timeoutId);
-    };
-  }, [reloadKey]);
-
-  useEffect(() => {
-    if (!selectedItemId) return;
-
-    let active = true;
-    void (async () => {
-      setMovementLoadState(loadingLoadState());
-      try {
-        const response = await listInventoryMovements(selectedItemId);
-        if (!active) return;
-        setMovements(asArray(response));
-        setMovementItemId(selectedItemId);
-        setMovementLoadState(readyLoadState());
-      } catch (error) {
-        if (!active) return;
-        setMovements([]);
-        setMovementItemId(selectedItemId);
-        setMovementLoadState(
-          errorLoadState(
-            (error as ApiClientError)?.message ??
-              "Movement history could not be loaded for the selected item."
-          )
-        );
+    if (selectedItemId !== null) {
+      const stillExists = items.some(
+        (row) => toNumber(row.id ?? row.inventoryId ?? row.inventory_id) === selectedItemId
+      );
+      if (stillExists) {
+        return selectedItemId;
       }
-    })();
+    }
 
-    return () => {
-      active = false;
-    };
-  }, [selectedItemId]);
+    return toNumber(items[0].id ?? items[0].inventoryId ?? items[0].inventory_id);
+  }, [items, selectedItemId]);
+
+  const movementQuery = useInventoryMovementsQuery(
+    resolvedSelectedItemId ?? "none",
+    resolvedSelectedItemId !== null
+  );
+  const movements = useMemo(() => asArray(movementQuery.data), [movementQuery.data]);
 
   const selectedItem = useMemo(
-    () => items.find((row) => toNumber(row.id ?? row.inventoryId ?? row.inventory_id) === selectedItemId) ?? null,
-    [items, selectedItemId]
+    () =>
+      items.find(
+        (row) => toNumber(row.id ?? row.inventoryId ?? row.inventory_id) === resolvedSelectedItemId
+      ) ??
+      null,
+    [items, resolvedSelectedItemId]
   );
+
+  const loadState: LoadState = useMemo(() => {
+    if ((inventoryQuery.isPending || inventoryQuery.isFetching) && !items.length) {
+      return loadingLoadState();
+    }
+
+    if (inventoryQuery.isError) {
+      return errorLoadState(
+        ((inventoryQuery.error as unknown as ApiClientError | undefined)?.message ??
+          "Unable to load inventory.")
+      );
+    }
+
+    return items.length ? readyLoadState() : emptyLoadState();
+  }, [inventoryQuery.error, inventoryQuery.isError, inventoryQuery.isFetching, inventoryQuery.isPending, items.length]);
+
+  const movementLoadState: LoadState = useMemo(() => {
+    if (!resolvedSelectedItemId) {
+      return idleLoadState();
+    }
+
+    if ((movementQuery.isPending || movementQuery.isFetching) && !movements.length) {
+      return loadingLoadState();
+    }
+
+    if (movementQuery.isError) {
+      return errorLoadState(
+        ((movementQuery.error as unknown as ApiClientError | undefined)?.message ??
+          "Movement history could not be loaded for the selected item."
+        )
+      );
+    }
+
+    return readyLoadState(movementNotice);
+  }, [
+    movementNotice,
+    movementQuery.error,
+    movementQuery.isError,
+    movementQuery.isFetching,
+    movementQuery.isPending,
+    movements.length,
+    resolvedSelectedItemId,
+  ]);
 
   const handleCreateItem = async () => {
     if (!newItemName.trim()) {
@@ -160,60 +155,44 @@ export function useInventoryBoard() {
       });
       setNewItemName("");
       setNewItemQty("0");
-      setReloadKey((prev) => prev + 1);
+      await inventoryQuery.refetch();
       setCreateState(successMutationState("Inventory item created."));
     } catch (error) {
       setCreateState(
         errorMutationState(
-          (error as ApiClientError)?.message ?? "Failed to create inventory item."
+          ((error as unknown as ApiClientError | undefined)?.message ??
+            "Failed to create inventory item.")
         )
       );
     }
   };
 
   const handleQuickMovement = async (type: "in" | "out") => {
-    if (!selectedItemId) {
+    if (!resolvedSelectedItemId) {
       setMovementState(errorMutationState("Select an inventory item before posting stock movements."));
       return;
     }
 
     try {
+      setMovementNotice(null);
       setMovementState(pendingMutationState());
-      await createInventoryMovement(selectedItemId, {
+      await createInventoryMovement(resolvedSelectedItemId, {
         type,
         quantity: 1,
         note: `Quick ${type} from frontend`,
       });
 
       const [movementResult, inventoryResult] = await Promise.allSettled([
-        listInventoryMovements(selectedItemId),
-        listInventory(),
+        movementQuery.refetch(),
+        inventoryQuery.refetch(),
       ]);
 
-      if (movementResult.status === "fulfilled") {
-        setMovements(asArray(movementResult.value));
-        setMovementItemId(selectedItemId);
-        setMovementLoadState(
-          readyLoadState(
-            inventoryResult.status === "rejected"
-              ? "Movement posted, but item totals could not be refreshed."
-              : null
-          )
-        );
+      if (movementResult.status === "rejected") {
+        setMovementNotice(null);
+      } else if (inventoryResult.status === "rejected") {
+        setMovementNotice("Movement posted, but item totals could not be refreshed.");
       } else {
-        setMovements([]);
-        setMovementItemId(selectedItemId);
-        setMovementLoadState(
-          errorLoadState(
-            (movementResult.reason as ApiClientError | undefined)?.message ??
-              "Movement posted, but movement history could not be refreshed."
-          )
-        );
-      }
-
-      if (inventoryResult.status === "fulfilled") {
-        const rows = asArray(inventoryResult.value);
-        setItems(rows);
+        setMovementNotice(null);
       }
 
       setMovementState(
@@ -221,18 +200,21 @@ export function useInventoryBoard() {
       );
     } catch (error) {
       setMovementState(
-        errorMutationState((error as ApiClientError)?.message ?? "Failed to post movement.")
+        errorMutationState(
+          ((error as unknown as ApiClientError | undefined)?.message ??
+            "Failed to post movement.")
+        )
       );
     }
   };
 
   return {
     items,
-    selectedItemId,
+    selectedItemId: resolvedSelectedItemId,
     setSelectedItemId,
     selectedItem,
-    movements: movementItemId === selectedItemId ? movements : [],
-    movementLoadState: selectedItemId ? movementLoadState : idleLoadState(),
+    movements: resolvedSelectedItemId ? movements : [],
+    movementLoadState,
     newItemName,
     setNewItemName,
     newItemQty,
@@ -240,7 +222,13 @@ export function useInventoryBoard() {
     loadState,
     createState,
     movementState,
-    refresh: () => setReloadKey((prev) => prev + 1),
+    refresh: () => {
+      setMovementNotice(null);
+      void Promise.all([
+        inventoryQuery.refetch(),
+        ...(resolvedSelectedItemId ? [movementQuery.refetch()] : []),
+      ]);
+    },
     handleCreateItem,
     handleQuickMovement,
   };

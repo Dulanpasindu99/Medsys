@@ -329,6 +329,7 @@ These should happen before broad feature expansion.
 1. Expand permission coverage and schema validation to all backend-facing workflows.
 2. Define and align target backend contracts for patients, appointments, encounters, prescriptions, and inventory.
 3. Complete the shared query/mutation rollout for remaining feature hooks and mutation invalidation.
+   Current progress: patient directory, auth/current-user, doctor queue, assistant, owner, analytics, AI, patient-profile, doctor patient details, and inventory board reads are now query-backed.
 4. Remove or archive `app/lib/store.ts` now that BE-020 closure proof exists.
 5. Add audit logging for sensitive access and mutation flows.
 6. Add integration and end-to-end coverage for authorization-sensitive and validation-sensitive workflows.

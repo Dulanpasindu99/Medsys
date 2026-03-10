@@ -11,6 +11,8 @@ export const queryKeys = {
   },
   inventory: {
     list: ["inventory", "list"] as const,
+    movements: (inventoryId: number | string) =>
+      ["inventory", "movements", String(inventoryId)] as const,
   },
   audit: {
     logs: (limit?: number) =>

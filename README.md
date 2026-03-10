@@ -77,6 +77,7 @@ npm run test
 - The login redirect flow and doctor queue now use the shared query layer for current-user and appointment-backed reads.
 - Assistant operational reads and owner staff visibility reads now use the shared query layer instead of local `useEffect` load cycles.
 - Analytics, AI, and patient-profile reads now use the shared query layer instead of local `Promise.all` or `useEffect` loaders.
+- Doctor patient-detail reads and inventory board reads now use shared query hooks with explicit query refetch after writes.
 - Current internal API permission coverage includes:
   - patient read/write/delete
   - patient history read/write

@@ -15,6 +15,7 @@ import {
   listAuditLogs,
   listEncounters,
   listInventory,
+  listInventoryMovements,
   listPendingDispenseQueue,
   listPatients,
   type AppointmentStatus,
@@ -55,6 +56,14 @@ export function useInventoryQuery() {
   return useQuery({
     queryKey: queryKeys.inventory.list,
     queryFn: listInventory,
+  });
+}
+
+export function useInventoryMovementsQuery(inventoryId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.inventory.movements(inventoryId),
+    queryFn: () => listInventoryMovements(inventoryId),
+    enabled,
   });
 }
 

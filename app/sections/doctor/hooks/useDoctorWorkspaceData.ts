@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   createEncounter,
-  listPatientAllergies,
-  listPatientVitals,
   type ApiClientError,
 } from "../../../lib/api-client";
 import {
   emptyLoadState,
-  errorMutationState,
   errorLoadState,
+  errorMutationState,
   idleMutationState,
   loadingLoadState,
   pendingMutationState,
@@ -17,7 +15,13 @@ import {
   type LoadState,
   type MutationState,
 } from "../../../lib/async-state";
-import { useAppointmentsQuery, useCurrentUserQuery, usePatientsQuery } from "../../../lib/query-hooks";
+import {
+  useAppointmentsQuery,
+  useCurrentUserQuery,
+  usePatientAllergiesQuery,
+  usePatientsQuery,
+  usePatientVitalsQuery,
+} from "../../../lib/query-hooks";
 import type { useDoctorClinicalWorkflow } from "./useDoctorClinicalWorkflow";
 import type { useVisitPlanner } from "./useVisitPlanner";
 import type { AllergyAlert, Patient, PatientGender, PatientVital } from "../types";
@@ -211,14 +215,16 @@ export function useDoctorWorkspaceData(
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
-  const [patientDetailsId, setPatientDetailsId] = useState<number | null>(null);
-  const [patientVitals, setPatientVitals] = useState<PatientVital[]>([]);
-  const [patientAllergies, setPatientAllergies] = useState<AllergyAlert[]>([]);
-  const [patientDetailsState, setPatientDetailsState] = useState<LoadState>(emptyLoadState());
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
   const currentUserId = currentUserQuery.data?.id ?? null;
+  const patientDetailsEnabled = selectedPatientId !== null;
+  const patientVitalsQuery = usePatientVitalsQuery(selectedPatientId ?? "none", patientDetailsEnabled);
+  const patientAllergiesQuery = usePatientAllergiesQuery(
+    selectedPatientId ?? "none",
+    patientDetailsEnabled
+  );
 
   const patients = useMemo(
     () => normalizePatients(rawPatients, rawWaitingAppointments),
@@ -282,49 +288,53 @@ export function useDoctorWorkspaceData(
     waitingAppointmentsQuery.isPending,
   ]);
 
-  useEffect(() => {
-    if (!selectedPatientId) return;
+  const patientVitals = useMemo<PatientVital[]>(
+    () => normalizeVitals(patientVitalsQuery.data),
+    [patientVitalsQuery.data]
+  );
+  const patientAllergies = useMemo<AllergyAlert[]>(
+    () => normalizeAllergies(patientAllergiesQuery.data),
+    [patientAllergiesQuery.data]
+  );
+  const patientDetailsState: LoadState = useMemo(() => {
+    if (!selectedPatientId) {
+      return emptyLoadState();
+    }
 
-    let active = true;
-    void (async () => {
-      setPatientDetailsState(loadingLoadState());
-      const [vitalsResult, allergiesResult] = await Promise.allSettled([
-        listPatientVitals(selectedPatientId),
-        listPatientAllergies(selectedPatientId),
-      ]);
+    const vitalsError = patientVitalsQuery.isError;
+    const allergiesError = patientAllergiesQuery.isError;
+    const hasDetailData = patientVitals.length > 0 || patientAllergies.length > 0;
 
-      if (!active) return;
+    if (
+      (patientVitalsQuery.isPending ||
+        patientAllergiesQuery.isPending ||
+        patientVitalsQuery.isFetching ||
+        patientAllergiesQuery.isFetching) &&
+      !hasDetailData
+    ) {
+      return loadingLoadState();
+    }
 
-      if (vitalsResult.status === "rejected" && allergiesResult.status === "rejected") {
-        setPatientVitals([]);
-        setPatientAllergies([]);
-        setPatientDetailsId(selectedPatientId);
-        setPatientDetailsState(
-          errorLoadState("Patient vitals and allergy details could not be loaded.")
-        );
-        return;
-      }
+    if (vitalsError && allergiesError) {
+      return errorLoadState("Patient vitals and allergy details could not be loaded.");
+    }
 
-      setPatientVitals(
-        vitalsResult.status === "fulfilled" ? normalizeVitals(vitalsResult.value) : []
-      );
-      setPatientAllergies(
-        allergiesResult.status === "fulfilled" ? normalizeAllergies(allergiesResult.value) : []
-      );
-      setPatientDetailsId(selectedPatientId);
-      setPatientDetailsState(
-        readyLoadState(
-          vitalsResult.status === "rejected" || allergiesResult.status === "rejected"
-            ? "Some patient clinical details could not be loaded and partial data is being shown."
-            : null
-        )
-      );
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [selectedPatientId]);
+    return readyLoadState(
+      vitalsError || allergiesError
+        ? "Some patient clinical details could not be loaded and partial data is being shown."
+        : null
+    );
+  }, [
+    patientAllergies.length,
+    patientAllergiesQuery.isError,
+    patientAllergiesQuery.isFetching,
+    patientAllergiesQuery.isPending,
+    patientVitals.length,
+    patientVitalsQuery.isError,
+    patientVitalsQuery.isFetching,
+    patientVitalsQuery.isPending,
+    selectedPatientId,
+  ]);
 
   const handlePatientSelect = (patient: Patient) => {
     setPatientName(patient.name);
@@ -417,10 +427,10 @@ export function useDoctorWorkspaceData(
     gender,
     setGender,
     searchMatches,
-    patientVitals: patientDetailsId === selectedPatientId ? patientVitals : [],
-    patientAllergies: patientDetailsId === selectedPatientId ? patientAllergies : [],
+    patientVitals: selectedPatientId ? patientVitals : [],
+    patientAllergies: selectedPatientId ? patientAllergies : [],
     queueState,
-    patientDetailsState: selectedPatientId ? patientDetailsState : emptyLoadState(),
+    patientDetailsState,
     saveState,
     saveFeedback,
     handlePatientSelect,
@@ -430,6 +440,9 @@ export function useDoctorWorkspaceData(
         patientsQuery.refetch(),
         waitingAppointmentsQuery.refetch(),
         currentUserQuery.refetch(),
+        ...(selectedPatientId
+          ? [patientVitalsQuery.refetch(), patientAllergiesQuery.refetch()]
+          : []),
       ]);
     },
   };
