@@ -209,27 +209,27 @@ export async function getPatientById(patientId: number | string) {
 }
 
 export async function getPatientProfile(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}/profile`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}/profile`, { method: "GET" });
 }
 
 export async function getPatientFamily(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}/family`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}/family`, { method: "GET" });
 }
 
 export async function listPatientVitals(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}/vitals`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}/vitals`, { method: "GET" });
 }
 
 export async function listPatientAllergies(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}/allergies`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}/allergies`, { method: "GET" });
 }
 
 export async function listPatientConditions(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}/conditions`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}/conditions`, { method: "GET" });
 }
 
 export async function listPatientTimeline(patientId: number | string) {
-  return apiFetch(`/v1/patients/${patientId}/timeline`, { method: "GET" });
+  return apiFetch(`/api/patients/${patientId}/timeline`, { method: "GET" });
 }
 
 export async function listAppointments(input?: { status?: AppointmentStatus }) {
@@ -291,7 +291,7 @@ export async function getPrescriptionById(prescriptionId: number | string) {
 }
 
 export async function getAnalyticsOverview() {
-  return apiFetch("/v1/analytics/overview", { method: "GET" });
+  return apiFetch("/api/analytics/overview", { method: "GET" });
 }
 
 export async function listInventory() {

@@ -23,7 +23,7 @@ Current strengths:
 - Shared page and API authorization policy now exists for shell routes and selected internal route handlers
 - Same-origin auth proxy and signed session integration are in place
 - Shared structural validation and response normalization now exist for selected internal route handlers
-- Auth status/register, patient, patient-history, user, appointment, assistant prescription/dispense, and inventory browser flows now run through backend-backed `/api/...` BFF routes instead of the prototype store path
+- Auth status/register, patient, patient-history, patient-profile support feeds, user, appointment, analytics overview, assistant prescription/dispense, and inventory browser flows now run through backend-backed `/api/...` BFF routes instead of the prototype store path
 - Frontend compatibility adapters can now absorb only the remaining backend contract mismatches without spreading route-specific hacks through feature hooks
 - Feature hooks are being used instead of placing all logic directly in components
 

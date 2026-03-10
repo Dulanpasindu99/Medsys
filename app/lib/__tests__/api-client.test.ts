@@ -4,13 +4,20 @@ import {
   createInventoryItem,
   createInventoryMovement,
   dispensePrescription,
+  getAnalyticsOverview,
   listAppointments,
   getAuthStatus,
   getCurrentUser,
+  getPatientFamily,
   getPatientById,
+  getPatientProfile,
   getPrescriptionById,
   listInventory,
   listInventoryMovements,
+  listPatientAllergies,
+  listPatientConditions,
+  listPatientTimeline,
+  listPatientVitals,
   listPatients,
   listPendingDispenseQueue,
   loginUser,
@@ -103,6 +110,67 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/patients/7");
   });
 
+  it("loads patient-profile support feeds through dedicated BFF routes", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 7, name: "Jane Doe" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ name: "Doe Family", members: [{ name: "John Doe" }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ name: "Blood Pressure", value: "120/80" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ name: "Peanut" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ name: "Hypertension" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ title: "Clinical update" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getPatientProfile(7)).resolves.toEqual({ id: 7, name: "Jane Doe" });
+    await expect(getPatientFamily(7)).resolves.toEqual({
+      name: "Doe Family",
+      members: [{ name: "John Doe" }],
+    });
+    await expect(listPatientVitals(7)).resolves.toEqual([
+      { name: "Blood Pressure", value: "120/80" },
+    ]);
+    await expect(listPatientAllergies(7)).resolves.toEqual([{ name: "Peanut" }]);
+    await expect(listPatientConditions(7)).resolves.toEqual([{ name: "Hypertension" }]);
+    await expect(listPatientTimeline(7)).resolves.toEqual([{ title: "Clinical update" }]);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/patients/7/profile");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/patients/7/family");
+    expect(fetchMock.mock.calls[2]?.[0]).toBe("/api/patients/7/vitals");
+    expect(fetchMock.mock.calls[3]?.[0]).toBe("/api/patients/7/allergies");
+    expect(fetchMock.mock.calls[4]?.[0]).toBe("/api/patients/7/conditions");
+    expect(fetchMock.mock.calls[5]?.[0]).toBe("/api/patients/7/timeline");
+  });
+
   it("loads appointments through the dedicated BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -119,6 +187,28 @@ describe("api client backend compatibility", () => {
       { id: 10, patientId: 7, status: "waiting" },
     ]);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments?status=waiting");
+  });
+
+  it("loads analytics overview through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          totalPatients: 42,
+          totalEncounters: 18,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getAnalyticsOverview()).resolves.toEqual({
+      totalPatients: 42,
+      totalEncounters: 18,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/analytics/overview");
   });
 
   it("loads the pending dispense queue through the dedicated BFF route", async () => {

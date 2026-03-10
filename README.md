@@ -35,7 +35,7 @@ MEDSYS_SESSION_SECRET=change-me
 
 Frontend feature calls now use two server-side paths:
 
-- dedicated BFF contract routes such as `/api/auth/status`, `/api/auth/register`, `/api/patients`, `/api/patients/:id`, `/api/patients/:id/history`, `/api/users`, `/api/appointments`, prescription routes under `/api/prescriptions/*`, and inventory routes under `/api/inventory/*`
+- dedicated BFF contract routes such as `/api/auth/status`, `/api/auth/register`, `/api/patients`, `/api/patients/:id`, `/api/patients/:id/history`, patient-profile support routes under `/api/patients/:id/*`, `/api/users`, `/api/appointments`, `/api/analytics/overview`, prescription routes under `/api/prescriptions/*`, and inventory routes under `/api/inventory/*`
 - the generic authenticated proxy `/api/backend/:path*` for the remaining `/v1/...` surface
 
 Both paths forward to `BACKEND_URL` server-side and keep backend access and refresh tokens in secure cookies. The browser never receives backend access or refresh tokens directly.
@@ -59,7 +59,7 @@ npm run test
   - secure `httpOnly` backend refresh-token cookie
 - App identity is read from `GET /api/auth/me`.
 - Logout goes through `POST /api/auth/logout`.
-- Auth status/register, patient, patient-history, user, appointment, assistant prescription/dispense, and inventory browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
+- Auth status/register, patient, patient-history, patient-profile support feeds, user, appointment, analytics overview, assistant prescription/dispense, and inventory browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
 - Remaining feature API requests go through `app/api/backend/[...path]/route.ts`.
 - On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
 - If refresh fails, backend cookies and the app session are cleared together.
@@ -95,6 +95,15 @@ npm run test
   - `/api/users`
 - Appointments:
   - `/api/appointments`
+- Patient profile support feeds:
+  - `/api/patients/:id/profile`
+  - `/api/patients/:id/family`
+  - `/api/patients/:id/vitals`
+  - `/api/patients/:id/allergies`
+  - `/api/patients/:id/conditions`
+  - `/api/patients/:id/timeline`
+- Analytics:
+  - `/api/analytics/overview`
 - Encounters:
   - `/api/backend/v1/encounters`
 - Prescriptions:

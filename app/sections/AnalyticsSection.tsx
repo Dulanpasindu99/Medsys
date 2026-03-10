@@ -30,7 +30,7 @@ export default function AnalyticsSection() {
                             Insights control room
                         </div>
                         <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">Realtime Analytics</h1>
-                        <p className="text-sm text-slate-600">Live overview from `/v1/analytics/overview` + operational endpoints.</p>
+                        <p className="text-sm text-slate-600">Live overview from `/api/analytics/overview` + operational endpoints.</p>
                     </div>
                     <button
                         type="button"
