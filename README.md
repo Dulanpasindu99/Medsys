@@ -8,6 +8,7 @@ Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assis
 - React 19
 - TypeScript (strict)
 - Tailwind CSS 4
+- TanStack Query
 
 ## Run
 
@@ -70,6 +71,8 @@ npm run test
   - response mapping: `app/lib/api-serializers.ts`
 - Auth login and backend refresh flows now validate backend token-pair payloads before setting or rotating cookies.
 - Frontend-to-backend compatibility adapters now live in `app/lib/backend-contract-adapters.ts` for remaining routes that still need temporary normalization outside the BFF boundary.
+- Shared server-state/query infrastructure is now available through `@tanstack/react-query`, with the root provider wired in `app/components/AppQueryProvider.tsx`.
+- The patient directory is the first read flow migrated onto the shared query layer through `app/sections/patient/hooks/usePatientDirectory.ts`.
 - Current internal API permission coverage includes:
   - patient read/write/delete
   - patient history read/write
@@ -133,6 +136,9 @@ npm run test
   - `app/lib/api-serializers.ts`
 - Backend-backed BFF route client:
   - `app/lib/backend-route-client.ts`
+- Query provider and keys:
+  - `app/components/AppQueryProvider.tsx`
+  - `app/lib/query-keys.ts`
 - Backend contract adapters:
   - `app/lib/backend-contract-adapters.ts`
 - Backend auth cookies:
