@@ -9,6 +9,7 @@ import {
   listPatients,
   listPendingDispenseQueue,
 } from "../../../lib/api-client";
+import { createQueryWrapper } from "../../../lib/test-query-client";
 import { useAssistantWorkflow } from "../hooks/useAssistantWorkflow";
 
 vi.mock("../../../lib/api-client", () => ({
@@ -132,7 +133,9 @@ describe("useAssistantWorkflow", () => {
       return [{ doctorName: "Dr. House", status: "waiting" }];
     });
 
-    const { result } = renderHook(() => useAssistantWorkflow());
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.pendingPatients).toHaveLength(1);
@@ -155,7 +158,9 @@ describe("useAssistantWorkflow", () => {
   });
 
   it("adds allergies without keeping the default sentinel or duplicates", async () => {
-    const { result } = renderHook(() => useAssistantWorkflow());
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
@@ -182,7 +187,9 @@ describe("useAssistantWorkflow", () => {
   });
 
   it("does not submit patient creation when required fields are missing", async () => {
-    const { result } = renderHook(() => useAssistantWorkflow());
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
@@ -228,7 +235,9 @@ describe("useAssistantWorkflow", () => {
     ]);
     mockedGetCurrentUser.mockResolvedValue(null);
 
-    const { result } = renderHook(() => useAssistantWorkflow());
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.pendingPatients).toHaveLength(2);

@@ -1,12 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   createPatient,
   dispensePrescription,
-  getAnalyticsOverview,
-  getCurrentUser,
-  listAppointments,
-  listPatients,
-  listPendingDispenseQueue,
   type ApiClientError,
 } from "../../../lib/api-client";
 import {
@@ -21,9 +17,17 @@ import {
   type LoadState,
   type MutationState,
 } from "../../../lib/async-state";
+import {
+  useAnalyticsOverviewQuery,
+  useAppointmentsQuery,
+  useCurrentUserQuery,
+  usePatientsQuery,
+  usePendingDispenseQueueQuery,
+} from "../../../lib/query-hooks";
 import type { AssistantFormState, CompletedPatient, Prescription } from "../types";
 
 type AnyRecord = Record<string, unknown>;
+const EMPTY_ROWS: unknown[] = [];
 
 function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
@@ -248,7 +252,13 @@ function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
 }
 
 export function useAssistantWorkflow() {
-  const [pendingPatients, setPendingPatients] = useState<Prescription[]>([]);
+  const queryClient = useQueryClient();
+  const pendingQueueQuery = usePendingDispenseQueueQuery();
+  const allAppointmentsQuery = useAppointmentsQuery();
+  const completedAppointmentsQuery = useAppointmentsQuery({ status: "completed" });
+  const patientsQuery = usePatientsQuery();
+  const analyticsOverviewQuery = useAnalyticsOverviewQuery();
+  const currentUserQuery = useCurrentUserQuery();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const [formState, setFormState] = useState<AssistantFormState>({
@@ -264,52 +274,75 @@ export function useAssistantWorkflow() {
   });
 
   const [completedSearch, setCompletedSearch] = useState("");
-  const [completed, setCompleted] = useState<CompletedPatient[]>([]);
-  const [stats, setStats] = useState({ total: 0, male: 0, female: 0, existing: 0, new: 0 });
-  const [availableDoctors, setAvailableDoctors] = useState<{ name: string; status: string }[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
   const [createPatientState, setCreatePatientState] = useState<MutationState>(idleMutationState());
   const [dispenseState, setDispenseState] = useState<MutationState>(idleMutationState());
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
+  const patientById = useMemo(() => normalizePatientsById(rawPatients), [rawPatients]);
+  const pendingPatients = useMemo(
+    () => normalizePendingQueue(pendingQueueQuery.data ?? EMPTY_ROWS, patientById),
+    [patientById, pendingQueueQuery.data]
+  );
+  const completed = useMemo(
+    () => normalizeCompletedPatients(completedAppointmentsQuery.data ?? EMPTY_ROWS, patientById),
+    [completedAppointmentsQuery.data, patientById]
+  );
+  const availableDoctors = useMemo(
+    () => normalizeDoctorAvailability(allAppointmentsQuery.data ?? EMPTY_ROWS),
+    [allAppointmentsQuery.data]
+  );
+  const stats = useMemo(
+    () => normalizeStats(analyticsOverviewQuery.data ?? {}, rawPatients),
+    [analyticsOverviewQuery.data, rawPatients]
+  );
+  const currentUserId = currentUserQuery.data?.id ?? null;
 
-  const loadAssistantData = async () => {
-    setLoadState(loadingLoadState());
-    try {
-      const [queueResponse, allAppointmentsResponse, completedAppointmentsResponse, patientsResponse, analyticsResponse, user] =
-        await Promise.all([
-          listPendingDispenseQueue(),
-          listAppointments(),
-          listAppointments({ status: "completed" }),
-          listPatients(),
-          getAnalyticsOverview().catch(() => ({})),
-          getCurrentUser(),
-        ]);
-
-      const patientById = normalizePatientsById(patientsResponse);
-      setPendingPatients(normalizePendingQueue(queueResponse, patientById));
-      setCompleted(normalizeCompletedPatients(completedAppointmentsResponse, patientById));
-      setAvailableDoctors(normalizeDoctorAvailability(allAppointmentsResponse));
-      setStats(normalizeStats(analyticsResponse, patientsResponse));
-      setCurrentUserId(user?.id ?? null);
-      const hasVisibleData =
-        patientById.size > 0 ||
-        normalizePendingQueue(queueResponse, patientById).length > 0 ||
-        normalizeCompletedPatients(completedAppointmentsResponse, patientById).length > 0;
-      setLoadState(hasVisibleData ? readyLoadState() : emptyLoadState());
-    } catch (error) {
-      const message = (error as ApiClientError)?.message ?? "Unable to sync assistant data.";
-      setLoadState(errorLoadState(message));
+  const loadState: LoadState = useMemo(() => {
+    const criticalQueries = [pendingQueueQuery, allAppointmentsQuery, completedAppointmentsQuery, patientsQuery];
+    const allPending = criticalQueries.every((query) => query.isPending);
+    if (allPending) {
+      return loadingLoadState();
     }
-  };
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadAssistantData();
-    }, 0);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, []);
+    const criticalFailures =
+      pendingQueueQuery.isError &&
+      allAppointmentsQuery.isError &&
+      completedAppointmentsQuery.isError &&
+      patientsQuery.isError;
+    if (criticalFailures) {
+      return errorLoadState(
+        ((pendingQueueQuery.error as unknown as ApiClientError | undefined)?.message ??
+          (allAppointmentsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          (completedAppointmentsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          (patientsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          "Unable to sync assistant data.")
+      );
+    }
+
+    const hasVisibleData =
+      patientById.size > 0 || pendingPatients.length > 0 || completed.length > 0;
+    const partialFailure =
+      pendingQueueQuery.isError ||
+      allAppointmentsQuery.isError ||
+      completedAppointmentsQuery.isError ||
+      patientsQuery.isError ||
+      analyticsOverviewQuery.isError ||
+      currentUserQuery.isError;
+
+    const notice = partialFailure
+      ? "Some assistant feeds failed and fallback data is being shown."
+      : null;
+    return hasVisibleData ? readyLoadState(notice) : emptyLoadState(notice);
+  }, [
+    allAppointmentsQuery,
+    analyticsOverviewQuery.isError,
+    completed,
+    completedAppointmentsQuery,
+    currentUserQuery.isError,
+    patientById.size,
+    patientsQuery,
+    pendingPatients.length,
+    pendingQueueQuery,
+  ]);
 
   const filteredCompleted = useMemo(
     () => completed.filter((entry) => `${entry.name} ${entry.nic}`.toLowerCase().includes(completedSearch.toLowerCase())),
@@ -350,7 +383,13 @@ export function useAssistantWorkflow() {
         regularDrug: "",
         priority: "Normal",
       }));
-      await loadAssistantData();
+      await Promise.all([
+        pendingQueueQuery.refetch(),
+        allAppointmentsQuery.refetch(),
+        completedAppointmentsQuery.refetch(),
+        patientsQuery.refetch(),
+        analyticsOverviewQuery.refetch(),
+      ]);
       setCreatePatientState(successMutationState("Patient added successfully."));
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Failed to create patient.";
@@ -391,7 +430,13 @@ export function useAssistantWorkflow() {
         notes: "Dispensed from assistant queue",
         items: activePrescription.dispenseItems ?? [],
       });
-      await loadAssistantData();
+      await Promise.all([
+        pendingQueueQuery.refetch(),
+        allAppointmentsQuery.refetch(),
+        completedAppointmentsQuery.refetch(),
+        patientsQuery.refetch(),
+        analyticsOverviewQuery.refetch(),
+      ]);
       setDispenseState(successMutationState("Prescription marked as dispensed."));
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Failed to mark dispense.";
@@ -418,8 +463,24 @@ export function useAssistantWorkflow() {
     loadState,
     createPatientState,
     dispenseState,
-    reload: loadAssistantData,
-    isSyncing: loadState.status === "loading",
+    reload: () => {
+      void Promise.all([
+        queryClient.invalidateQueries(),
+        pendingQueueQuery.refetch(),
+        allAppointmentsQuery.refetch(),
+        completedAppointmentsQuery.refetch(),
+        patientsQuery.refetch(),
+        analyticsOverviewQuery.refetch(),
+        currentUserQuery.refetch(),
+      ]);
+    },
+    isSyncing:
+      pendingQueueQuery.isFetching ||
+      allAppointmentsQuery.isFetching ||
+      completedAppointmentsQuery.isFetching ||
+      patientsQuery.isFetching ||
+      analyticsOverviewQuery.isFetching ||
+      currentUserQuery.isFetching,
     syncError: loadState.error ?? createPatientState.error ?? dispenseState.error,
   };
 }

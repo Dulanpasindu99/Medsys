@@ -75,6 +75,7 @@ npm run test
 - The patient directory is the first read flow migrated onto the shared query layer through `app/sections/patient/hooks/usePatientDirectory.ts`.
 - Shared query hooks now also cover current-user, auth status, patients, and appointments through `app/lib/query-hooks.ts`.
 - The login redirect flow and doctor queue now use the shared query layer for current-user and appointment-backed reads.
+- Assistant operational reads and owner staff visibility reads now use the shared query layer instead of local `useEffect` load cycles.
 - Current internal API permission coverage includes:
   - patient read/write/delete
   - patient history read/write
@@ -142,6 +143,7 @@ npm run test
   - `app/components/AppQueryProvider.tsx`
   - `app/lib/query-keys.ts`
   - `app/lib/query-hooks.ts`
+  - `app/lib/test-query-client.tsx` for hook tests
 - Backend contract adapters:
   - `app/lib/backend-contract-adapters.ts`
 - Backend auth cookies:

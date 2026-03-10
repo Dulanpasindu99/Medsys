@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  getCurrentUser,
-  listAppointments,
-  listAuditLogs,
   type ApiClientError,
 } from '../../../lib/api-client';
 import {
@@ -19,6 +16,11 @@ import {
   type LoadState,
   type MutationState,
 } from '../../../lib/async-state';
+import {
+  useAppointmentsQuery,
+  useAuditLogsQuery,
+  useCurrentUserQuery,
+} from '../../../lib/query-hooks';
 import type { PermissionKey, Role, StaffUser } from '../types';
 
 type AnyRecord = Record<string, unknown>;
@@ -197,6 +199,9 @@ function mergeStaff(primary: StaffUser[], secondary: StaffUser[]) {
 }
 
 export function useOwnerAccess() {
+  const currentUserQuery = useCurrentUserQuery();
+  const auditLogsQuery = useAuditLogsQuery({ limit: 200 });
+  const appointmentsQuery = useAppointmentsQuery();
   const [role, setRole] = useState<Role>('Doctor');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -204,8 +209,7 @@ export function useOwnerAccess() {
   const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(
     defaultPermissions('Doctor')
   );
-  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
+  const [localStaffUsers, setLocalStaffUsers] = useState<StaffUser[]>([]);
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
 
   const presets = useMemo(
@@ -227,67 +231,58 @@ export function useOwnerAccess() {
     []
   );
 
-  const refresh = async () => {
-    setLoadState(loadingLoadState());
-    try {
-      const [currentUserResult, auditResult, appointmentsResult] = await Promise.allSettled([
-        getCurrentUser(),
-        listAuditLogs({ limit: 200 }),
-        listAppointments(),
-      ]);
+  const liveFromAudit = useMemo(
+    () => normalizeAuditStaff(auditLogsQuery.data ?? []),
+    [auditLogsQuery.data]
+  );
+  const liveFromAppointments = useMemo(
+    () => normalizeStaffFromAppointments(appointmentsQuery.data ?? []),
+    [appointmentsQuery.data]
+  );
+  const staffUsers = useMemo(
+    () => mergeStaff(localStaffUsers, mergeStaff(liveFromAudit, liveFromAppointments)),
+    [liveFromAppointments, liveFromAudit, localStaffUsers]
+  );
 
-      if (currentUserResult.status === "rejected") {
-        setStaffUsers([]);
-        setLoadState(errorLoadState("Unable to verify owner access for staff management."));
-        return;
-      }
-
-      const currentUser = currentUserResult.value;
-
-      if (currentUser?.role && currentUser.role !== 'owner') {
-        setStaffUsers([]);
-        setLoadState(errorLoadState('Owner role is required to manage staff.'));
-        return;
-      }
-
-      if (auditResult.status === "rejected" && appointmentsResult.status === "rejected") {
-        setStaffUsers([]);
-        setLoadState(errorLoadState("Unable to sync staff data."));
-        return;
-      }
-
-      const liveFromAudit =
-        auditResult.status === "fulfilled" ? normalizeAuditStaff(auditResult.value) : [];
-      const liveFromAppointments =
-        appointmentsResult.status === "fulfilled"
-          ? normalizeStaffFromAppointments(appointmentsResult.value)
-          : [];
-      const liveStaff = mergeStaff(liveFromAudit, liveFromAppointments);
-      const localUsers = staffUsers.filter((user) => user.id.startsWith('local-'));
-      const nextUsers = mergeStaff(localUsers, liveStaff);
-      const partialNotice =
-        auditResult.status === "rejected" || appointmentsResult.status === "rejected"
-          ? "Some staff activity feeds failed and partial access data is being shown."
-          : null;
-
-      setStaffUsers(nextUsers);
-      setLoadState(nextUsers.length ? readyLoadState(partialNotice) : emptyLoadState(partialNotice));
-    } catch (error) {
-      const message = (error as ApiClientError)?.message ?? 'Unable to sync staff data.';
-      setStaffUsers([]);
-      setLoadState(errorLoadState(message));
+  const loadState: LoadState = useMemo(() => {
+    if (currentUserQuery.isPending && auditLogsQuery.isPending && appointmentsQuery.isPending) {
+      return loadingLoadState();
     }
-  };
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void refresh();
-    }, 0);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (currentUserQuery.isError) {
+      return errorLoadState("Unable to verify owner access for staff management.");
+    }
+
+    const currentUser = currentUserQuery.data;
+    if (currentUser?.role && currentUser.role !== 'owner') {
+      return errorLoadState('Owner role is required to manage staff.');
+    }
+
+    if (auditLogsQuery.isError && appointmentsQuery.isError) {
+      return errorLoadState(
+        ((auditLogsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          (appointmentsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          'Unable to sync staff data.')
+      );
+    }
+
+    const partialNotice =
+      auditLogsQuery.isError || appointmentsQuery.isError
+        ? "Some staff activity feeds failed and partial access data is being shown."
+        : null;
+    return staffUsers.length ? readyLoadState(partialNotice) : emptyLoadState(partialNotice);
+  }, [
+    appointmentsQuery.error,
+    appointmentsQuery.isError,
+    appointmentsQuery.isPending,
+    auditLogsQuery.error,
+    auditLogsQuery.isError,
+    auditLogsQuery.isPending,
+    currentUserQuery.data,
+    currentUserQuery.isError,
+    currentUserQuery.isPending,
+    staffUsers.length,
+  ]);
 
   const togglePermission = (key: PermissionKey) => {
     setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -310,13 +305,12 @@ export function useOwnerAccess() {
       permissions: { ...permissions },
     };
 
-    setStaffUsers((prev) => mergeStaff([nextUser], prev));
+    setLocalStaffUsers((prev) => mergeStaff([nextUser], prev));
     setName('');
     setUsername('');
     setPassword('');
     setPermissions(defaultPermissions(role));
     setCreateState(successMutationState('Local staff draft created.'));
-    setLoadState(readyLoadState(loadState.notice));
   };
 
   return {
@@ -331,14 +325,21 @@ export function useOwnerAccess() {
     permissions,
     setPermissions,
     staffUsers,
-    setStaffUsers,
+    setStaffUsers: setLocalStaffUsers,
     presets,
     togglePermission,
     handleCreate,
     loadState,
     createState,
     syncError: loadState.error ?? createState.error,
-    isSyncing: loadState.status === 'loading',
-    refresh,
+    isSyncing:
+      currentUserQuery.isFetching || auditLogsQuery.isFetching || appointmentsQuery.isFetching,
+    refresh: () => {
+      void Promise.all([
+        currentUserQuery.refetch(),
+        auditLogsQuery.refetch(),
+        appointmentsQuery.refetch(),
+      ]);
+    },
   };
 }

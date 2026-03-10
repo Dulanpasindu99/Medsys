@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createQueryWrapper } from "../../../lib/test-query-client";
 import { useOwnerAccess, defaultPermissions } from "../hooks/useOwnerAccess";
 import { getCurrentUser, listAppointments, listAuditLogs } from "../../../lib/api-client";
 
@@ -27,7 +28,9 @@ describe("useOwnerAccess", () => {
   });
 
   it("updates permission selections from role presets", async () => {
-    const { result } = renderHook(() => useOwnerAccess());
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.loadState.status).not.toBe("loading");
@@ -41,7 +44,9 @@ describe("useOwnerAccess", () => {
   });
 
   it("appends a new local staff record on create", async () => {
-    const { result } = renderHook(() => useOwnerAccess());
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.loadState.status).not.toBe("loading");
@@ -71,7 +76,9 @@ describe("useOwnerAccess", () => {
       },
     ]);
 
-    const { result } = renderHook(() => useOwnerAccess());
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.loadState.status).toBe("ready");
