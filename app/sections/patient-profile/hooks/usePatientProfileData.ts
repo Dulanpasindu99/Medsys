@@ -1,13 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  getPatientFamily,
-  getPatientProfile,
-  listPatientAllergies,
-  listPatientConditions,
-  listPatientTimeline,
-  listPatientVitals,
-  listPatients,
-} from "../../../lib/api-client";
+import { useMemo } from "react";
 import {
   emptyLoadState,
   errorLoadState,
@@ -15,6 +6,15 @@ import {
   readyLoadState,
   type LoadState,
 } from "../../../lib/async-state";
+import {
+  usePatientAllergiesQuery,
+  usePatientConditionsQuery,
+  usePatientFamilyQuery,
+  usePatientProfileQuery,
+  usePatientTimelineQuery,
+  usePatientsQuery,
+  usePatientVitalsQuery,
+} from "../../../lib/query-hooks";
 import type { PatientProfileRecord, PatientTimelineEntry } from "../types";
 
 type AnyRecord = Record<string, unknown>;
@@ -86,152 +86,153 @@ function mapTimelineEntries(rawTimeline: unknown, rawVitals: unknown): PatientTi
 export function usePatientProfileData(profileId: string) {
   const numericId = Number(profileId);
   const hasInvalidProfileId = Number.isNaN(numericId);
-  const [profile, setProfile] = useState<PatientProfileRecord | null>(null);
-  const [totalProfiles, setTotalProfiles] = useState(0);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [loadState, setLoadState] = useState<LoadState>(
-    hasInvalidProfileId
-      ? errorLoadState("Invalid patient profile reference.")
-      : loadingLoadState()
+  const enabled = !hasInvalidProfileId;
+
+  const profileQuery = usePatientProfileQuery(numericId, enabled);
+  const familyQuery = usePatientFamilyQuery(numericId, enabled);
+  const allergiesQuery = usePatientAllergiesQuery(numericId, enabled);
+  const conditionsQuery = usePatientConditionsQuery(numericId, enabled);
+  const timelineQuery = usePatientTimelineQuery(numericId, enabled);
+  const vitalsQuery = usePatientVitalsQuery(numericId, enabled);
+  const patientsQuery = usePatientsQuery(enabled);
+
+  const profileRecord = useMemo(
+    () => asRecord(profileQuery.data) ?? {},
+    [profileQuery.data]
+  );
+  const patientRows = useMemo(
+    () => asArray(patientsQuery.data),
+    [patientsQuery.data]
+  );
+  const patientRow = useMemo(
+    () =>
+      patientRows.find((row) => toNumber(row.id ?? row.patientId ?? row.patient_id) === numericId) ?? {},
+    [numericId, patientRows]
+  );
+  const familyRecord = useMemo(
+    () => asRecord(familyQuery.data) ?? asRecord(profileRecord.family) ?? {},
+    [familyQuery.data, profileRecord.family]
+  );
+  const conditions = useMemo(
+    () =>
+      asArray(conditionsQuery.data)
+        .map((row) => toString(row.name ?? row.conditionName ?? row.diagnosisName))
+        .filter(Boolean),
+    [conditionsQuery.data]
+  );
+  const allergies = useMemo(
+    () =>
+      asArray(allergiesQuery.data)
+        .map((row) => toString(row.name ?? row.allergyName ?? row.allergen))
+        .filter(Boolean),
+    [allergiesQuery.data]
+  );
+  const timeline = useMemo(
+    () => mapTimelineEntries(timelineQuery.data, vitalsQuery.data),
+    [timelineQuery.data, vitalsQuery.data]
   );
 
-  useEffect(() => {
-    if (hasInvalidProfileId) {
-      return;
+  const totalProfiles = patientRows.length;
+  const hasResolvedProfile =
+    Object.keys(profileRecord).length > 0 || Object.keys(patientRow).length > 0;
+  const primaryFailureCount = [profileQuery.status, patientsQuery.status].filter(
+    (status) => status === "error"
+  ).length;
+  const detailFailureCount = [
+    familyQuery.status,
+    allergiesQuery.status,
+    conditionsQuery.status,
+    timelineQuery.status,
+    vitalsQuery.status,
+  ].filter((status) => status === "error").length;
+  const isPending =
+    profileQuery.isPending ||
+    familyQuery.isPending ||
+    allergiesQuery.isPending ||
+    conditionsQuery.isPending ||
+    timelineQuery.isPending ||
+    vitalsQuery.isPending ||
+    patientsQuery.isPending;
+  const isFetching =
+    profileQuery.isFetching ||
+    familyQuery.isFetching ||
+    allergiesQuery.isFetching ||
+    conditionsQuery.isFetching ||
+    timelineQuery.isFetching ||
+    vitalsQuery.isFetching ||
+    patientsQuery.isFetching;
+
+  const profile = useMemo<PatientProfileRecord | null>(() => {
+    if (!hasResolvedProfile) {
+      return null;
     }
 
-    let active = true;
-    const load = async () => {
-      setLoadState(loadingLoadState());
-      try {
-        const [
-          profileResult,
-          familyResult,
-          allergiesResult,
-          conditionsResult,
-          timelineResult,
-          vitalsResult,
-          patientsResult,
-        ] = await Promise.allSettled([
-          getPatientProfile(numericId),
-          getPatientFamily(numericId),
-          listPatientAllergies(numericId),
-          listPatientConditions(numericId),
-          listPatientTimeline(numericId),
-          listPatientVitals(numericId),
-          listPatients(),
-        ]);
-
-        if (!active) return;
-
-        const profileResponse = profileResult.status === "fulfilled" ? profileResult.value : {};
-        const familyResponse = familyResult.status === "fulfilled" ? familyResult.value : {};
-        const allergiesResponse = allergiesResult.status === "fulfilled" ? allergiesResult.value : [];
-        const conditionsResponse = conditionsResult.status === "fulfilled" ? conditionsResult.value : [];
-        const timelineResponse = timelineResult.status === "fulfilled" ? timelineResult.value : [];
-        const vitalsResponse = vitalsResult.status === "fulfilled" ? vitalsResult.value : [];
-        const patientsResponse = patientsResult.status === "fulfilled" ? patientsResult.value : [];
-
-        const profileRecord = asRecord(profileResponse) ?? {};
-        const patientRows = asArray(patientsResponse);
-        setTotalProfiles(patientRows.length);
-        const patientRow =
-          patientRows.find((row) => toNumber(row.id ?? row.patientId ?? row.patient_id) === numericId) ?? {};
-
-        const hasResolvedProfile =
-          Object.keys(profileRecord).length > 0 || Object.keys(patientRow).length > 0;
-        if (!hasResolvedProfile) {
-          setProfile(null);
-          setLoadState(emptyLoadState());
-          return;
-        }
-
-        const familyRecord = asRecord(familyResponse) ?? asRecord(profileRecord.family) ?? {};
-
-        const conditions = asArray(conditionsResponse)
-          .map((row) => toString(row.name ?? row.conditionName ?? row.diagnosisName))
-          .filter(Boolean);
-        const allergies = asArray(allergiesResponse)
-          .map((row) => toString(row.name ?? row.allergyName ?? row.allergen))
-          .filter(Boolean);
-        const timeline = mapTimelineEntries(timelineResponse, vitalsResponse);
-
-        const nextProfile: PatientProfileRecord = {
-          id: String(numericId),
-          name: toString(profileRecord.name ?? patientRow.name ?? patientRow.fullName, `Patient ${numericId}`),
-          nic: toString(profileRecord.nic ?? patientRow.nic, "N/A"),
-          age: toNumber(profileRecord.age ?? patientRow.age) ?? 0,
-          gender: toGender(profileRecord.gender ?? patientRow.gender),
-          mobile: toString(profileRecord.mobile ?? patientRow.mobile ?? patientRow.phone, "Not provided"),
-          family: {
-            assigned: Boolean(
-              toString(familyRecord.name ?? familyRecord.familyName) ||
-                asArray(familyRecord.members).length
-            ),
-            name: toString(familyRecord.name ?? familyRecord.familyName, "Unassigned"),
-            members: asArray(familyRecord.members)
-              .map((row) => toString(row.name ?? row.memberName))
-              .filter(Boolean),
-          },
-          conditions,
-          allergies,
-          firstSeen: toString(profileRecord.firstSeen ?? profileRecord.createdAt ?? patientRow.createdAt, new Date().toISOString()),
-          timeline,
-        };
-
-        setProfile(nextProfile);
-        const partialFailure =
-          familyResult.status === "rejected" ||
-          allergiesResult.status === "rejected" ||
-          conditionsResult.status === "rejected" ||
-          timelineResult.status === "rejected" ||
-          vitalsResult.status === "rejected" ||
-          patientsResult.status === "rejected";
-        setLoadState(
-          readyLoadState(
-            partialFailure
-              ? "Some profile details could not be loaded and fallback data is being shown."
-              : null
-          )
-        );
-      } catch (error) {
-        if (!active) return;
-        setLoadState(
-          errorLoadState((error as Error)?.message ?? "Unable to load patient profile.")
-        );
-        setProfile(null);
-        setTotalProfiles(0);
-      }
-    };
-
-    const timeoutId = window.setTimeout(() => {
-      void load();
-    }, 0);
-    return () => {
-      active = false;
-      window.clearTimeout(timeoutId);
-    };
-  }, [hasInvalidProfileId, numericId, reloadKey]);
-
-  const timeline = useMemo(
-    () =>
-      profile
-        ? [...profile.timeline].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        : [],
-    [profile]
-  );
-
-  if (hasInvalidProfileId) {
     return {
-      profile: null,
-      timeline: [] as PatientTimelineEntry[],
-      totalProfiles: 0,
-      formatDate,
-      loadState: errorLoadState("Invalid patient profile reference."),
-      syncError: "Invalid patient profile reference.",
-      reload: () => setReloadKey((prev) => prev + 1),
+      id: String(numericId),
+      name: toString(profileRecord.name ?? patientRow.name ?? patientRow.fullName, `Patient ${numericId}`),
+      nic: toString(profileRecord.nic ?? patientRow.nic, "N/A"),
+      age: toNumber(profileRecord.age ?? patientRow.age) ?? 0,
+      gender: toGender(profileRecord.gender ?? patientRow.gender),
+      mobile: toString(profileRecord.mobile ?? patientRow.mobile ?? patientRow.phone, "Not provided"),
+      family: {
+        assigned: Boolean(
+          toString(familyRecord.name ?? familyRecord.familyName) || asArray(familyRecord.members).length
+        ),
+        name: toString(familyRecord.name ?? familyRecord.familyName, "Unassigned"),
+        members: asArray(familyRecord.members)
+          .map((row) => toString(row.name ?? row.memberName))
+          .filter(Boolean),
+      },
+      conditions,
+      allergies,
+      firstSeen: toString(
+        profileRecord.firstSeen ?? profileRecord.createdAt ?? patientRow.createdAt,
+        new Date().toISOString()
+      ),
+      timeline,
     };
+  }, [
+    allergies,
+    conditions,
+    familyRecord,
+    hasResolvedProfile,
+    numericId,
+    patientRow,
+    profileRecord,
+    timeline,
+  ]);
+
+  let loadState: LoadState;
+  if (hasInvalidProfileId) {
+    loadState = errorLoadState("Invalid patient profile reference.");
+  } else if ((isPending || isFetching) && !hasResolvedProfile) {
+    loadState = loadingLoadState();
+  } else if (primaryFailureCount === 2) {
+    const firstError = profileQuery.error ?? patientsQuery.error;
+    loadState = errorLoadState(
+      (firstError as { message?: string } | undefined)?.message ?? "Unable to load patient profile."
+    );
+  } else if (!hasResolvedProfile) {
+    loadState = emptyLoadState();
+  } else {
+    loadState = readyLoadState(
+      detailFailureCount || primaryFailureCount
+        ? "Some profile details could not be loaded and fallback data is being shown."
+        : null
+    );
   }
+
+  const reload = () => {
+    void Promise.all([
+      profileQuery.refetch(),
+      familyQuery.refetch(),
+      allergiesQuery.refetch(),
+      conditionsQuery.refetch(),
+      timelineQuery.refetch(),
+      vitalsQuery.refetch(),
+      patientsQuery.refetch(),
+    ]);
+  };
 
   return {
     profile,
@@ -240,6 +241,6 @@ export function usePatientProfileData(profileId: string) {
     formatDate,
     loadState,
     syncError: loadState.error,
-    reload: () => setReloadKey((prev) => prev + 1),
+    reload,
   };
 }

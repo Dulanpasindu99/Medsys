@@ -76,6 +76,7 @@ npm run test
 - Shared query hooks now also cover current-user, auth status, patients, and appointments through `app/lib/query-hooks.ts`.
 - The login redirect flow and doctor queue now use the shared query layer for current-user and appointment-backed reads.
 - Assistant operational reads and owner staff visibility reads now use the shared query layer instead of local `useEffect` load cycles.
+- Analytics, AI, and patient-profile reads now use the shared query layer instead of local `Promise.all` or `useEffect` loaders.
 - Current internal API permission coverage includes:
   - patient read/write/delete
   - patient history read/write
@@ -171,3 +172,4 @@ npm run test
 - ICD-10 suggestion requests are proxied through `GET /api/clinical/icd10`, which now forwards to backend `/v1/clinical/icd10` instead of calling the third-party terminology source directly from the frontend server.
 - `npm run test` currently runs lint + typecheck as baseline quality gate.
 - BE-020 closure audit evidence lives in `docs/reports/be-020-frontend-closure-report.md`.
+- Remaining frontend execution work is tracked in `docs/frontend-implementation-roadmap.md`.

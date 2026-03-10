@@ -5,8 +5,16 @@ import {
   getAnalyticsOverview,
   getAuthStatus,
   getCurrentUser,
+  getPatientFamily,
+  getPatientProfile,
   listAppointments,
+  listPatientAllergies,
+  listPatientConditions,
+  listPatientTimeline,
+  listPatientVitals,
   listAuditLogs,
+  listEncounters,
+  listInventory,
   listPendingDispenseQueue,
   listPatients,
   type AppointmentStatus,
@@ -36,6 +44,20 @@ export function useAnalyticsOverviewQuery() {
   });
 }
 
+export function useEncountersQuery() {
+  return useQuery({
+    queryKey: queryKeys.encounters.list,
+    queryFn: listEncounters,
+  });
+}
+
+export function useInventoryQuery() {
+  return useQuery({
+    queryKey: queryKeys.inventory.list,
+    queryFn: listInventory,
+  });
+}
+
 export function useAuditLogsQuery(input?: { limit?: number }) {
   return useQuery({
     queryKey: queryKeys.audit.logs(input?.limit),
@@ -43,10 +65,59 @@ export function useAuditLogsQuery(input?: { limit?: number }) {
   });
 }
 
-export function usePatientsQuery() {
+export function usePatientsQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.patients.list,
     queryFn: listPatients,
+    enabled,
+  });
+}
+
+export function usePatientProfileQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.profile(patientId),
+    queryFn: () => getPatientProfile(patientId),
+    enabled,
+  });
+}
+
+export function usePatientFamilyQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.family(patientId),
+    queryFn: () => getPatientFamily(patientId),
+    enabled,
+  });
+}
+
+export function usePatientVitalsQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.vitals(patientId),
+    queryFn: () => listPatientVitals(patientId),
+    enabled,
+  });
+}
+
+export function usePatientAllergiesQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.allergies(patientId),
+    queryFn: () => listPatientAllergies(patientId),
+    enabled,
+  });
+}
+
+export function usePatientConditionsQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.conditions(patientId),
+    queryFn: () => listPatientConditions(patientId),
+    enabled,
+  });
+}
+
+export function usePatientTimelineQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.timeline(patientId),
+    queryFn: () => listPatientTimeline(patientId),
+    enabled,
   });
 }
 

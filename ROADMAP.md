@@ -32,7 +32,7 @@ Current gaps:
 - File-based persistence is not suitable for concurrent production traffic
 - Authorization is still coarse for domain actions beyond the currently covered internal routes
 - Async state handling is inconsistent across features
-- No mature server-state caching/invalidation layer
+- Shared query/server-state infrastructure is in progress, but rollout and invalidation are not yet complete across all feature hooks
 - Test coverage is improving, but still incomplete for critical healthcare workflows
 - API schema validation is not yet complete across all backend-facing workflows
 - Some backend-facing flows still require temporary frontend compatibility adapters because the backend contract is only partially aligned
@@ -328,17 +328,16 @@ These should happen before broad feature expansion.
 
 1. Expand permission coverage and schema validation to all backend-facing workflows.
 2. Define and align target backend contracts for patients, appointments, encounters, prescriptions, and inventory.
-3. Remove the remaining reliance on `app/lib/store.ts` for anything considered production-path and record the final audit proof.
-4. Introduce a shared query/mutation layer for remote data.
+3. Complete the shared query/mutation rollout for remaining feature hooks and mutation invalidation.
+4. Remove or archive `app/lib/store.ts` now that BE-020 closure proof exists.
 5. Add audit logging for sensitive access and mutation flows.
 6. Add integration and end-to-end coverage for authorization-sensitive and validation-sensitive workflows.
 
 ## Current BE-020 Note
 
-- The frontend code path is now effectively BFF-backed for active production flows, including ICD-10.
-- Remaining BE-020 closure work is operational proof:
-  - run authenticated frontend-against-backend verification for the core journeys
-  - record the outcome in `docs/reports/be-020-frontend-closure-report.md`
+- Frontend BE-020 is closed from the frontend side.
+- Closure evidence is recorded in `docs/reports/be-020-frontend-closure-report.md`.
+- Remaining frontend execution work is tracked in `docs/frontend-implementation-roadmap.md`.
 
 ## Suggested Delivery Sequence
 

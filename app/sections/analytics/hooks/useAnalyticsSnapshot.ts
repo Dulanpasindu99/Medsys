@@ -1,19 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  getAnalyticsOverview,
-  listAppointments,
-  listEncounters,
-  listInventory,
-  listPatients,
-  type ApiClientError,
-} from '../../../lib/api-client';
+import { useMemo } from 'react';
 import {
   emptyLoadState,
   errorLoadState,
-  loadingLoadState,
   readyLoadState,
   type LoadState,
 } from '../../../lib/async-state';
+import {
+  useAnalyticsOverviewQuery,
+  useAppointmentsQuery,
+  useEncountersQuery,
+  useInventoryQuery,
+  usePatientsQuery,
+} from '../../../lib/query-hooks';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -47,79 +45,76 @@ function toString(value: unknown, fallback = '') {
 }
 
 export function useAnalyticsSnapshot() {
-  const [overview, setOverview] = useState<AnyRecord>({});
-  const [patients, setPatients] = useState<AnyRecord[]>([]);
-  const [appointments, setAppointments] = useState<AnyRecord[]>([]);
-  const [encounters, setEncounters] = useState<AnyRecord[]>([]);
-  const [inventory, setInventory] = useState<AnyRecord[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
+  const overviewQuery = useAnalyticsOverviewQuery();
+  const patientsQuery = usePatientsQuery();
+  const appointmentsQuery = useAppointmentsQuery();
+  const encountersQuery = useEncountersQuery();
+  const inventoryQuery = useInventoryQuery();
+
+  const overview = useMemo(() => asRecord(overviewQuery.data) ?? {}, [overviewQuery.data]);
+  const patients = useMemo(() => asArray(patientsQuery.data), [patientsQuery.data]);
+  const appointments = useMemo(() => asArray(appointmentsQuery.data), [appointmentsQuery.data]);
+  const encounters = useMemo(() => asArray(encountersQuery.data), [encountersQuery.data]);
+  const inventory = useMemo(() => asArray(inventoryQuery.data), [inventoryQuery.data]);
+
+  const hasData =
+    Object.keys(overview).length > 0 ||
+    patients.length > 0 ||
+    appointments.length > 0 ||
+    encounters.length > 0 ||
+    inventory.length > 0;
+  const failureCount = [
+    overviewQuery.status,
+    patientsQuery.status,
+    appointmentsQuery.status,
+    encountersQuery.status,
+    inventoryQuery.status,
+  ].filter((status) => status === 'error').length;
+  const firstError =
+    overviewQuery.error ??
+    patientsQuery.error ??
+    appointmentsQuery.error ??
+    encountersQuery.error ??
+    inventoryQuery.error;
+  const isFetching =
+    overviewQuery.isFetching ||
+    patientsQuery.isFetching ||
+    appointmentsQuery.isFetching ||
+    encountersQuery.isFetching ||
+    inventoryQuery.isFetching;
+  const isPending =
+    overviewQuery.isPending ||
+    patientsQuery.isPending ||
+    appointmentsQuery.isPending ||
+    encountersQuery.isPending ||
+    inventoryQuery.isPending;
+
+  let loadState: LoadState;
+  if ((isPending || isFetching) && !hasData) {
+    loadState = { status: 'loading', error: null, notice: null };
+  } else if (failureCount === 5) {
+    loadState = errorLoadState(
+      (firstError as { message?: string } | undefined)?.message ?? 'Unable to load analytics.'
+    );
+  } else if (!hasData) {
+    loadState = emptyLoadState(
+      failureCount ? 'Some analytics feeds failed and returned no usable data.' : null
+    );
+  } else {
+    loadState = readyLoadState(
+      failureCount ? 'Some analytics feeds failed and partial data is being shown.' : null
+    );
+  }
 
   const reload = async () => {
-    setLoadState(loadingLoadState());
-    try {
-      const [overviewResult, patientsResult, appointmentsResult, encountersResult, inventoryResult] =
-        await Promise.allSettled([
-          getAnalyticsOverview(),
-          listPatients(),
-          listAppointments(),
-          listEncounters(),
-          listInventory(),
-        ]);
-
-      const nextOverview =
-        overviewResult.status === 'fulfilled' ? asRecord(overviewResult.value) ?? {} : {};
-      const nextPatients =
-        patientsResult.status === 'fulfilled' ? asArray(patientsResult.value) : [];
-      const nextAppointments =
-        appointmentsResult.status === 'fulfilled' ? asArray(appointmentsResult.value) : [];
-      const nextEncounters =
-        encountersResult.status === 'fulfilled' ? asArray(encountersResult.value) : [];
-      const nextInventory =
-        inventoryResult.status === 'fulfilled' ? asArray(inventoryResult.value) : [];
-
-      const primaryFailureCount = [
-        overviewResult,
-        patientsResult,
-        appointmentsResult,
-        encountersResult,
-        inventoryResult,
-      ].filter((result) => result.status === 'rejected').length;
-
-      if (primaryFailureCount === 5) {
-        throw new Error('Unable to load analytics.');
-      }
-
-      setOverview(nextOverview);
-      setPatients(nextPatients);
-      setAppointments(nextAppointments);
-      setEncounters(nextEncounters);
-      setInventory(nextInventory);
-
-      const hasData =
-        nextPatients.length || nextAppointments.length || nextEncounters.length || nextInventory.length;
-      setLoadState(
-        hasData
-          ? readyLoadState(
-              primaryFailureCount
-                ? 'Some analytics feeds failed and partial data is being shown.'
-                : null
-            )
-          : emptyLoadState()
-      );
-    } catch (error) {
-      const message = (error as ApiClientError)?.message ?? 'Unable to load analytics.';
-      setLoadState(errorLoadState(message));
-    }
+    await Promise.all([
+      overviewQuery.refetch(),
+      patientsQuery.refetch(),
+      appointmentsQuery.refetch(),
+      encountersQuery.refetch(),
+      inventoryQuery.refetch(),
+    ]);
   };
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void reload();
-    }, 0);
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, []);
 
   const patientTotal = toNumber(overview.totalPatients ?? overview.patientCount) ?? patients.length;
   const maleTotal =

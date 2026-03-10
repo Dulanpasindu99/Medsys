@@ -1,18 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  getAnalyticsOverview,
-  listAppointments,
-  listAuditLogs,
-  listPatients,
-  type ApiClientError,
-} from "../../../lib/api-client";
+import { useMemo } from "react";
 import {
   emptyLoadState,
   errorLoadState,
-  loadingLoadState,
   readyLoadState,
   type LoadState,
 } from "../../../lib/async-state";
+import {
+  useAnalyticsOverviewQuery,
+  useAppointmentsQuery,
+  useAuditLogsQuery,
+  usePatientsQuery,
+} from "../../../lib/query-hooks";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -46,93 +44,57 @@ function toString(value: unknown, fallback = "") {
 }
 
 export function useAiInsightsData() {
-  const [overview, setOverview] = useState<AnyRecord>({});
-  const [patients, setPatients] = useState<AnyRecord[]>([]);
-  const [appointments, setAppointments] = useState<AnyRecord[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AnyRecord[]>([]);
-  const [loadState, setLoadState] = useState<LoadState>(loadingLoadState());
-  const [reloadKey, setReloadKey] = useState(0);
+  const overviewQuery = useAnalyticsOverviewQuery();
+  const patientsQuery = usePatientsQuery();
+  const appointmentsQuery = useAppointmentsQuery();
+  const auditLogsQuery = useAuditLogsQuery({ limit: 20 });
 
-  useEffect(() => {
-    let active = true;
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        setLoadState(loadingLoadState());
-        const [overviewResult, patientsResult, appointmentsResult, auditLogsResult] =
-          await Promise.allSettled([
-            getAnalyticsOverview(),
-            listPatients(),
-            listAppointments(),
-            listAuditLogs({ limit: 20 }),
-          ]);
+  const overview = useMemo(() => asRecord(overviewQuery.data) ?? {}, [overviewQuery.data]);
+  const patients = useMemo(() => asArray(patientsQuery.data), [patientsQuery.data]);
+  const appointments = useMemo(() => asArray(appointmentsQuery.data), [appointmentsQuery.data]);
+  const auditLogs = useMemo(() => asArray(auditLogsQuery.data), [auditLogsQuery.data]);
 
-        if (!active) return;
+  const hasData =
+    Object.keys(overview).length > 0 ||
+    patients.length > 0 ||
+    appointments.length > 0 ||
+    auditLogs.length > 0;
+  const failureCount = [
+    overviewQuery.status,
+    patientsQuery.status,
+    appointmentsQuery.status,
+    auditLogsQuery.status,
+  ].filter((status) => status === "error").length;
+  const firstError =
+    overviewQuery.error ??
+    patientsQuery.error ??
+    appointmentsQuery.error ??
+    auditLogsQuery.error;
+  const isFetching =
+    overviewQuery.isFetching ||
+    patientsQuery.isFetching ||
+    appointmentsQuery.isFetching ||
+    auditLogsQuery.isFetching;
+  const isPending =
+    overviewQuery.isPending ||
+    patientsQuery.isPending ||
+    appointmentsQuery.isPending ||
+    auditLogsQuery.isPending;
 
-        const allFailed =
-          overviewResult.status === "rejected" &&
-          patientsResult.status === "rejected" &&
-          appointmentsResult.status === "rejected" &&
-          auditLogsResult.status === "rejected";
-        if (allFailed) {
-          const firstError =
-            (overviewResult.reason as ApiClientError | undefined)?.message ??
-            (patientsResult.reason as ApiClientError | undefined)?.message ??
-            (appointmentsResult.reason as ApiClientError | undefined)?.message ??
-            (auditLogsResult.reason as ApiClientError | undefined)?.message ??
-            "Unable to load AI insights.";
-          setOverview({});
-          setPatients([]);
-          setAppointments([]);
-          setAuditLogs([]);
-          setLoadState(errorLoadState(firstError));
-          return;
-        }
-
-        const nextOverview =
-          overviewResult.status === "fulfilled" ? asRecord(overviewResult.value) ?? {} : {};
-        const nextPatients =
-          patientsResult.status === "fulfilled" ? asArray(patientsResult.value) : [];
-        const nextAppointments =
-          appointmentsResult.status === "fulfilled" ? asArray(appointmentsResult.value) : [];
-        const nextAuditLogs =
-          auditLogsResult.status === "fulfilled" ? asArray(auditLogsResult.value) : [];
-
-        setOverview(nextOverview);
-        setPatients(nextPatients);
-        setAppointments(nextAppointments);
-        setAuditLogs(nextAuditLogs);
-
-        const hasData =
-          Object.keys(nextOverview).length > 0 ||
-          nextPatients.length > 0 ||
-          nextAppointments.length > 0 ||
-          nextAuditLogs.length > 0;
-        const partialFailure =
-          overviewResult.status === "rejected" ||
-          patientsResult.status === "rejected" ||
-          appointmentsResult.status === "rejected" ||
-          auditLogsResult.status === "rejected";
-
-        if (!hasData) {
-          setLoadState(emptyLoadState(partialFailure ? "Insight feeds returned no usable data." : null));
-          return;
-        }
-
-        setLoadState(
-          readyLoadState(
-            partialFailure
-              ? "Some AI insight feeds failed and fallback data is being shown."
-              : null
-          )
-        );
-      })();
-    }, 0);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timeoutId);
-    };
-  }, [reloadKey]);
+  let loadState: LoadState;
+  if ((isPending || isFetching) && !hasData) {
+    loadState = { status: "loading", error: null, notice: null };
+  } else if (failureCount === 4) {
+    loadState = errorLoadState(
+      (firstError as { message?: string } | undefined)?.message ?? "Unable to load AI insights."
+    );
+  } else if (!hasData) {
+    loadState = emptyLoadState(failureCount ? "Insight feeds returned no usable data." : null);
+  } else {
+    loadState = readyLoadState(
+      failureCount ? "Some AI insight feeds failed and fallback data is being shown." : null
+    );
+  }
 
   const patientTotal = toNumber(overview.totalPatients ?? overview.patientCount) ?? patients.length;
   const appointmentTotal = appointments.length;
@@ -161,6 +123,13 @@ export function useAiInsightsData() {
     auditEventCount,
     insights,
     loadState,
-    reload: () => setReloadKey((prev) => prev + 1),
+    reload: async () => {
+      await Promise.all([
+        overviewQuery.refetch(),
+        patientsQuery.refetch(),
+        appointmentsQuery.refetch(),
+        auditLogsQuery.refetch(),
+      ]);
+    },
   };
 }

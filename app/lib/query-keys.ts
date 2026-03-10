@@ -6,6 +6,12 @@ export const queryKeys = {
   analytics: {
     overview: ["analytics", "overview"] as const,
   },
+  encounters: {
+    list: ["encounters", "list"] as const,
+  },
+  inventory: {
+    list: ["inventory", "list"] as const,
+  },
   audit: {
     logs: (limit?: number) =>
       typeof limit === "number" ? (["audit", "logs", limit] as const) : (["audit", "logs"] as const),
@@ -13,6 +19,14 @@ export const queryKeys = {
   patients: {
     directory: ["patients", "directory"] as const,
     list: ["patients", "list"] as const,
+    profile: (patientId: number | string) => ["patients", "profile", String(patientId)] as const,
+    family: (patientId: number | string) => ["patients", "family", String(patientId)] as const,
+    vitals: (patientId: number | string) => ["patients", "vitals", String(patientId)] as const,
+    allergies: (patientId: number | string) =>
+      ["patients", "allergies", String(patientId)] as const,
+    conditions: (patientId: number | string) =>
+      ["patients", "conditions", String(patientId)] as const,
+    timeline: (patientId: number | string) => ["patients", "timeline", String(patientId)] as const,
   },
   appointments: {
     list: (status?: string) =>
