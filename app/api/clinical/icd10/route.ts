@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/app/lib/api-auth";
+import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
 import {
   validateDiseaseSuggestionQuery,
   validationErrorResponse,
 } from "@/app/lib/api-validation";
 
-const MAX_LIST = 10;
-const BASE_URL = "https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search";
+function contractMismatchResponse() {
+  return NextResponse.json(
+    { error: "Backend contract mismatch for the ICD-10 route." },
+    { status: 502 }
+  );
+}
 
 export async function GET(request: NextRequest) {
   const auth = requirePermission(request, "clinical.icd10.read");
@@ -24,34 +29,42 @@ export async function GET(request: NextRequest) {
     return validationErrorResponse(validatedQuery.issues);
   }
 
-  try {
-    const upstream = await fetch(
-      `${BASE_URL}?sf=code,name&maxList=${MAX_LIST}&terms=${encodeURIComponent(validatedQuery.value.terms)}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      }
-    );
+  const backend = await callBackendRoute(request, "/v1/clinical/icd10", {
+    unavailableMessage: "Unable to fetch ICD-10 suggestions right now.",
+  });
+  if (!backend.ok) {
+    return backend.response;
+  }
 
-    if (!upstream.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch ICD-10 suggestions." },
-        { status: upstream.status }
-      );
-    }
-
-    const payload = (await upstream.json()) as unknown;
-    const entries =
-      Array.isArray(payload) && Array.isArray(payload[3]) ? (payload[3] as [string, string][]) : [];
-    const suggestions = entries.map(([code, name]) => `${code} - ${name}`);
-
-    return NextResponse.json({ suggestions });
-  } catch (error) {
-    console.error("ICD-10 proxy error", error);
-    return NextResponse.json(
-      { error: "Unable to fetch ICD-10 suggestions right now." },
-      { status: 502 }
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(
+      backend.response,
+      "Unable to fetch ICD-10 suggestions right now."
     );
   }
+
+  let payload: unknown;
+  try {
+    payload = await backend.response.json();
+  } catch {
+    return contractMismatchResponse();
+  }
+
+  const record =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>)
+      : null;
+  const suggestions = Array.isArray(record?.suggestions)
+    ? record.suggestions.filter(
+        (entry): entry is string => typeof entry === "string"
+      )
+    : null;
+
+  if (!suggestions) {
+    return contractMismatchResponse();
+  }
+
+  const response = NextResponse.json({ suggestions });
+  backend.applyTo(response);
+  return response;
 }

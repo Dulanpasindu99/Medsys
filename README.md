@@ -60,7 +60,7 @@ npm run test
   - secure `httpOnly` backend refresh-token cookie
 - App identity is read from `GET /api/auth/me`.
 - Logout goes through `POST /api/auth/logout`.
-- Auth status/register, patient, patient-history, patient-profile support feeds, families, user, appointment, encounter, analytics overview, audit logs, assistant prescription/dispense, and inventory browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
+- Auth status/register, patient, patient-history, patient-profile support feeds, families, user, appointment, encounter, analytics overview, audit logs, assistant prescription/dispense, inventory, and ICD-10 browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
 - Remaining feature API requests go through `app/api/backend/[...path]/route.ts`.
 - On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
 - If refresh fails, backend cookies and the app session are cleared together.
@@ -114,6 +114,8 @@ npm run test
   - `/api/patients/:id/timeline`
 - Analytics:
   - `/api/analytics/overview`
+- Clinical:
+  - `/api/clinical/icd10`
 - Audit logs:
   - `/api/audit/logs`
 - Prescriptions:
@@ -166,5 +168,6 @@ npm run test
 
 ## Notes
 
-- ICD-10 suggestion requests are proxied through `GET /api/clinical/icd10` (server-side), not called directly from browser to third-party.
+- ICD-10 suggestion requests are proxied through `GET /api/clinical/icd10`, which now forwards to backend `/v1/clinical/icd10` instead of calling the third-party terminology source directly from the frontend server.
 - `npm run test` currently runs lint + typecheck as baseline quality gate.
+- BE-020 closure audit evidence lives in `docs/reports/be-020-frontend-closure-report.md`.

@@ -328,10 +328,17 @@ These should happen before broad feature expansion.
 
 1. Expand permission coverage and schema validation to all backend-facing workflows.
 2. Define and align target backend contracts for patients, appointments, encounters, prescriptions, and inventory.
-3. Remove the remaining reliance on `app/lib/store.ts` for anything considered production-path.
+3. Remove the remaining reliance on `app/lib/store.ts` for anything considered production-path and record the final audit proof.
 4. Introduce a shared query/mutation layer for remote data.
 5. Add audit logging for sensitive access and mutation flows.
 6. Add integration and end-to-end coverage for authorization-sensitive and validation-sensitive workflows.
+
+## Current BE-020 Note
+
+- The frontend code path is now effectively BFF-backed for active production flows, including ICD-10.
+- Remaining BE-020 closure work is operational proof:
+  - run authenticated frontend-against-backend verification for the core journeys
+  - record the outcome in `docs/reports/be-020-frontend-closure-report.md`
 
 ## Suggested Delivery Sequence
 
