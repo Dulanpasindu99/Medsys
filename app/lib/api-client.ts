@@ -184,7 +184,7 @@ export async function listPatients() {
 }
 
 export async function listFamilies() {
-  return apiFetch("/v1/families", { method: "GET" });
+  return apiFetch("/api/families", { method: "GET" });
 }
 
 export async function createPatient(input: {
@@ -352,7 +352,7 @@ export async function listAuditLogs(input?: {
   if (input?.to) params.set("to", input.to);
   if (typeof input?.limit === "number") params.set("limit", String(input.limit));
   const query = params.size ? `?${params.toString()}` : "";
-  return apiFetch(`/v1/audit/logs${query}`, { method: "GET" });
+  return apiFetch(`/api/audit/logs${query}`, { method: "GET" });
 }
 
 export async function dispensePrescription(

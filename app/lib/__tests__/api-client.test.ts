@@ -7,8 +7,10 @@ import {
   dispensePrescription,
   getAnalyticsOverview,
   listAppointments,
+  listAuditLogs,
   getAuthStatus,
   getCurrentUser,
+  listFamilies,
   getPatientFamily,
   getPatientById,
   getPatientProfile,
@@ -232,6 +234,32 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/encounters");
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/encounters");
     expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(JSON.stringify(payload));
+  });
+
+  it("loads families and audit logs through dedicated BFF routes", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: 1, name: "Doe Family" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: 2, action: "staff.login" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listFamilies()).resolves.toEqual([{ id: 1, name: "Doe Family" }]);
+    await expect(listAuditLogs({ limit: 20 })).resolves.toEqual([
+      { id: 2, action: "staff.login" },
+    ]);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/families");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/audit/logs?limit=20");
   });
 
   it("loads analytics overview through the dedicated BFF route", async () => {

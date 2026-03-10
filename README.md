@@ -35,7 +35,7 @@ MEDSYS_SESSION_SECRET=change-me
 
 Frontend feature calls now use two server-side paths:
 
-- dedicated BFF contract routes such as `/api/auth/status`, `/api/auth/register`, `/api/patients`, `/api/patients/:id`, `/api/patients/:id/history`, patient-profile support routes under `/api/patients/:id/*`, `/api/users`, `/api/appointments`, `/api/encounters`, `/api/analytics/overview`, prescription routes under `/api/prescriptions/*`, and inventory routes under `/api/inventory/*`
+- dedicated BFF contract routes such as `/api/auth/status`, `/api/auth/register`, `/api/patients`, `/api/patients/:id`, `/api/patients/:id/history`, patient-profile support routes under `/api/patients/:id/*`, `/api/families`, `/api/users`, `/api/appointments`, `/api/encounters`, `/api/analytics/overview`, `/api/audit/logs`, prescription routes under `/api/prescriptions/*`, and inventory routes under `/api/inventory/*`
 - the generic authenticated proxy `/api/backend/:path*` for the remaining `/v1/...` surface
 
 Both paths forward to `BACKEND_URL` server-side and keep backend access and refresh tokens in secure cookies. The browser never receives backend access or refresh tokens directly.
@@ -59,7 +59,7 @@ npm run test
   - secure `httpOnly` backend refresh-token cookie
 - App identity is read from `GET /api/auth/me`.
 - Logout goes through `POST /api/auth/logout`.
-- Auth status/register, patient, patient-history, patient-profile support feeds, user, appointment, encounter, analytics overview, assistant prescription/dispense, and inventory browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
+- Auth status/register, patient, patient-history, patient-profile support feeds, families, user, appointment, encounter, analytics overview, audit logs, assistant prescription/dispense, and inventory browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
 - Remaining feature API requests go through `app/api/backend/[...path]/route.ts`.
 - On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
 - If refresh fails, backend cookies and the app session are cleared together.
@@ -97,6 +97,8 @@ npm run test
   - `/api/appointments`
 - Encounters:
   - `/api/encounters`
+- Families:
+  - `/api/families`
 - Patient profile support feeds:
   - `/api/patients/:id/profile`
   - `/api/patients/:id/family`
@@ -106,6 +108,8 @@ npm run test
   - `/api/patients/:id/timeline`
 - Analytics:
   - `/api/analytics/overview`
+- Audit logs:
+  - `/api/audit/logs`
 - Prescriptions:
   - `/api/prescriptions/queue/pending-dispense`
   - `/api/prescriptions/:id`

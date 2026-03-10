@@ -1,4 +1,4 @@
-import type { Role } from "@/app/lib/store";
+import type { AppRole } from "@/app/lib/roles";
 
 type PatientRecord = {
   id: number;
@@ -19,7 +19,7 @@ type UserRecord = {
   id: number;
   name: string;
   email: string;
-  role: Role;
+  role: AppRole;
   createdAt: string | null;
 };
 
@@ -33,14 +33,14 @@ type HistoryEntry = {
 type HistoryActor = {
   id: number;
   name: string;
-  role: Role;
+  role: AppRole;
 } | undefined;
 
 type SessionIdentity = {
   id: number | null;
   name: string;
   email: string;
-  role: Role;
+  role: AppRole;
 };
 
 export function serializePatient(patient: PatientRecord) {
