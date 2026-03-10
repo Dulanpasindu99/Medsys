@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   createEncounter,
-  getCurrentUser,
-  listAppointments,
   listPatientAllergies,
-  listPatients,
   listPatientVitals,
   type ApiClientError,
 } from "../../../lib/api-client";
@@ -20,6 +17,7 @@ import {
   type LoadState,
   type MutationState,
 } from "../../../lib/async-state";
+import { useAppointmentsQuery, useCurrentUserQuery, usePatientsQuery } from "../../../lib/query-hooks";
 import type { useDoctorClinicalWorkflow } from "./useDoctorClinicalWorkflow";
 import type { useVisitPlanner } from "./useVisitPlanner";
 import type { AllergyAlert, Patient, PatientGender, PatientVital } from "../types";
@@ -27,6 +25,7 @@ import type { AllergyAlert, Patient, PatientGender, PatientVital } from "../type
 type AnyRecord = Record<string, unknown>;
 type ClinicalWorkflow = ReturnType<typeof useDoctorClinicalWorkflow>;
 type VisitPlannerState = ReturnType<typeof useVisitPlanner>;
+const EMPTY_ROWS: unknown[] = [];
 
 function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
@@ -201,24 +200,25 @@ export function useDoctorWorkspaceData(
   clinicalWorkflow: ClinicalWorkflow,
   visitPlanner: VisitPlannerState
 ) {
+  const patientsQuery = usePatientsQuery();
+  const waitingAppointmentsQuery = useAppointmentsQuery({ status: "waiting" });
+  const currentUserQuery = useCurrentUserQuery();
   const [search, setSearch] = useState("");
   const [patientName, setPatientName] = useState("");
   const [patientAge, setPatientAge] = useState("");
   const [nicNumber, setNicNumber] = useState("");
   const [gender, setGender] = useState<PatientGender>("Male");
-  const [rawPatients, setRawPatients] = useState<unknown>([]);
-  const [rawWaitingAppointments, setRawWaitingAppointments] = useState<unknown>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [patientDetailsId, setPatientDetailsId] = useState<number | null>(null);
   const [patientVitals, setPatientVitals] = useState<PatientVital[]>([]);
   const [patientAllergies, setPatientAllergies] = useState<AllergyAlert[]>([]);
-  const [queueState, setQueueState] = useState<LoadState>(loadingLoadState());
   const [patientDetailsState, setPatientDetailsState] = useState<LoadState>(emptyLoadState());
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
-  const [reloadKey, setReloadKey] = useState(0);
+  const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
+  const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
+  const currentUserId = currentUserQuery.data?.id ?? null;
 
   const patients = useMemo(
     () => normalizePatients(rawPatients, rawWaitingAppointments),
@@ -234,70 +234,53 @@ export function useDoctorWorkspaceData(
     );
   }, [patients, search]);
 
-  useEffect(() => {
-    let active = true;
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        setQueueState(loadingLoadState());
-        const [patientsResult, waitingResult, userResult] = await Promise.allSettled([
-          listPatients(),
-          listAppointments({ status: "waiting" }),
-          getCurrentUser(),
-        ]);
+  const queueState: LoadState = useMemo(() => {
+    const patientRows = asArray(rawPatients);
+    const waitingRows = asArray(rawWaitingAppointments);
+    const queueFeedsFailed = patientsQuery.isError && waitingAppointmentsQuery.isError;
 
-        if (!active) return;
+    if (
+      (patientsQuery.isPending || waitingAppointmentsQuery.isPending) &&
+      patientRows.length === 0 &&
+      waitingRows.length === 0
+    ) {
+      return loadingLoadState();
+    }
 
-        const queueFeedsFailed =
-          patientsResult.status === "rejected" && waitingResult.status === "rejected";
-        if (queueFeedsFailed) {
-          setRawPatients([]);
-          setRawWaitingAppointments([]);
-          setCurrentUserId(null);
-          setQueueState(
-            errorLoadState(
-              (patientsResult.reason as ApiClientError | undefined)?.message ??
-                (waitingResult.reason as ApiClientError | undefined)?.message ??
-                "Unable to load doctor queue."
-            )
-          );
-          return;
-        }
+    if (queueFeedsFailed) {
+      return errorLoadState(
+        ((patientsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          (waitingAppointmentsQuery.error as unknown as ApiClientError | undefined)?.message ??
+          "Unable to load doctor queue."
+        )
+      );
+    }
 
-        const nextPatients = patientsResult.status === "fulfilled" ? patientsResult.value : [];
-        const nextWaiting = waitingResult.status === "fulfilled" ? waitingResult.value : [];
+    const hasQueueData = patientRows.length > 0 || waitingRows.length > 0;
+    const partialFailure =
+      patientsQuery.isError || waitingAppointmentsQuery.isError || currentUserQuery.isError;
 
-        setRawPatients(nextPatients);
-        setRawWaitingAppointments(nextWaiting);
-        setCurrentUserId(
-          userResult.status === "fulfilled" ? userResult.value?.id ?? null : null
-        );
+    const partialNotice = partialFailure
+      ? "Some doctor queue data failed to load and partial data is being shown."
+      : null;
+    const identityNotice =
+      currentUserQuery.isError
+        ? "Doctor identity could not be resolved from the current session. Saving may rely on appointment ownership."
+        : null;
+    const notice = partialNotice ?? identityNotice;
 
-        const patientRows = asArray(nextPatients);
-        const waitingRows = asArray(nextWaiting);
-        const hasQueueData = patientRows.length > 0 || waitingRows.length > 0;
-        const partialFailure =
-          patientsResult.status === "rejected" ||
-          waitingResult.status === "rejected" ||
-          userResult.status === "rejected";
-
-        const partialNotice = partialFailure
-          ? "Some doctor queue data failed to load and partial data is being shown."
-          : null;
-        const identityNotice =
-          userResult.status === "rejected"
-            ? "Doctor identity could not be resolved from the current session. Saving may rely on appointment ownership."
-            : null;
-        const notice = partialNotice ?? identityNotice;
-
-        setQueueState(hasQueueData ? readyLoadState(notice) : emptyLoadState(notice));
-      })();
-    }, 0);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timeoutId);
-    };
-  }, [reloadKey]);
+    return hasQueueData ? readyLoadState(notice) : emptyLoadState(notice);
+  }, [
+    currentUserQuery.isError,
+    patientsQuery.error,
+    patientsQuery.isError,
+    patientsQuery.isPending,
+    rawPatients,
+    rawWaitingAppointments,
+    waitingAppointmentsQuery.error,
+    waitingAppointmentsQuery.isError,
+    waitingAppointmentsQuery.isPending,
+  ]);
 
   useEffect(() => {
     if (!selectedPatientId) return;
@@ -401,7 +384,11 @@ export function useDoctorWorkspaceData(
         },
       });
       setSaveState(successMutationState("Encounter saved to backend."));
-      setReloadKey((prev) => prev + 1);
+      await Promise.all([
+        patientsQuery.refetch(),
+        waitingAppointmentsQuery.refetch(),
+        currentUserQuery.refetch(),
+      ]);
     } catch (error) {
       setSaveState(
         errorMutationState((error as ApiClientError)?.message ?? "Failed to save encounter.")
@@ -438,6 +425,12 @@ export function useDoctorWorkspaceData(
     saveFeedback,
     handlePatientSelect,
     handleSaveRecord,
-    reload: () => setReloadKey((prev) => prev + 1),
+    reload: () => {
+      void Promise.all([
+        patientsQuery.refetch(),
+        waitingAppointmentsQuery.refetch(),
+        currentUserQuery.refetch(),
+      ]);
+    },
   };
 }

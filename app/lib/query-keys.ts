@@ -5,8 +5,10 @@ export const queryKeys = {
   },
   patients: {
     directory: ["patients", "directory"] as const,
+    list: ["patients", "list"] as const,
   },
   appointments: {
-    waitingQueue: ["appointments", "waiting"] as const,
+    list: (status?: string) =>
+      status ? (["appointments", "list", status] as const) : (["appointments", "list"] as const),
   },
 } as const;

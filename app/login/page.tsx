@@ -3,8 +3,9 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, loginUser, type ApiClientError } from "../lib/api-client";
+import { loginUser, type ApiClientError } from "../lib/api-client";
 import { canAccessRoute, getDefaultRouteForRole } from "../lib/authorization";
+import { useCurrentUserQuery } from "../lib/query-hooks";
 import { validateDoctorLoginInput } from "../utils/schema-validation/doctor-section.schema";
 
 const SHADOWS = {
@@ -321,6 +322,7 @@ const AssistantPanel = ({
 
 export default function Login() {
   const router = useRouter();
+  const currentUserQuery = useCurrentUserQuery();
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
 
@@ -353,21 +355,14 @@ export default function Login() {
   };
 
   useEffect(() => {
-    let active = true;
-    void (async () => {
-      const user = await getCurrentUser().catch(() => null);
-      if (!active || !user) {
-        return;
-      }
-
+    const user = currentUserQuery.data;
+    if (!user) {
+      return;
+    }
+    
       router.replace(getDefaultRouteForRole(user.role));
       router.refresh();
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [router]);
+  }, [currentUserQuery.data, router]);
 
   const handleSignIn = async (
     role: Exclude<ActiveModal, null>,
@@ -394,6 +389,7 @@ export default function Login() {
       }
 
       setActiveModal(null);
+      await currentUserQuery.refetch();
       router.push(getDefaultRouteForRole(user.role));
       router.refresh();
     } catch (error) {

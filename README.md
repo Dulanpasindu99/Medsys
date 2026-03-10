@@ -73,6 +73,8 @@ npm run test
 - Frontend-to-backend compatibility adapters now live in `app/lib/backend-contract-adapters.ts` for remaining routes that still need temporary normalization outside the BFF boundary.
 - Shared server-state/query infrastructure is now available through `@tanstack/react-query`, with the root provider wired in `app/components/AppQueryProvider.tsx`.
 - The patient directory is the first read flow migrated onto the shared query layer through `app/sections/patient/hooks/usePatientDirectory.ts`.
+- Shared query hooks now also cover current-user, auth status, patients, and appointments through `app/lib/query-hooks.ts`.
+- The login redirect flow and doctor queue now use the shared query layer for current-user and appointment-backed reads.
 - Current internal API permission coverage includes:
   - patient read/write/delete
   - patient history read/write
@@ -139,6 +141,7 @@ npm run test
 - Query provider and keys:
   - `app/components/AppQueryProvider.tsx`
   - `app/lib/query-keys.ts`
+  - `app/lib/query-hooks.ts`
 - Backend contract adapters:
   - `app/lib/backend-contract-adapters.ts`
 - Backend auth cookies:
