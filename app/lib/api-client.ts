@@ -272,14 +272,14 @@ export async function createEncounter(input: {
     }>;
   };
 }) {
-  return apiFetch("/v1/encounters", {
+  return apiFetch("/api/encounters", {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 export async function listEncounters() {
-  return apiFetch("/v1/encounters", { method: "GET" });
+  return apiFetch("/api/encounters", { method: "GET" });
 }
 
 export async function listPendingDispenseQueue() {

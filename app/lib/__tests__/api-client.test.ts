@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createEncounter,
   createPatient,
   createInventoryItem,
   createInventoryMovement,
@@ -14,6 +15,7 @@ import {
   getPrescriptionById,
   listInventory,
   listInventoryMovements,
+  listEncounters,
   listPatientAllergies,
   listPatientConditions,
   listPatientTimeline,
@@ -187,6 +189,49 @@ describe("api client backend compatibility", () => {
       { id: 10, patientId: 7, status: "waiting" },
     ]);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments?status=waiting");
+  });
+
+  it("loads and saves encounters through the dedicated BFF route", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: 12, appointmentId: 7, notes: "Stable" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 13, appointmentId: 7, saved: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = {
+      appointmentId: 7,
+      patientId: 5,
+      doctorId: 42,
+      checkedAt: "2026-03-10T08:00:00.000Z",
+      notes: "Stable follow-up",
+      nextVisitDate: "2026-03-17",
+      diagnoses: [{ diagnosisName: "Hypertension", icd10Code: "I10" }],
+      tests: [{ testName: "CBC", status: "ordered" as const }],
+      prescription: { items: [] },
+    };
+
+    await expect(listEncounters()).resolves.toEqual([
+      { id: 12, appointmentId: 7, notes: "Stable" },
+    ]);
+    await expect(createEncounter(payload)).resolves.toEqual({
+      id: 13,
+      appointmentId: 7,
+      saved: true,
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/encounters");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/encounters");
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(JSON.stringify(payload));
   });
 
   it("loads analytics overview through the dedicated BFF route", async () => {
