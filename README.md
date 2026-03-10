@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Medsys Frontend
 
-## Getting Started
+Next.js (App Router) frontend for a clinic workflow system (owner, doctor, assistant) with a same-origin backend API proxy, signed app sessions, and a shared permission matrix for shell and internal API access.
 
-First, run the development server:
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript (strict)
+- Tailwind CSS 4
+
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Backend Integration (Current)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set these env values in frontend runtime:
 
-## Learn More
+```bash
+# optional, defaults to the medsys dev org id
+NEXT_PUBLIC_ORGANIZATION_ID=11111111-1111-1111-1111-111111111111
 
-To learn more about Next.js, take a look at the following resources:
+# backend origin used by server-side auth + API proxy
+BACKEND_URL=http://localhost:4000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# signed app session secret
+MEDSYS_SESSION_SECRET=change-me
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Frontend feature calls now use two server-side paths:
 
-## Deploy on Vercel
+- dedicated BFF contract routes such as `/api/auth/status`, `/api/auth/register`, `/api/patients`, `/api/patients/:id`, `/api/patients/:id/history`, patient-profile support routes under `/api/patients/:id/*`, `/api/users`, `/api/appointments`, `/api/encounters`, `/api/analytics/overview`, prescription routes under `/api/prescriptions/*`, and inventory routes under `/api/inventory/*`
+- the generic authenticated proxy `/api/backend/:path*` for the remaining `/v1/...` surface
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Both paths forward to `BACKEND_URL` server-side and keep backend access and refresh tokens in secure cookies. The browser never receives backend access or refresh tokens directly.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Quality Commands
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run test
+```
+
+`test` runs lint + strict typecheck + unit/component tests.
+
+## Authentication And Authorization Model
+
+- Login goes through `POST /api/auth/login`, which authenticates against the backend and sets:
+  - signed app session cookie
+  - secure `httpOnly` backend access-token cookie
+  - secure `httpOnly` backend refresh-token cookie
+- App identity is read from `GET /api/auth/me`.
+- Logout goes through `POST /api/auth/logout`.
+- Auth status/register, patient, patient-history, patient-profile support feeds, user, appointment, encounter, analytics overview, assistant prescription/dispense, and inventory browser flows now go through backend-backed BFF routes that validate browser payloads locally and normalize or safely forward backend `/v1/...` responses before returning them to the UI.
+- Remaining feature API requests go through `app/api/backend/[...path]/route.ts`.
+- On backend `401`, the proxy attempts one server-side refresh with the refresh-token cookie and retries the original request.
+- If refresh fails, backend cookies and the app session are cleared together.
+- Page routing and nav visibility are driven by the shared policy in `app/lib/authorization.ts`.
+- Internal route handlers use permission checks from `app/lib/api-auth.ts` so API authorization follows the same shared policy as the shell.
+- Internal route handlers now also use shared request validation and response serialization helpers:
+  - request validation: `app/lib/api-validation.ts`
+  - response mapping: `app/lib/api-serializers.ts`
+- Auth login and backend refresh flows now validate backend token-pair payloads before setting or rotating cookies.
+- Frontend-to-backend compatibility adapters now live in `app/lib/backend-contract-adapters.ts` for remaining routes that still need temporary normalization outside the BFF boundary.
+- Current internal API permission coverage includes:
+  - patient read/write/delete
+  - patient history read/write
+  - user read/write
+  - ICD-10 lookup access
+- Validation failures return a consistent `400` envelope with `error` and `issues` fields.
+
+## API Scope (frontend mapped)
+
+- Auth:
+  - `/api/auth/login`
+  - `/api/auth/logout`
+  - `/api/auth/me`
+  - `/api/auth/status`
+  - `/api/auth/register`
+  - `/api/backend/v1/auth/refresh` (server-side only)
+- Patients:
+  - `/api/patients`
+  - `/api/patients/:id`
+  - `/api/patients/:id/history`
+  - `/api/backend/v1/patients/:id/profile`
+- Users:
+  - `/api/users`
+- Appointments:
+  - `/api/appointments`
+- Encounters:
+  - `/api/encounters`
+- Patient profile support feeds:
+  - `/api/patients/:id/profile`
+  - `/api/patients/:id/family`
+  - `/api/patients/:id/vitals`
+  - `/api/patients/:id/allergies`
+  - `/api/patients/:id/conditions`
+  - `/api/patients/:id/timeline`
+- Analytics:
+  - `/api/analytics/overview`
+- Prescriptions:
+  - `/api/prescriptions/queue/pending-dispense`
+  - `/api/prescriptions/:id`
+  - `/api/prescriptions/:id/dispense`
+- Inventory:
+  - `/api/inventory`
+  - `/api/inventory/:id`
+  - `/api/inventory/:id/movements`
+
+## Important Paths
+
+- API client:
+  - `app/lib/api-client.ts`
+- Shared authorization policy:
+  - `app/lib/authorization.ts`
+- API authorization helpers:
+  - `app/lib/api-auth.ts`
+- API validation helpers:
+  - `app/lib/api-validation.ts`
+- API serializers:
+  - `app/lib/api-serializers.ts`
+- Backend-backed BFF route client:
+  - `app/lib/backend-route-client.ts`
+- Backend contract adapters:
+  - `app/lib/backend-contract-adapters.ts`
+- Backend auth cookies:
+  - `app/lib/backend-auth-cookies.ts`
+- Backend proxy:
+  - `app/api/backend/[...path]/route.ts`
+- Navigation/logout:
+  - `app/components/NavigationPanel.tsx`
+- Login flow:
+  - `app/login/page.tsx`
+- Validation:
+  - `app/utils/schema-validation/doctor-section.schema.ts`
+  - `docs/contracts/internal-api-contract-current.md`
+  - `docs/contracts/backend-implementation-checklist.md`
+- Feature sections:
+  - `app/sections/DoctorSection.tsx`
+  - `app/sections/AssistantSection.tsx`
+  - `app/sections/OwnerSection.tsx`
+  - `app/sections/PatientSection.tsx`
+
+## Notes
+
+- ICD-10 suggestion requests are proxied through `GET /api/clinical/icd10` (server-side), not called directly from browser to third-party.
+- `npm run test` currently runs lint + typecheck as baseline quality gate.

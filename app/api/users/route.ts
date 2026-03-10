@@ -1,54 +1,86 @@
-import { NextResponse } from "next/server";
-import { createUser, findUserByEmail, listUsers } from "@/app/lib/store";
-import { hashPassword } from "@/app/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/app/lib/api-auth";
+import { adaptCreatedUserResponse, adaptUserCollectionResponse } from "@/app/lib/backend-contract-adapters";
+import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
+import { serializeUser } from "@/app/lib/api-serializers";
+import {
+  parseJsonBody,
+  validateUserRoleQuery,
+  validateUserWritePayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
-const ALLOWED_ROLES = ["owner", "doctor", "assistant"] as const;
-
-type Role = (typeof ALLOWED_ROLES)[number];
-
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const role = searchParams.get("role");
-
-  if (role && !ALLOWED_ROLES.includes(role as Role)) {
-    return NextResponse.json({ error: "Invalid role." }, { status: 400 });
-  }
-
-  const users = listUsers(role as Role | undefined).map((user) => ({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    created_at: user.createdAt,
-  }));
-
-  return NextResponse.json({ users });
+function contractMismatchResponse() {
+  return NextResponse.json(
+    { error: "Backend contract mismatch for the user route." },
+    { status: 502 }
+  );
 }
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const { name, email, password, role } = body ?? {};
-
-  if (!name || !email || !password || !role) {
-    return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+export async function GET(request: NextRequest) {
+  const auth = requirePermission(request, "user.read");
+  if (auth.error) {
+    return auth.error;
   }
 
-  if (!ALLOWED_ROLES.includes(role)) {
-    return NextResponse.json({ error: "Invalid role." }, { status: 400 });
+  const { searchParams } = new URL(request.url);
+  const role = validateUserRoleQuery(searchParams.get("role"));
+  if (!role.ok) {
+    return validationErrorResponse(role.issues);
   }
 
-  const existing = findUserByEmail(email);
-  if (existing) {
-    return NextResponse.json({ error: "Email already exists." }, { status: 409 });
+  const backend = await callBackendRoute(request, "/v1/users");
+  if (!backend.ok) {
+    return backend.response;
   }
 
-  const passwordHash = hashPassword(password);
-  const created = createUser({ name, email, passwordHash, role });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to load users.");
+  }
 
-  return NextResponse.json({
-    id: created.id,
-    name,
-    email,
-    role,
+  try {
+    const users = adaptUserCollectionResponse(await backend.response.json()).map(serializeUser);
+    const response = NextResponse.json({ users });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const auth = requirePermission(request, "user.write");
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
+  }
+
+  const validated = validateUserWritePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
+
+  const backend = await callBackendRoute(request, "/v1/users", {
+    body: JSON.stringify(validated.value),
   });
+  if (!backend.ok) {
+    return backend.response;
+  }
+
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to create user.");
+  }
+
+  try {
+    const created = adaptCreatedUserResponse(await backend.response.json());
+    const response = NextResponse.json({ user: serializeUser(created) });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }

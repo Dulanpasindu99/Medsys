@@ -1,113 +1,144 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/app/lib/api-auth";
+import { adaptPatientDetailResponse, adaptSinglePatientResponse } from "@/app/lib/backend-contract-adapters";
+import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
+import { serializePatient } from "@/app/lib/api-serializers";
 import {
-  deletePatient,
-  findPatientById,
-  findUserById,
-  listPatientHistory,
-  updatePatient,
-} from "@/app/lib/store";
+  parseJsonBody,
+  parsePositiveInteger,
+  validatePatientUpdatePayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
 
-function parseId(idParam: string) {
-  const id = Number(idParam);
-  return Number.isInteger(id) && id > 0 ? id : null;
+function contractMismatchResponse() {
+  return NextResponse.json(
+    { error: "Backend contract mismatch for the patient detail route." },
+    { status: 502 }
+  );
 }
 
 export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
-  const id = parseId(idParam);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
+  const auth = requirePermission(request, "patient.read");
+  if (auth.error) {
+    return auth.error;
   }
 
-  const patient = findPatientById(id);
-
-  if (!patient) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+  const { id: idParam } = await params;
+  const id = parsePositiveInteger(idParam, "id");
+  if (!id.ok) {
+    return validationErrorResponse(id.issues);
   }
 
-  const history = listPatientHistory(id).map((entry) => {
-    const createdBy = entry.createdByUserId ? findUserById(entry.createdByUserId) : undefined;
-    return {
-      id: entry.id,
-      note: entry.note,
-      created_at: entry.createdAt,
-      created_by_user_id: createdBy?.id ?? null,
-      created_by_name: createdBy?.name ?? null,
-      created_by_role: createdBy?.role ?? null,
-    };
+  const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+    includeSearch: false,
   });
+  if (!backend.ok) {
+    return backend.response;
+  }
 
-  return NextResponse.json({
-    patient: {
-      id: patient.id,
-      name: patient.name,
-      date_of_birth: patient.dateOfBirth,
-      phone: patient.phone,
-      address: patient.address,
-      created_at: patient.createdAt,
-    },
-    history,
-  });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to load patient.");
+  }
+
+  try {
+    const detail = adaptPatientDetailResponse(await backend.response.json());
+    const response = NextResponse.json({
+      patient: serializePatient(detail.patient),
+      history: detail.history.map((entry) => ({
+        id: entry.id,
+        note: entry.note,
+        created_at: entry.created_at,
+        created_by_user_id: entry.created_by_user_id,
+        created_by_name: entry.created_by_name,
+        created_by_role: entry.created_by_role,
+      })),
+    });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
-  const id = parseId(idParam);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
+  const auth = requirePermission(request, "patient.write");
+  if (auth.error) {
+    return auth.error;
   }
 
-  const body = await request.json();
-  const { name, dateOfBirth, phone, address } = body ?? {};
-
-  const patient = findPatientById(id);
-  if (!patient) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+  const { id: idParam } = await params;
+  const id = parsePositiveInteger(idParam, "id");
+  if (!id.ok) {
+    return validationErrorResponse(id.issues);
   }
 
-  const updated = updatePatient(id, {
-    name,
-    dateOfBirth: dateOfBirth ?? undefined,
-    phone: phone ?? undefined,
-    address: address ?? undefined,
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
+  }
+
+  const validated = validatePatientUpdatePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
+
+  const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+    body: JSON.stringify(validated.value),
+    includeSearch: false,
   });
-
-  if (!updated) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+  if (!backend.ok) {
+    return backend.response;
   }
 
-  return NextResponse.json({
-    patient: {
-      id: updated.id,
-      name: updated.name,
-      date_of_birth: updated.dateOfBirth,
-      phone: updated.phone,
-      address: updated.address,
-      created_at: updated.createdAt,
-    },
-  });
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to update patient.");
+  }
+
+  try {
+    const updated = adaptSinglePatientResponse(await backend.response.json());
+    const response = NextResponse.json({
+      patient: serializePatient(updated),
+    });
+    backend.applyTo(response);
+    return response;
+  } catch {
+    return contractMismatchResponse();
+  }
 }
 
 export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: idParam } = params;
-  const id = parseId(idParam);
-  if (!id) {
-    return NextResponse.json({ error: "Invalid patient id." }, { status: 400 });
+  const auth = requirePermission(request, "patient.delete");
+  if (auth.error) {
+    return auth.error;
   }
 
-  const deleted = deletePatient(id);
-  if (!deleted) {
-    return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+  const { id: idParam } = await params;
+  const id = parsePositiveInteger(idParam, "id");
+  if (!id.ok) {
+    return validationErrorResponse(id.issues);
   }
 
-  return NextResponse.json({ success: true });
+  const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+    includeSearch: false,
+  });
+  if (!backend.ok) {
+    return backend.response;
+  }
+
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to delete patient.");
+  }
+
+  const response = NextResponse.json({ success: true });
+  backend.applyTo(response);
+  return response;
 }

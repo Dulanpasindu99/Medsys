@@ -3,10 +3,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { navigationItems } from './NavigationPanel';
+import { getNavigationIndexForPath } from '../lib/authorization';
 
-const getNavigationIndex = (path: string) =>
-  navigationItems.findIndex((item) => item.href === path);
+const getNavigationIndex = (path: string) => getNavigationIndexForPath(path);
 
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

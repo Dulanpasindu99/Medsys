@@ -1,22 +1,20 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PatientProfileView } from './PatientProfileView';
+import { PatientProfileView } from '../sections/patient-profile/PatientProfileView';
 
 export function PatientProfileModal({ profileId, onClose }: { profileId: string; onClose: () => void }) {
-    const [mounted, setMounted] = useState(false);
-
     useEffect(() => {
-        setMounted(true);
+        if (!profileId) return;
         // Prevent scrolling on body when modal is open
         document.body.style.overflow = 'hidden';
         return () => {
             document.body.style.overflow = 'unset';
         };
-    }, []);
+    }, [profileId]);
 
-    if (!profileId || !mounted) return null;
+    if (!profileId || typeof document === 'undefined') return null;
 
     return createPortal(
         <div className="fixed inset-0 z-[200] overflow-y-auto bg-[#F4F4F9] animate-in fade-in duration-200">
@@ -33,7 +31,7 @@ export function PatientProfileModal({ profileId, onClose }: { profileId: string;
 
             {/* Modal Content */}
             <div className="min-h-screen">
-                <PatientProfileView profileId={profileId} onClose={onClose} />
+                <PatientProfileView profileId={profileId} />
             </div>
         </div>,
         document.body

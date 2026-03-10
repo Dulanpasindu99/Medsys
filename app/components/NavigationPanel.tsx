@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
+import React, { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { logoutUser } from '../lib/api-client';
+import { getNavigationItemsForRole, type NavigationItemId } from '../lib/authorization';
+import type { AppRole } from '../lib/roles';
 
-export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
+export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
 
 const iconProps = {
   viewBox: '0 0 24 24',
@@ -86,8 +89,6 @@ export const OwnerIcon: IconRenderer = (props) => (
   </svg>
 );
 
-export type NavigationItemId = 'doctor' | 'assistant' | 'patient' | 'analytics' | 'inventory' | 'ai' | 'owner';
-
 type NavigationItem = {
   id: NavigationItemId;
   label: string;
@@ -95,65 +96,81 @@ type NavigationItem = {
   href: string;
 };
 
-export const navigationItems: NavigationItem[] = [
-  { id: 'doctor', label: 'Doctor Page', icon: DoctorIcon, href: '/' },
-  { id: 'patient', label: 'Patient Management', icon: PatientsIcon, href: '/patient' },
-  { id: 'analytics', label: 'Insights control room,Disease Intelligence', icon: StatsIcon, href: '/analytics' },
-  { id: 'inventory', label: 'Inventory Management', icon: InventoryIcon, href: '/inventory' },
-  { id: 'ai', label: 'Analytics Ai Tools', icon: ChatIcon, href: '/ai' },
-  { id: 'assistant', label: 'Assistant Panel', icon: AssistantIcon, href: '/assistant' },
-  { id: 'owner', label: 'Manage Staff Access', icon: OwnerIcon, href: '/owner' },
-];
+const ICONS_BY_NAV_ID: Record<NavigationItemId, IconRenderer> = {
+  doctor: DoctorIcon,
+  patient: PatientsIcon,
+  analytics: StatsIcon,
+  inventory: InventoryIcon,
+  ai: ChatIcon,
+  assistant: AssistantIcon,
+  owner: OwnerIcon,
+};
 
 const NAV_TOOLTIP = 'shadow-[0_12px_24px_rgba(10,132,255,0.18)]';
 const NAV_ROSE_TOOLTIP = 'shadow-[0_12px_24px_rgba(244,63,94,0.25)]';
+const subscribe = () => () => {};
+
+function useIsHydrated() {
+  return useSyncExternalStore(subscribe, () => true, () => false);
+}
 
 export default function NavigationPanel({
   className = '',
+  sessionRole,
+  userName,
 }: {
   className?: string;
+  sessionRole: AppRole;
+  userName: string;
 }) {
-  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
-  const doctorName = 'Dr. Charuka Gamage';
+  const router = useRouter();
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
+  const mounted = useIsHydrated();
+  const navigationItems: NavigationItem[] = getNavigationItemsForRole(sessionRole).map((item) => ({
+    id: item.id,
+    label: item.label,
+    href: item.href,
+    icon: ICONS_BY_NAV_ID[item.id],
+  }));
+  const displayName = userName.trim() || 'Medsys User';
 
   // Determine active ID based on pathname
   const activeId = navigationItems.find(item => {
     if (item.href === '/') return pathname === '/';
     return pathname.startsWith(item.href);
-  })?.id || 'doctor';
+  })?.id || navigationItems[0]?.id || 'doctor';
+
+  const handleLogout = async () => {
+    await logoutUser();
+    router.push('/login');
+    router.refresh();
+  };
 
   const [indicatorOffset, setIndicatorOffset] = useState(0);
 
-  // Only render portal on client-side to avoid hydration mismatch
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const updateIndicator = () => {
-    const list = navListRef.current;
-    if (!list) return;
-
-    const activeLink = list.querySelector<HTMLElement>(
-      `[data-nav-id="${activeId}"]`
-    );
-    if (!activeLink) return;
-
-    const listRect = list.getBoundingClientRect();
-    const linkRect = activeLink.getBoundingClientRect();
-    const indicatorHeight = indicatorRef.current?.getBoundingClientRect().height ?? 48;
-
-    // Calculate center-to-center offset
-    const centeredOffset =
-      linkRect.top - listRect.top + (linkRect.height - indicatorHeight) / 2;
-
-    setIndicatorOffset(centeredOffset);
-  };
-
   useLayoutEffect(() => {
-    // Initial calculation
+    const updateIndicator = () => {
+      const list = navListRef.current;
+      if (!list) return;
+
+      const activeLink = list.querySelector<HTMLElement>(
+        `[data-nav-id="${activeId}"]`
+      );
+      if (!activeLink) return;
+
+      const listRect = list.getBoundingClientRect();
+      const linkRect = activeLink.getBoundingClientRect();
+      const indicatorHeight = indicatorRef.current?.getBoundingClientRect().height ?? 48;
+
+      // Calculate center-to-center offset
+      const centeredOffset =
+        linkRect.top - listRect.top + (linkRect.height - indicatorHeight) / 2;
+
+      setIndicatorOffset(centeredOffset);
+    };
+
     updateIndicator();
 
     // Re-calculate on window resize
@@ -178,7 +195,7 @@ export default function NavigationPanel({
     };
   }, [activeId]);
 
-  const doctorInitials = doctorName
+  const userInitials = displayName
     .split(' ')
     .filter(Boolean)
     .map((part) => part[0])
@@ -195,7 +212,7 @@ export default function NavigationPanel({
       <div className="flex flex-col items-center gap-3 text-center text-slate-700">
         <div className="relative flex items-center justify-center rounded-full bg-slate-700 p-1.5 shadow-[0_22px_36px_rgba(15,23,42,0.22)]">
           <div className="relative flex size-14 items-center justify-center rounded-full bg-white/95 text-sm font-semibold uppercase text-slate-900 ring-2 ring-slate-700/60 shadow-[0_14px_28px_rgba(15,23,42,0.18)]">
-            {doctorInitials}
+            {userInitials}
             <div className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-white text-sky-600 ring-2 ring-sky-100 shadow-[0_10px_18px_rgba(10,132,255,0.25)]">
               <ActiveIcon className="size-[14px]" />
             </div>
@@ -254,6 +271,7 @@ export default function NavigationPanel({
         <button
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
           aria-label="Logout"
+          onClick={handleLogout}
         >
           <LogoutIcon className="size-5" />
           <span
@@ -266,6 +284,6 @@ export default function NavigationPanel({
     </aside>
   );
 
-  if (!isMounted) return null;
+  if (pathname === '/login' || !mounted || navigationItems.length === 0) return null;
   return createPortal(content, document.body);
 }

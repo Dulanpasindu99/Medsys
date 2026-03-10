@@ -1,0 +1,136 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
+import {
+  BACKEND_ACCESS_COOKIE_NAME,
+  BACKEND_REFRESH_COOKIE_NAME,
+} from "../../../lib/backend-auth-cookies";
+import { GET, POST } from "../route";
+import { createSessionToken, SESSION_COOKIE_NAME } from "../../../lib/session";
+
+function buildRequest(
+  url: string,
+  method = "GET",
+  body?: unknown
+) {
+  const sessionToken = createSessionToken({
+    userId: 7,
+    role: "doctor",
+    email: "doctor@example.com",
+    name: "Dr. Jane Doe",
+  });
+
+  return new NextRequest(url, {
+    method,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
+      cookie: [
+        `${SESSION_COOKIE_NAME}=${sessionToken}`,
+        `${BACKEND_ACCESS_COOKIE_NAME}=backend-access-token`,
+        `${BACKEND_REFRESH_COOKIE_NAME}=backend-refresh-token`,
+      ].join("; "),
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+describe("/api/appointments BFF routes", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("loads appointments through the backend-backed BFF", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          { id: 10, patientId: 7, status: "waiting" },
+          { id: 11, patientId: 8, status: "completed" },
+        ]),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      buildRequest("http://localhost/api/appointments?status=waiting")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:4000/v1/appointments?status=waiting"
+    );
+    expect(body).toEqual([
+      { id: 10, patientId: 7, status: "waiting" },
+      { id: 11, patientId: 8, status: "completed" },
+    ]);
+  });
+
+  it("rejects invalid appointment status filters with a validation envelope", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      buildRequest("http://localhost/api/appointments?status=scheduled")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      error: "Validation failed.",
+      issues: [
+        {
+          field: "status",
+          message: "Must be one of waiting, in_consultation, completed, cancelled.",
+        },
+      ],
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes appointment creation through the backend-backed BFF", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 12,
+          patientId: 7,
+          doctorId: 5,
+          assistantId: 3,
+          status: "waiting",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = {
+      patientId: 7,
+      doctorId: 5,
+      assistantId: 3,
+      scheduledAt: "2026-03-09T08:00:00.000Z",
+      status: "waiting",
+      reason: "General review",
+      priority: "normal",
+    };
+    const response = await POST(
+      buildRequest("http://localhost/api/appointments", "POST", payload)
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/appointments");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
+    expect(body).toEqual({
+      id: 12,
+      patientId: 7,
+      doctorId: 5,
+      assistantId: 3,
+      status: "waiting",
+    });
+  });
+});
