@@ -70,7 +70,7 @@ npm run test
   - request validation: `app/lib/api-validation.ts`
   - response mapping: `app/lib/api-serializers.ts`
 - Auth login and backend refresh flows now validate backend token-pair payloads before setting or rotating cookies.
-- Frontend-to-backend compatibility adapters now live in `app/lib/backend-contract-adapters.ts` for remaining routes that still need temporary normalization outside the BFF boundary.
+- Backend contract adapters now live in `app/lib/backend-contract-adapters.ts` for server-side BFF normalization where backend response drift still exists. Browser auth and register flows now consume the normalized `/api/...` contract directly.
 - Shared server-state/query infrastructure is now available through `@tanstack/react-query`, with the root provider wired in `app/components/AppQueryProvider.tsx`.
 - The patient directory is the first read flow migrated onto the shared query layer through `app/sections/patient/hooks/usePatientDirectory.ts`.
 - Shared query hooks now also cover current-user, auth status, patients, and appointments through `app/lib/query-hooks.ts`.

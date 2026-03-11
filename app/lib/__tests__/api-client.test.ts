@@ -414,34 +414,16 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/inventory/2/movements");
   });
 
-  it("throws a clear error when the current-user payload drifts from the frontend contract", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ id: 1, role: "doctor" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    );
-
-    await expect(getCurrentUser()).rejects.toMatchObject({
-      status: 502,
-      message: expect.stringContaining("Backend contract mismatch"),
-    });
-  });
-
-  it("adapts login identity payloads through the shared session adapter", async () => {
+  it("reads current-user identity through the normalized auth BFF route", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
             id: 42,
-            role: "assistant",
-            email: "assistant@example.com",
-            name: "Alex Support",
-            organizationId: "org-1",
+            role: "doctor",
+            email: "doctor@example.com",
+            name: "Dr. Jane Doe",
           }),
           {
             status: 200,
@@ -451,15 +433,44 @@ describe("api client backend compatibility", () => {
       )
     );
 
-    await expect(loginUser("assistant@example.com", "secret-123", "assistant")).resolves.toEqual({
+    await expect(getCurrentUser()).resolves.toEqual({
       id: 42,
-      role: "assistant",
-      email: "assistant@example.com",
-      name: "Alex Support",
+      role: "doctor",
+      email: "doctor@example.com",
+      name: "Dr. Jane Doe",
     });
   });
 
-  it("reads auth bootstrap status through the BFF contract", async () => {
+  it("reads login identity directly from the normalized auth BFF route", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 42,
+            role: "assistant",
+            email: "assistant@example.com",
+            name: "Alex Support",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    );
+
+    await expect(loginUser("assistant@example.com", "secret-123", "assistant")).resolves.toEqual(
+      {
+        id: 42,
+        role: "assistant",
+        email: "assistant@example.com",
+        name: "Alex Support",
+      }
+    );
+  });
+
+  it("reads auth bootstrap status through the normalized BFF contract", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -476,7 +487,7 @@ describe("api client backend compatibility", () => {
     });
   });
 
-  it("registers users through the BFF contract without client-side name splitting", async () => {
+  it("registers users through the normalized BFF contract without client-side adaptation", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({

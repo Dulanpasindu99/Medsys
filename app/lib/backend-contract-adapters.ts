@@ -7,34 +7,9 @@ export type ApiContractError = {
 
 type AnyRecord = Record<string, unknown>;
 
-type SessionIdentity = {
-  id: number | null;
-  role: AppRole;
-  email: string;
-  name: string;
-};
-
 type AuthStatus = {
   bootstrapping: boolean;
   users: number;
-};
-
-type UserWriteInput = {
-  name: string;
-  email: string;
-  password: string;
-  role: AppRole;
-};
-
-type PatientWriteInput = {
-  name: string;
-  nic?: string;
-  age?: number;
-  gender?: "male" | "female" | "other";
-  mobile?: string;
-  priority?: "low" | "normal" | "high" | "critical";
-  dateOfBirth?: string;
-  address?: string;
 };
 
 function asRecord(value: unknown): AnyRecord | null {
@@ -82,19 +57,6 @@ function toNumber(value: unknown): number | null {
     return Number(value);
   }
   return null;
-}
-
-function splitName(name: string) {
-  const trimmed = name.trim().replace(/\s+/g, " ");
-  if (!trimmed) {
-    return { firstName: "", lastName: "" };
-  }
-
-  const [firstName, ...rest] = trimmed.split(" ");
-  return {
-    firstName,
-    lastName: rest.join(" "),
-  };
 }
 
 function joinName(record: AnyRecord) {
@@ -179,33 +141,6 @@ function normalizeHistoryEntry(record: AnyRecord) {
   };
 }
 
-export function adaptSessionIdentity(raw: unknown): SessionIdentity {
-  const record = asRecord(raw);
-  if (!record) {
-    throw contractMismatch("session identity response is not an object.");
-  }
-
-  const role = toString(record.role).toLowerCase();
-  const email = toString(record.email).trim().toLowerCase();
-  const name = toString(record.name).trim();
-  const id = toNumber(record.id ?? record.userId);
-
-  if (
-    (role !== "owner" && role !== "doctor" && role !== "assistant") ||
-    !email ||
-    !name
-  ) {
-    throw contractMismatch("session identity response is missing role, email, or name.");
-  }
-
-  return {
-    id,
-    role: role as AppRole,
-    email,
-    name,
-  };
-}
-
 export function adaptAuthStatusResponse(raw: unknown): AuthStatus {
   const record = asRecord(raw);
   if (!record) {
@@ -267,26 +202,6 @@ export function adaptPatientDetailResponse(raw: unknown) {
   };
 }
 
-export function adaptPatientWriteRequest(input: PatientWriteInput) {
-  const { firstName, lastName } = splitName(input.name);
-  if (!firstName) {
-    throw contractMismatch("patient create/update requires a non-empty name.");
-  }
-
-  return {
-    firstName,
-    lastName,
-    gender: input.gender ?? "male",
-    nic: input.nic,
-    age: input.age,
-    mobile: input.mobile,
-    priority: input.priority,
-    phone: input.mobile,
-    dateOfBirth: input.dateOfBirth,
-    address: input.address,
-  };
-}
-
 export function adaptSinglePatientResponse(raw: unknown) {
   const record = asRecord(raw);
   if (!record) {
@@ -323,21 +238,6 @@ function normalizeUserRecord(record: AnyRecord) {
     role: role as AppRole,
     createdAt: toString(record.createdAt ?? record.created_at) || null,
     created_at: toString(record.created_at ?? record.createdAt) || null,
-  };
-}
-
-export function adaptUserWriteRequest(input: UserWriteInput) {
-  const { firstName, lastName } = splitName(input.name);
-  if (!firstName) {
-    throw contractMismatch("user create/register requires a non-empty name.");
-  }
-
-  return {
-    firstName,
-    lastName,
-    email: input.email.trim().toLowerCase(),
-    password: input.password,
-    role: input.role,
   };
 }
 

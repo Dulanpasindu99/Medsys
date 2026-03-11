@@ -4,9 +4,6 @@ import {
   adaptCreatedUserResponse,
   adaptPatientCollectionResponse,
   adaptPatientDetailResponse,
-  adaptPatientWriteRequest,
-  adaptSessionIdentity,
-  adaptUserWriteRequest,
 } from "../backend-contract-adapters";
 
 describe("backend contract adapters", () => {
@@ -69,64 +66,6 @@ describe("backend contract adapters", () => {
           created_by_role: "doctor",
         }),
       ],
-    });
-  });
-
-  it("maps frontend patient create payloads to the backend-native request shape", () => {
-    expect(
-      adaptPatientWriteRequest({
-        name: "Jane Doe",
-        nic: "991234567V",
-        age: 27,
-        gender: "female",
-        mobile: "555-2222",
-        priority: "high",
-      })
-    ).toEqual({
-      firstName: "Jane",
-      lastName: "Doe",
-      gender: "female",
-      nic: "991234567V",
-      age: 27,
-      mobile: "555-2222",
-      priority: "high",
-      phone: "555-2222",
-      dateOfBirth: undefined,
-      address: undefined,
-    });
-  });
-
-  it("maps frontend user create payloads to split backend name fields", () => {
-    expect(
-      adaptUserWriteRequest({
-        name: "Dr. Jane Doe",
-        email: "Doctor@Example.com",
-        password: "strong-pass-123",
-        role: "doctor",
-      })
-    ).toEqual({
-      firstName: "Dr.",
-      lastName: "Jane Doe",
-      email: "doctor@example.com",
-      password: "strong-pass-123",
-      role: "doctor",
-    });
-  });
-
-  it("ignores extra backend identity fields and preserves the frontend identity contract", () => {
-    expect(
-      adaptSessionIdentity({
-        id: 42,
-        role: "doctor",
-        email: "doctor@example.com",
-        name: "Dr. Jane Doe",
-        organizationId: "org-1",
-      })
-    ).toEqual({
-      id: 42,
-      role: "doctor",
-      email: "doctor@example.com",
-      name: "Dr. Jane Doe",
     });
   });
 

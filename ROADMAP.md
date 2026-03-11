@@ -24,7 +24,7 @@ Current strengths:
 - Same-origin auth proxy and signed session integration are in place
 - Shared structural validation and response normalization now exist for selected internal route handlers
 - Auth status/register, patient, patient-history, patient-profile support feeds, families, user, appointment, encounter, analytics overview, audit logs, assistant prescription/dispense, and inventory browser flows now run through backend-backed `/api/...` BFF routes instead of the prototype store path
-- Frontend compatibility adapters can now absorb only the remaining backend contract mismatches without spreading route-specific hacks through feature hooks
+- Server-side BFF adapters now absorb only the remaining backend contract mismatches without spreading route-specific hacks through feature hooks, and browser auth/register flows now consume normalized `/api/...` responses directly
 - Feature hooks are being used instead of placing all logic directly in components
 - Frontend authorization now explicitly reflects the live backend appointment-create rule: owner and assistant allowed, doctor denied
 
@@ -36,7 +36,7 @@ Current gaps:
 - Shared query/server-state infrastructure is in progress, but rollout and invalidation are not yet complete across all feature hooks
 - Test coverage is improving, but still incomplete for critical healthcare workflows
 - API schema validation is not yet complete across all backend-facing workflows
-- Some backend-facing flows still require temporary frontend compatibility adapters because the backend contract is only partially aligned
+- Some backend-facing flows still require temporary server-side compatibility adapters because the backend contract is only partially aligned
 - No visible audit logging, access governance, or compliance workflow
 
 ## Guiding Principles

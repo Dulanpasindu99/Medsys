@@ -1,8 +1,5 @@
 import type { AppRole } from "./roles";
 import {
-  adaptAuthStatusResponse,
-  adaptCreatedUserResponse,
-  adaptSessionIdentity,
   type ApiContractError,
 } from "./backend-contract-adapters";
 
@@ -99,11 +96,7 @@ export async function loginUser(email: string, password: string, roleHint?: AppR
     throw { message, status: response.status } satisfies ApiClientError;
   }
 
-  try {
-    return adaptSessionIdentity(await response.json()) as LoginResponse;
-  } catch (error) {
-    throw toApiClientError(error);
-  }
+  return (await response.json()) as LoginResponse;
 }
 
 export async function logoutUser() {
@@ -135,7 +128,7 @@ export async function getCurrentUser() {
       throw { message, status: response.status } satisfies ApiClientError;
     }
 
-    return adaptSessionIdentity(await response.json());
+    return (await response.json()) as LoginResponse;
   } catch (error) {
     if ((error as ApiClientError)?.status === 401) {
       return null;
@@ -146,9 +139,9 @@ export async function getCurrentUser() {
 
 export async function getAuthStatus() {
   try {
-    return adaptAuthStatusResponse(
-      await apiFetch("/api/auth/status", { method: "GET" })
-    );
+    return await apiFetch<{ bootstrapping: boolean; users: number }>("/api/auth/status", {
+      method: "GET",
+    });
   } catch {
     return { bootstrapping: false, users: 0 };
   }
@@ -160,22 +153,29 @@ export async function registerUser(input: {
   password: string;
   role: AppRole;
 }) {
-  try {
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
+  const response = await fetch("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 
-    if (!response.ok) {
-      const message = await parseErrorMessage(response);
-      throw { message, status: response.status } satisfies ApiClientError;
-    }
-
-    return adaptCreatedUserResponse(await response.json());
-  } catch (error) {
-    throw toApiClientError(error);
+  if (!response.ok) {
+    const message = await parseErrorMessage(response);
+    throw { message, status: response.status } satisfies ApiClientError;
   }
+
+  const payload = (await response.json()) as {
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: AppRole;
+      created_at?: string | null;
+      createdAt?: string | null;
+    };
+  };
+
+  return payload.user;
 }
 
 export async function listPatients() {
