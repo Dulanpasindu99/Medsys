@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAccessRoute,
+  canCreateAppointments,
   getDefaultRouteForRole,
   getNavigationIndexForPath,
   getNavigationItemsForRole,
@@ -28,6 +29,12 @@ describe("authorization policy", () => {
     expect(hasPermission("assistant", "patient.delete")).toBe(false);
     expect(hasPermission("doctor", "user.read")).toBe(false);
     expect(hasPermission("owner", "user.write")).toBe(true);
+  });
+
+  it("matches appointment creation to the live backend policy", () => {
+    expect(canCreateAppointments("owner")).toBe(true);
+    expect(canCreateAppointments("assistant")).toBe(true);
+    expect(canCreateAppointments("doctor")).toBe(false);
   });
 
   it("returns role-specific navigation sets from the same policy", () => {

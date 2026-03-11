@@ -26,6 +26,7 @@ Current strengths:
 - Auth status/register, patient, patient-history, patient-profile support feeds, families, user, appointment, encounter, analytics overview, audit logs, assistant prescription/dispense, and inventory browser flows now run through backend-backed `/api/...` BFF routes instead of the prototype store path
 - Frontend compatibility adapters can now absorb only the remaining backend contract mismatches without spreading route-specific hacks through feature hooks
 - Feature hooks are being used instead of placing all logic directly in components
+- Frontend authorization now explicitly reflects the live backend appointment-create rule: owner and assistant allowed, doctor denied
 
 Current gaps:
 
