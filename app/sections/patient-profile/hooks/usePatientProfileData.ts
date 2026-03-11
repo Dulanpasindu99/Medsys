@@ -6,6 +6,7 @@ import {
   readyLoadState,
   type LoadState,
 } from "../../../lib/async-state";
+import type { ApiRecord } from "../../../lib/api-client";
 import {
   usePatientAllergiesQuery,
   usePatientConditionsQuery,
@@ -17,25 +18,16 @@ import {
 } from "../../../lib/query-hooks";
 import type { PatientProfileRecord, PatientTimelineEntry } from "../types";
 
-type AnyRecord = Record<string, unknown>;
-
-function asRecord(value: unknown): AnyRecord | null {
-  return value && typeof value === "object" ? (value as AnyRecord) : null;
+function asRecord(value: unknown): ApiRecord | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as ApiRecord) : null;
 }
 
-function asArray(value: unknown): AnyRecord[] {
-  if (Array.isArray(value)) {
-    return value.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
+function getMemberRecords(value: unknown): ApiRecord[] {
+  if (!Array.isArray(value)) {
+    return [];
   }
-  const record = asRecord(value);
-  if (!record) return [];
-  const candidates = [record.data, record.items, record.rows];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
-    }
-  }
-  return [];
+
+  return value.filter((entry): entry is ApiRecord => !!asRecord(entry));
 }
 
 function toString(value: unknown, fallback = "") {
@@ -63,22 +55,34 @@ const formatDate = (date: string) =>
   });
 
 function mapTimelineEntries(rawTimeline: unknown, rawVitals: unknown): PatientTimelineEntry[] {
-  const timeline = asArray(rawTimeline).map((row) => ({
-    date: toString(row.date ?? row.recordedAt ?? row.createdAt, new Date().toISOString()),
-    title: toString(row.title ?? row.event ?? row.noteTitle, "Clinical update"),
-    description: toString(row.description ?? row.notes ?? row.note, "No additional notes."),
-    kind: "general" as const,
-    tags: [toString(row.type ?? row.category)].filter(Boolean),
-    value: toString(row.value),
-  }));
+  const timeline = (Array.isArray(rawTimeline) ? rawTimeline : []).flatMap((entry) => {
+    const row = asRecord(entry);
+    if (!row) return [];
+    return [
+      {
+        date: toString(row.date ?? row.recordedAt ?? row.createdAt, new Date().toISOString()),
+        title: toString(row.title ?? row.event ?? row.noteTitle, "Clinical update"),
+        description: toString(row.description ?? row.notes ?? row.note, "No additional notes."),
+        kind: "general" as const,
+        tags: [toString(row.type ?? row.category)].filter(Boolean),
+        value: toString(row.value),
+      },
+    ];
+  });
 
-  const vitals = asArray(rawVitals).map((row) => ({
-    date: toString(row.recordedAt ?? row.date ?? row.createdAt, new Date().toISOString()),
-    title: toString(row.label ?? row.name ?? row.vitalName ?? "Vitals"),
-    description: "Vital measurement recorded",
-    kind: "bp" as const,
-    value: toString(row.value ?? row.reading ?? row.result, "--"),
-  }));
+  const vitals = (Array.isArray(rawVitals) ? rawVitals : []).flatMap((entry) => {
+    const row = asRecord(entry);
+    if (!row) return [];
+    return [
+      {
+        date: toString(row.recordedAt ?? row.date ?? row.createdAt, new Date().toISOString()),
+        title: toString(row.label ?? row.name ?? row.vitalName ?? "Vitals"),
+        description: "Vital measurement recorded",
+        kind: "bp" as const,
+        value: toString(row.value ?? row.reading ?? row.result, "--"),
+      },
+    ];
+  });
 
   return [...timeline, ...vitals].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
@@ -97,32 +101,29 @@ export function usePatientProfileData(profileId: string) {
   const patientsQuery = usePatientsQuery(enabled);
 
   const profileRecord = useMemo(
-    () => asRecord(profileQuery.data) ?? {},
+    () => profileQuery.data ?? null,
     [profileQuery.data]
   );
-  const patientRows = useMemo(
-    () => asArray(patientsQuery.data),
-    [patientsQuery.data]
-  );
+  const patientRows = useMemo(() => patientsQuery.data ?? [], [patientsQuery.data]);
   const patientRow = useMemo(
     () =>
-      patientRows.find((row) => toNumber(row.id ?? row.patientId ?? row.patient_id) === numericId) ?? {},
+      patientRows.find((row) => toNumber(row.id ?? row.patientId ?? row.patient_id) === numericId) ?? null,
     [numericId, patientRows]
   );
   const familyRecord = useMemo(
-    () => asRecord(familyQuery.data) ?? asRecord(profileRecord.family) ?? {},
-    [familyQuery.data, profileRecord.family]
+    () => familyQuery.data ?? asRecord(profileRecord?.family) ?? null,
+    [familyQuery.data, profileRecord?.family]
   );
   const conditions = useMemo(
     () =>
-      asArray(conditionsQuery.data)
+      (conditionsQuery.data ?? [])
         .map((row) => toString(row.name ?? row.conditionName ?? row.diagnosisName))
         .filter(Boolean),
     [conditionsQuery.data]
   );
   const allergies = useMemo(
     () =>
-      asArray(allergiesQuery.data)
+      (allergiesQuery.data ?? [])
         .map((row) => toString(row.name ?? row.allergyName ?? row.allergen))
         .filter(Boolean),
     [allergiesQuery.data]
@@ -133,8 +134,7 @@ export function usePatientProfileData(profileId: string) {
   );
 
   const totalProfiles = patientRows.length;
-  const hasResolvedProfile =
-    Object.keys(profileRecord).length > 0 || Object.keys(patientRow).length > 0;
+  const hasResolvedProfile = profileRecord !== null || patientRow !== null;
   const primaryFailureCount = [profileQuery.status, patientsQuery.status].filter(
     (status) => status === "error"
   ).length;
@@ -169,24 +169,28 @@ export function usePatientProfileData(profileId: string) {
 
     return {
       id: String(numericId),
-      name: toString(profileRecord.name ?? patientRow.name ?? patientRow.fullName, `Patient ${numericId}`),
-      nic: toString(profileRecord.nic ?? patientRow.nic, "N/A"),
-      age: toNumber(profileRecord.age ?? patientRow.age) ?? 0,
-      gender: toGender(profileRecord.gender ?? patientRow.gender),
-      mobile: toString(profileRecord.mobile ?? patientRow.mobile ?? patientRow.phone, "Not provided"),
+      name: toString(profileRecord?.name ?? patientRow?.name ?? patientRow?.fullName, `Patient ${numericId}`),
+      nic: toString(profileRecord?.nic ?? patientRow?.nic, "N/A"),
+      age: toNumber(profileRecord?.age ?? patientRow?.age) ?? 0,
+      gender: toGender(profileRecord?.gender ?? patientRow?.gender),
+      mobile: toString(
+        profileRecord?.mobile ?? patientRow?.mobile ?? patientRow?.phone,
+        "Not provided"
+      ),
       family: {
         assigned: Boolean(
-          toString(familyRecord.name ?? familyRecord.familyName) || asArray(familyRecord.members).length
+          toString(familyRecord?.name ?? familyRecord?.familyName) ||
+            getMemberRecords(familyRecord?.members).length
         ),
-        name: toString(familyRecord.name ?? familyRecord.familyName, "Unassigned"),
-        members: asArray(familyRecord.members)
+        name: toString(familyRecord?.name ?? familyRecord?.familyName, "Unassigned"),
+        members: getMemberRecords(familyRecord?.members)
           .map((row) => toString(row.name ?? row.memberName))
           .filter(Boolean),
       },
       conditions,
       allergies,
       firstSeen: toString(
-        profileRecord.firstSeen ?? profileRecord.createdAt ?? patientRow.createdAt,
+        profileRecord?.firstSeen ?? profileRecord?.createdAt ?? patientRow?.createdAt,
         new Date().toISOString()
       ),
       timeline,

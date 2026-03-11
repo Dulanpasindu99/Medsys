@@ -5,6 +5,7 @@ import {
   readyLoadState,
   type LoadState,
 } from '../../../lib/async-state';
+import type { ApiRecord } from '../../../lib/api-client';
 import {
   useAnalyticsOverviewQuery,
   useAppointmentsQuery,
@@ -12,27 +13,6 @@ import {
   useInventoryQuery,
   usePatientsQuery,
 } from '../../../lib/query-hooks';
-
-type AnyRecord = Record<string, unknown>;
-
-function asRecord(value: unknown): AnyRecord | null {
-  return value && typeof value === 'object' ? (value as AnyRecord) : null;
-}
-
-function asArray(value: unknown): AnyRecord[] {
-  if (Array.isArray(value)) {
-    return value.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
-  }
-  const record = asRecord(value);
-  if (!record) return [];
-  const candidates = [record.data, record.items, record.rows];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
-    }
-  }
-  return [];
-}
 
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -51,14 +31,17 @@ export function useAnalyticsSnapshot() {
   const encountersQuery = useEncountersQuery();
   const inventoryQuery = useInventoryQuery();
 
-  const overview = useMemo(() => asRecord(overviewQuery.data) ?? {}, [overviewQuery.data]);
-  const patients = useMemo(() => asArray(patientsQuery.data), [patientsQuery.data]);
-  const appointments = useMemo(() => asArray(appointmentsQuery.data), [appointmentsQuery.data]);
-  const encounters = useMemo(() => asArray(encountersQuery.data), [encountersQuery.data]);
-  const inventory = useMemo(() => asArray(inventoryQuery.data), [inventoryQuery.data]);
+  const overview = overviewQuery.data ?? null;
+  const patients = useMemo<ApiRecord[]>(() => patientsQuery.data ?? [], [patientsQuery.data]);
+  const appointments = useMemo<ApiRecord[]>(
+    () => appointmentsQuery.data ?? [],
+    [appointmentsQuery.data]
+  );
+  const encounters = useMemo<ApiRecord[]>(() => encountersQuery.data ?? [], [encountersQuery.data]);
+  const inventory = useMemo<ApiRecord[]>(() => inventoryQuery.data ?? [], [inventoryQuery.data]);
 
   const hasData =
-    Object.keys(overview).length > 0 ||
+    overview !== null ||
     patients.length > 0 ||
     appointments.length > 0 ||
     encounters.length > 0 ||
@@ -116,12 +99,13 @@ export function useAnalyticsSnapshot() {
     ]);
   };
 
-  const patientTotal = toNumber(overview.totalPatients ?? overview.patientCount) ?? patients.length;
+  const patientTotal =
+    toNumber(overview?.totalPatients ?? overview?.patientCount) ?? patients.length;
   const maleTotal =
-    toNumber(overview.totalMale ?? overview.malePatients) ??
+    toNumber(overview?.totalMale ?? overview?.malePatients) ??
     patients.filter((row) => toString(row.gender).toLowerCase() === 'male').length;
   const femaleTotal =
-    toNumber(overview.totalFemale ?? overview.femalePatients) ??
+    toNumber(overview?.totalFemale ?? overview?.femalePatients) ??
     patients.filter((row) => toString(row.gender).toLowerCase() === 'female').length;
 
   const appointmentStatusSummary = useMemo(() => {
@@ -143,14 +127,16 @@ export function useAnalyticsSnapshot() {
   const inventoryStock = useMemo(() => {
     const totalItems = inventory.length;
     const totalUnits = inventory.reduce(
-      (sum, row) => sum + (toNumber(row.quantity ?? row.stock ?? row.available) ?? 0),
+      (sum, row) =>
+        sum +
+        (toNumber(row.quantity ?? row.stock ?? row.available) ?? 0),
       0
     );
     return { totalItems, totalUnits };
   }, [inventory]);
 
   const encounterCount =
-    toNumber(overview.totalEncounters ?? overview.encounterCount) ?? encounters.length;
+    toNumber(overview?.totalEncounters ?? overview?.encounterCount) ?? encounters.length;
   const completionRate = appointments.length
     ? Math.round((appointmentStatusSummary.completed / appointments.length) * 100)
     : 0;

@@ -8,6 +8,7 @@ export type ApiClientError = {
   status: number;
 };
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
+export type ApiRecord = Record<string, unknown>;
 
 const DEFAULT_API_BASE = "/api/backend";
 const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
@@ -39,6 +40,37 @@ function toApiClientError(error: unknown): ApiClientError {
     message: "An unexpected API client error occurred.",
     status: 500,
   };
+}
+
+function isApiRecord(value: unknown): value is ApiRecord {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function contractMismatch(message: string): ApiClientError {
+  return {
+    message: `Backend contract mismatch: ${message}`,
+    status: 502,
+  };
+}
+
+function expectApiRecord(value: unknown, label: string): ApiRecord {
+  if (!isApiRecord(value)) {
+    throw contractMismatch(`${label} response is not an object.`);
+  }
+  return value;
+}
+
+function expectApiRecordArray(value: unknown, label: string): ApiRecord[] {
+  if (!Array.isArray(value)) {
+    throw contractMismatch(`${label} response is not an array.`);
+  }
+
+  return value.map((entry, index) => {
+    if (!isApiRecord(entry)) {
+      throw contractMismatch(`${label} response entry ${index + 1} is not an object.`);
+    }
+    return entry;
+  });
 }
 
 export async function apiFetch<T>(
@@ -183,7 +215,7 @@ export async function listUsers(input?: { role?: AppRole }) {
   const response = await apiFetch<{ users: Array<Record<string, unknown>> }>(`/api/users${query}`, {
     method: "GET",
   });
-  return response.users;
+  return expectApiRecordArray(response.users, "users");
 }
 
 export async function createUser(input: {
@@ -210,11 +242,12 @@ export async function createUser(input: {
 
 export async function listPatients() {
   const response = await apiFetch<{ patients: unknown[] }>("/api/patients", { method: "GET" });
-  return response.patients;
+  return expectApiRecordArray(response.patients, "patients");
 }
 
 export async function listFamilies() {
-  return apiFetch("/api/families", { method: "GET" });
+  const response = await apiFetch<unknown>("/api/families", { method: "GET" });
+  return expectApiRecordArray(response, "families");
 }
 
 export async function createPatient(input: {
@@ -239,32 +272,39 @@ export async function getPatientById(patientId: number | string) {
 }
 
 export async function getPatientProfile(patientId: number | string) {
-  return apiFetch(`/api/patients/${patientId}/profile`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/profile`, { method: "GET" });
+  return expectApiRecord(response, "patient profile");
 }
 
 export async function getPatientFamily(patientId: number | string) {
-  return apiFetch(`/api/patients/${patientId}/family`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/family`, { method: "GET" });
+  return expectApiRecord(response, "patient family");
 }
 
 export async function listPatientVitals(patientId: number | string) {
-  return apiFetch(`/api/patients/${patientId}/vitals`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/vitals`, { method: "GET" });
+  return expectApiRecordArray(response, "patient vitals");
 }
 
 export async function listPatientAllergies(patientId: number | string) {
-  return apiFetch(`/api/patients/${patientId}/allergies`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/allergies`, { method: "GET" });
+  return expectApiRecordArray(response, "patient allergies");
 }
 
 export async function listPatientConditions(patientId: number | string) {
-  return apiFetch(`/api/patients/${patientId}/conditions`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/conditions`, { method: "GET" });
+  return expectApiRecordArray(response, "patient conditions");
 }
 
 export async function listPatientTimeline(patientId: number | string) {
-  return apiFetch(`/api/patients/${patientId}/timeline`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/timeline`, { method: "GET" });
+  return expectApiRecordArray(response, "patient timeline");
 }
 
 export async function listAppointments(input?: { status?: AppointmentStatus }) {
   const query = input?.status ? `?status=${encodeURIComponent(input.status)}` : "";
-  return apiFetch(`/api/appointments${query}`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/appointments${query}`, { method: "GET" });
+  return expectApiRecordArray(response, "appointments");
 }
 
 export async function createAppointment(input: {
@@ -309,23 +349,28 @@ export async function createEncounter(input: {
 }
 
 export async function listEncounters() {
-  return apiFetch("/api/encounters", { method: "GET" });
+  const response = await apiFetch<unknown>("/api/encounters", { method: "GET" });
+  return expectApiRecordArray(response, "encounters");
 }
 
 export async function listPendingDispenseQueue() {
-  return apiFetch("/api/prescriptions/queue/pending-dispense", { method: "GET" });
+  const response = await apiFetch<unknown>("/api/prescriptions/queue/pending-dispense", { method: "GET" });
+  return expectApiRecordArray(response, "pending dispense queue");
 }
 
 export async function getPrescriptionById(prescriptionId: number | string) {
-  return apiFetch(`/api/prescriptions/${prescriptionId}`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/prescriptions/${prescriptionId}`, { method: "GET" });
+  return expectApiRecord(response, "prescription detail");
 }
 
 export async function getAnalyticsOverview() {
-  return apiFetch("/api/analytics/overview", { method: "GET" });
+  const response = await apiFetch<unknown>("/api/analytics/overview", { method: "GET" });
+  return expectApiRecord(response, "analytics overview");
 }
 
 export async function listInventory() {
-  return apiFetch("/api/inventory", { method: "GET" });
+  const response = await apiFetch<unknown>("/api/inventory", { method: "GET" });
+  return expectApiRecordArray(response, "inventory");
 }
 
 export async function createInventoryItem(input: {
@@ -365,7 +410,8 @@ export async function createInventoryMovement(
 }
 
 export async function listInventoryMovements(inventoryId: number | string) {
-  return apiFetch(`/api/inventory/${inventoryId}/movements`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/inventory/${inventoryId}/movements`, { method: "GET" });
+  return expectApiRecordArray(response, "inventory movements");
 }
 
 export async function listAuditLogs(input?: {
@@ -382,7 +428,8 @@ export async function listAuditLogs(input?: {
   if (input?.to) params.set("to", input.to);
   if (typeof input?.limit === "number") params.set("limit", String(input.limit));
   const query = params.size ? `?${params.toString()}` : "";
-  return apiFetch(`/api/audit/logs${query}`, { method: "GET" });
+  const response = await apiFetch<unknown>(`/api/audit/logs${query}`, { method: "GET" });
+  return expectApiRecordArray(response, "audit logs");
 }
 
 export async function dispensePrescription(

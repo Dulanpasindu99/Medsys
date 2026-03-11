@@ -177,6 +177,23 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[5]?.[0]).toBe("/api/patients/7/timeline");
   });
 
+  it("rejects malformed patient-profile support feed payloads with a contract error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ value: "120/80" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    await expect(listPatientVitals(7)).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining("patient vitals response is not an array"),
+    });
+  });
+
   it("loads appointments through the dedicated BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -284,6 +301,23 @@ describe("api client backend compatibility", () => {
       totalEncounters: 18,
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/analytics/overview");
+  });
+
+  it("rejects malformed analytics overview payloads with a contract error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([{ totalPatients: 42 }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    await expect(getAnalyticsOverview()).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining("analytics overview response is not an object"),
+    });
   });
 
   it("loads the pending dispense queue through the dedicated BFF route", async () => {
