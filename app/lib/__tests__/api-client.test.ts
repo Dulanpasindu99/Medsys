@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createEncounter,
   createPatient,
+  createUser,
   createInventoryItem,
   createInventoryMovement,
   dispensePrescription,
@@ -24,6 +25,7 @@ import {
   listPatientVitals,
   listPatients,
   listPendingDispenseQueue,
+  listUsers,
   loginUser,
   registerUser,
   updateInventoryItem,
@@ -528,6 +530,65 @@ describe("api client backend compatibility", () => {
         email: "OWNER@example.com",
         password: "owner-pass-123",
         role: "owner",
+      })
+    );
+  });
+
+  it("loads users through the dedicated users BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          users: [{ id: 5, name: "Dr. Jane Doe", email: "doctor@example.com", role: "doctor" }],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listUsers()).resolves.toEqual([
+      { id: 5, name: "Dr. Jane Doe", email: "doctor@example.com", role: "doctor" },
+    ]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/users");
+  });
+
+  it("creates staff users through the dedicated users BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: { id: 6, name: "Alex Support", email: "assistant@example.com", role: "assistant" },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      createUser({
+        name: "Alex Support",
+        email: "assistant@example.com",
+        password: "secret-123",
+        role: "assistant",
+      })
+    ).resolves.toEqual({
+      id: 6,
+      name: "Alex Support",
+      email: "assistant@example.com",
+      role: "assistant",
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/users");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({
+        name: "Alex Support",
+        email: "assistant@example.com",
+        password: "secret-123",
+        role: "assistant",
       })
     );
   });

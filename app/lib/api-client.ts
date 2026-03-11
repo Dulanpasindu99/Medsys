@@ -178,6 +178,36 @@ export async function registerUser(input: {
   return payload.user;
 }
 
+export async function listUsers(input?: { role?: AppRole }) {
+  const query = input?.role ? `?role=${encodeURIComponent(input.role)}` : "";
+  const response = await apiFetch<{ users: Array<Record<string, unknown>> }>(`/api/users${query}`, {
+    method: "GET",
+  });
+  return response.users;
+}
+
+export async function createUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: Extract<AppRole, "doctor" | "assistant">;
+}) {
+  const response = await apiFetch<{
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      role: AppRole;
+      created_at?: string | null;
+      createdAt?: string | null;
+    };
+  }>("/api/users", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.user;
+}
+
 export async function listPatients() {
   const response = await apiFetch<{ patients: unknown[] }>("/api/patients", { method: "GET" });
   return response.patients;

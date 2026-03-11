@@ -70,7 +70,7 @@ export default function OwnerSection() {
                     {!loadState.error && createState.status !== 'success' ? (
                         <AsyncNotice
                             tone="info"
-                            message="Staff list is synced from audit and appointment activity. Create user adds a local draft until a staff-create API is available."
+                            message="Staff accounts now sync from the backend users API, with audit and appointment feeds used as supplemental visibility for recent activity."
                         />
                     ) : null}
 

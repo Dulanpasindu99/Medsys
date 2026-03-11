@@ -72,7 +72,7 @@ export function OwnerStaffFormCard({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
-          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Username</span>
+          <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Email</span>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}

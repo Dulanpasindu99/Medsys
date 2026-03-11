@@ -3,6 +3,10 @@ export const queryKeys = {
     currentUser: ["auth", "current-user"] as const,
     status: ["auth", "status"] as const,
   },
+  users: {
+    list: (role?: string) =>
+      role ? (["users", "list", role] as const) : (["users", "list"] as const),
+  },
   analytics: {
     overview: ["analytics", "overview"] as const,
   },

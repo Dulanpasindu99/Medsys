@@ -2,17 +2,21 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryWrapper } from "../../../lib/test-query-client";
 import { useOwnerAccess, defaultPermissions } from "../hooks/useOwnerAccess";
-import { getCurrentUser, listAppointments, listAuditLogs } from "../../../lib/api-client";
+import { createUser, getCurrentUser, listAppointments, listAuditLogs, listUsers } from "../../../lib/api-client";
 
 vi.mock("../../../lib/api-client", () => ({
+  createUser: vi.fn(),
   getCurrentUser: vi.fn(),
   listAuditLogs: vi.fn(),
   listAppointments: vi.fn(),
+  listUsers: vi.fn(),
 }));
 
+const mockedCreateUser = vi.mocked(createUser);
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedListAuditLogs = vi.mocked(listAuditLogs);
 const mockedListAppointments = vi.mocked(listAppointments);
+const mockedListUsers = vi.mocked(listUsers);
 
 describe("useOwnerAccess", () => {
   beforeEach(() => {
@@ -23,8 +27,15 @@ describe("useOwnerAccess", () => {
       email: "owner@example.com",
       name: "Owner",
     });
+    mockedCreateUser.mockResolvedValue({
+      id: 7,
+      name: "Dr. Meredith Grey",
+      email: "meredith.grey@medsys.local",
+      role: "doctor",
+    });
     mockedListAuditLogs.mockResolvedValue([]);
     mockedListAppointments.mockResolvedValue([]);
+    mockedListUsers.mockResolvedValue([]);
   });
 
   it("updates permission selections from role presets", async () => {
@@ -43,7 +54,7 @@ describe("useOwnerAccess", () => {
     expect(result.current.permissions).toEqual(defaultPermissions("Assistant"));
   });
 
-  it("appends a new local staff record on create", async () => {
+  it("creates a staff user through the backend-backed users API", async () => {
     const { result } = renderHook(() => useOwnerAccess(), {
       wrapper: createQueryWrapper(),
     });
@@ -54,20 +65,32 @@ describe("useOwnerAccess", () => {
 
     act(() => {
       result.current.setName("Dr. Meredith Grey");
-      result.current.setUsername("meredith.grey");
+      result.current.setUsername("meredith.grey@medsys.local");
       result.current.setPassword("secret-123");
     });
 
-    act(() => {
-      result.current.handleCreate();
+    await act(async () => {
+      await result.current.handleCreate();
     });
 
-    expect(result.current.staffUsers).toHaveLength(1);
-    expect(result.current.staffUsers[0]?.name).toBe("Dr. Meredith Grey");
+    expect(mockedCreateUser).toHaveBeenCalledWith({
+      name: "Dr. Meredith Grey",
+      email: "meredith.grey@medsys.local",
+      password: "secret-123",
+      role: "doctor",
+    });
     expect(result.current.createState.status).toBe("success");
   });
 
   it("marks partial live staff syncs with an explicit notice", async () => {
+    mockedListUsers.mockResolvedValue([
+      {
+        id: 8,
+        name: "Dr. House",
+        email: "house@medsys.local",
+        role: "doctor",
+      },
+    ]);
     mockedListAuditLogs.mockRejectedValue(new Error("audit down"));
     mockedListAppointments.mockResolvedValue([
       {

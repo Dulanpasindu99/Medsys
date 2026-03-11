@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { type SetStateAction, useMemo, useState } from 'react';
 import {
+  createUser,
   type ApiClientError,
 } from '../../../lib/api-client';
 import {
@@ -20,6 +21,7 @@ import {
   useAppointmentsQuery,
   useAuditLogsQuery,
   useCurrentUserQuery,
+  useUsersQuery,
 } from '../../../lib/query-hooks';
 import type { PermissionKey, Role, StaffUser } from '../types';
 
@@ -190,6 +192,27 @@ function normalizeStaffFromAppointments(rawAppointments: unknown): StaffUser[] {
   return Array.from(unique.values());
 }
 
+function normalizeUsers(rawUsers: unknown): StaffUser[] {
+  return asArray(rawUsers)
+    .map((row, index) => {
+      const role = toRole(row.role);
+      if (!role) return null;
+
+      const id = toString(row.id ?? row.userId ?? `${role.toLowerCase()}-${index}`);
+      const email = toString(row.email ?? row.username);
+      const name = toString(row.name ?? row.fullName, `${role} ${index + 1}`);
+
+      return {
+        id: `user-${id}`,
+        role,
+        name,
+        username: email || name,
+        permissions: defaultPermissions(role),
+      } satisfies StaffUser;
+    })
+    .filter((user): user is StaffUser => !!user);
+}
+
 function mergeStaff(primary: StaffUser[], secondary: StaffUser[]) {
   const merged = new Map<string, StaffUser>();
   [...primary, ...secondary].forEach((user) => {
@@ -200,6 +223,7 @@ function mergeStaff(primary: StaffUser[], secondary: StaffUser[]) {
 
 export function useOwnerAccess() {
   const currentUserQuery = useCurrentUserQuery();
+  const usersQuery = useUsersQuery();
   const auditLogsQuery = useAuditLogsQuery({ limit: 200 });
   const appointmentsQuery = useAppointmentsQuery();
   const [role, setRole] = useState<Role>('Doctor');
@@ -209,7 +233,7 @@ export function useOwnerAccess() {
   const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(
     defaultPermissions('Doctor')
   );
-  const [localStaffUsers, setLocalStaffUsers] = useState<StaffUser[]>([]);
+  const [staffOverrides, setStaffOverrides] = useState<StaffUser[]>([]);
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
 
   const presets = useMemo(
@@ -231,6 +255,7 @@ export function useOwnerAccess() {
     []
   );
 
+  const liveUsers = useMemo(() => normalizeUsers(usersQuery.data ?? []), [usersQuery.data]);
   const liveFromAudit = useMemo(
     () => normalizeAuditStaff(auditLogsQuery.data ?? []),
     [auditLogsQuery.data]
@@ -240,12 +265,31 @@ export function useOwnerAccess() {
     [appointmentsQuery.data]
   );
   const staffUsers = useMemo(
-    () => mergeStaff(localStaffUsers, mergeStaff(liveFromAudit, liveFromAppointments)),
-    [liveFromAppointments, liveFromAudit, localStaffUsers]
+    () =>
+      mergeStaff(
+        staffOverrides,
+        mergeStaff(liveUsers, mergeStaff(liveFromAudit, liveFromAppointments))
+      ),
+    [liveFromAppointments, liveFromAudit, liveUsers, staffOverrides]
   );
 
+  const setStaffUsers = (value: SetStateAction<StaffUser[]>) => {
+    setStaffOverrides((prev) => {
+      const current = mergeStaff(
+        prev,
+        mergeStaff(liveUsers, mergeStaff(liveFromAudit, liveFromAppointments))
+      );
+      return typeof value === 'function' ? value(current) : value;
+    });
+  };
+
   const loadState: LoadState = useMemo(() => {
-    if (currentUserQuery.isPending && auditLogsQuery.isPending && appointmentsQuery.isPending) {
+    if (
+      currentUserQuery.isPending &&
+      usersQuery.isPending &&
+      auditLogsQuery.isPending &&
+      appointmentsQuery.isPending
+    ) {
       return loadingLoadState();
     }
 
@@ -258,17 +302,18 @@ export function useOwnerAccess() {
       return errorLoadState('Owner role is required to manage staff.');
     }
 
-    if (auditLogsQuery.isError && appointmentsQuery.isError) {
+    if (usersQuery.isError && auditLogsQuery.isError && appointmentsQuery.isError) {
       return errorLoadState(
-        ((auditLogsQuery.error as unknown as ApiClientError | undefined)?.message ??
+        ((usersQuery.error as unknown as ApiClientError | undefined)?.message ??
+          (auditLogsQuery.error as unknown as ApiClientError | undefined)?.message ??
           (appointmentsQuery.error as unknown as ApiClientError | undefined)?.message ??
           'Unable to sync staff data.')
       );
     }
 
     const partialNotice =
-      auditLogsQuery.isError || appointmentsQuery.isError
-        ? "Some staff activity feeds failed and partial access data is being shown."
+      usersQuery.isError || auditLogsQuery.isError || appointmentsQuery.isError
+        ? "Some staff feeds failed and partial access data is being shown."
         : null;
     return staffUsers.length ? readyLoadState(partialNotice) : emptyLoadState(partialNotice);
   }, [
@@ -282,13 +327,16 @@ export function useOwnerAccess() {
     currentUserQuery.isError,
     currentUserQuery.isPending,
     staffUsers.length,
+    usersQuery.error,
+    usersQuery.isError,
+    usersQuery.isPending,
   ]);
 
   const togglePermission = (key: PermissionKey) => {
     setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim() || !username.trim() || !password.trim()) {
       setCreateState(
         errorMutationState('Name, username, and password are required.')
@@ -296,21 +344,32 @@ export function useOwnerAccess() {
       return;
     }
 
-    setCreateState(pendingMutationState());
-    const nextUser: StaffUser = {
-      id: `local-${Date.now()}`,
-      role,
-      name: name.trim(),
-      username: username.trim(),
-      permissions: { ...permissions },
-    };
-
-    setLocalStaffUsers((prev) => mergeStaff([nextUser], prev));
-    setName('');
-    setUsername('');
-    setPassword('');
-    setPermissions(defaultPermissions(role));
-    setCreateState(successMutationState('Local staff draft created.'));
+    try {
+      setCreateState(pendingMutationState());
+      await createUser({
+        name: name.trim(),
+        email: username.trim(),
+        password: password.trim(),
+        role: role === 'Doctor' ? 'doctor' : 'assistant',
+      });
+      setName('');
+      setUsername('');
+      setPassword('');
+      setPermissions(defaultPermissions(role));
+      await Promise.all([
+        usersQuery.refetch(),
+        auditLogsQuery.refetch(),
+        appointmentsQuery.refetch(),
+      ]);
+      setCreateState(successMutationState('Staff user created.'));
+    } catch (error) {
+      setCreateState(
+        errorMutationState(
+          ((error as unknown as ApiClientError | undefined)?.message ??
+            'Unable to create staff user.')
+        )
+      );
+    }
   };
 
   return {
@@ -325,7 +384,7 @@ export function useOwnerAccess() {
     permissions,
     setPermissions,
     staffUsers,
-    setStaffUsers: setLocalStaffUsers,
+    setStaffUsers,
     presets,
     togglePermission,
     handleCreate,
@@ -333,10 +392,14 @@ export function useOwnerAccess() {
     createState,
     syncError: loadState.error ?? createState.error,
     isSyncing:
-      currentUserQuery.isFetching || auditLogsQuery.isFetching || appointmentsQuery.isFetching,
+      currentUserQuery.isFetching ||
+      usersQuery.isFetching ||
+      auditLogsQuery.isFetching ||
+      appointmentsQuery.isFetching,
     refresh: () => {
       void Promise.all([
         currentUserQuery.refetch(),
+        usersQuery.refetch(),
         auditLogsQuery.refetch(),
         appointmentsQuery.refetch(),
       ]);

@@ -78,6 +78,7 @@ npm run test
 - Assistant operational reads and owner staff visibility reads now use the shared query layer instead of local `useEffect` load cycles.
 - Analytics, AI, and patient-profile reads now use the shared query layer instead of local `Promise.all` or `useEffect` loaders.
 - Doctor patient-detail reads and inventory board reads now use shared query hooks with explicit query refetch after writes.
+- Owner staff management now uses the backend users API for list/create, with audit and appointment feeds only supplementing recent-activity visibility.
 - Current internal API permission coverage includes:
   - appointment create (owner and assistant only; doctor intentionally excluded to match the live backend policy)
   - patient read/write/delete

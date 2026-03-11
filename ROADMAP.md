@@ -27,6 +27,7 @@ Current strengths:
 - Server-side BFF adapters now absorb only the remaining backend contract mismatches without spreading route-specific hacks through feature hooks, and browser auth/register flows now consume normalized `/api/...` responses directly
 - Feature hooks are being used instead of placing all logic directly in components
 - Frontend authorization now explicitly reflects the live backend appointment-create rule: owner and assistant allowed, doctor denied
+- Owner staff management now uses backend-backed user list/create flows instead of local draft creation
 
 Current gaps:
 

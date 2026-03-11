@@ -7,6 +7,7 @@ import {
   getCurrentUser,
   getPatientFamily,
   getPatientProfile,
+  listUsers,
   listAppointments,
   listPatientAllergies,
   listPatientConditions,
@@ -35,6 +36,13 @@ export function useAuthStatusQuery() {
     queryKey: queryKeys.auth.status,
     queryFn: getAuthStatus,
     staleTime: 60_000,
+  });
+}
+
+export function useUsersQuery(input?: { role?: "owner" | "doctor" | "assistant" }) {
+  return useQuery({
+    queryKey: queryKeys.users.list(input?.role),
+    queryFn: () => listUsers(input),
   });
 }
 

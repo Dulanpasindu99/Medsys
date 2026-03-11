@@ -24,7 +24,7 @@ export function OwnerStaffListCard({ staffUsers, setStaffUsers }: OwnerStaffList
       <div className="mt-6 grid gap-4">
         {!staffUsers.length ? (
           <div className={`rounded-2xl border border-slate-100 bg-white/70 px-5 py-6 text-sm font-semibold text-slate-500 ring-1 ring-slate-100 ${INSET}`}>
-            No staff users are available yet. Refresh the live feed or create a local draft account.
+            No staff users are available yet. Refresh the live feed or create a staff account.
           </div>
         ) : staffUsers.map((user) => (
           <div
