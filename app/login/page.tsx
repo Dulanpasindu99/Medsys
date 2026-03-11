@@ -1,7 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ApiClientError, authApi } from '@/app/lib/api-client';
+import { setTokens, setUserRole } from '@/app/lib/auth-store';
 
 const SHADOWS = {
   card: 'shadow-[0_22px_52px_rgba(15,23,42,0.12)]',
@@ -67,6 +69,9 @@ type OwnerPanelProps = {
   password: string;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onSubmit: () => void;
+  isLoading: boolean;
+  errorMessage?: string;
 };
 
 const OwnerPanel = ({
@@ -76,6 +81,9 @@ const OwnerPanel = ({
   password,
   onEmailChange,
   onPasswordChange,
+  onSubmit,
+  isLoading,
+  errorMessage,
 }: OwnerPanelProps) => (
   <Card
     onClick={onClick}
@@ -98,9 +106,14 @@ const OwnerPanel = ({
           Manage staff access, billing, and clinic controls from a focused owner hub. The pre-filled demo lets you explore without typing.
         </p>
       </div>
-      <Link href="/owner" className="ios-button-primary px-5 py-2 text-[11px] uppercase tracking-[0.2em]">
-        Owner tools
-      </Link>
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={isLoading}
+        className="ios-button-primary px-5 py-2 text-[11px] uppercase tracking-[0.2em] disabled:opacity-60"
+      >
+        {isLoading ? 'Signing in...' : 'Owner tools'}
+      </button>
     </div>
 
     <div className="relative mt-6 grid gap-4 md:grid-cols-2">
@@ -110,8 +123,11 @@ const OwnerPanel = ({
 
     <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <Chip>Owner only area</Chip>
-      <button className="ios-button-primary px-6">Sign in as owner</button>
+      <button type="button" onClick={onSubmit} disabled={isLoading} className="ios-button-primary px-6 disabled:opacity-60">
+        {isLoading ? 'Signing in...' : 'Sign in as owner'}
+      </button>
     </div>
+    {errorMessage ? <p className="mt-3 text-sm font-semibold text-rose-600">{errorMessage}</p> : null}
   </Card>
 );
 
@@ -122,6 +138,9 @@ type StaffPanelProps = {
   password: string;
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onSubmit: () => void;
+  isLoading: boolean;
+  errorMessage?: string;
 };
 
 const DoctorPanel = ({
@@ -131,6 +150,9 @@ const DoctorPanel = ({
   password,
   onUsernameChange,
   onPasswordChange,
+  onSubmit,
+  isLoading,
+  errorMessage,
 }: StaffPanelProps) => (
   <Card
     onClick={onClick}
@@ -142,10 +164,13 @@ const DoctorPanel = ({
       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Primary clinical view</span>
     </div>
     <div className="mt-4 flex flex-col gap-3">
-      <Field label="Username" value={username} onChange={onUsernameChange} placeholder="doctor username" />
+      <Field label="Email" value={username} onChange={onUsernameChange} placeholder="doctor@medsys.local" />
       <Field label="Password" type="password" value={password} onChange={onPasswordChange} placeholder="•••••••" />
     </div>
-    <button className="ios-button-primary mt-4 w-full">Continue as doctor</button>
+    <button type="button" onClick={onSubmit} disabled={isLoading} className="ios-button-primary mt-4 w-full disabled:opacity-60">
+      {isLoading ? 'Signing in...' : 'Continue as doctor'}
+    </button>
+    {errorMessage ? <p className="mt-3 text-sm font-semibold text-rose-600">{errorMessage}</p> : null}
     <div className="mt-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
       <span className="flex items-center gap-1">
         <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
@@ -163,6 +188,9 @@ const AssistantPanel = ({
   password,
   onUsernameChange,
   onPasswordChange,
+  onSubmit,
+  isLoading,
+  errorMessage,
 }: StaffPanelProps) => (
   <Card
     onClick={onClick}
@@ -174,10 +202,13 @@ const AssistantPanel = ({
       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Support lane</span>
     </div>
     <div className="mt-4 flex flex-col gap-3">
-      <Field label="Username" value={username} onChange={onUsernameChange} placeholder="assistant username" />
+      <Field label="Email" value={username} onChange={onUsernameChange} placeholder="assistant@medsys.local" />
       <Field label="Password" type="password" value={password} onChange={onPasswordChange} placeholder="••••••••" />
     </div>
-    <button className="ios-button-primary mt-4 w-full">Continue as assistant</button>
+    <button type="button" onClick={onSubmit} disabled={isLoading} className="ios-button-primary mt-4 w-full disabled:opacity-60">
+      {isLoading ? 'Signing in...' : 'Continue as assistant'}
+    </button>
+    {errorMessage ? <p className="mt-3 text-sm font-semibold text-rose-600">{errorMessage}</p> : null}
     <div className="mt-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
       <span className="flex items-center gap-1">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -189,17 +220,45 @@ const AssistantPanel = ({
 );
 
 export default function Login() {
+  const router = useRouter();
   const [ownerEmail, setOwnerEmail] = useState('owner@medsys.lk');
   const [ownerPassword, setOwnerPassword] = useState('medsys-owner');
 
-  const [doctorUser, setDoctorUser] = useState('dr.charuka');
+  const [doctorUser, setDoctorUser] = useState('doctor@medsys.local');
   const [doctorPassword, setDoctorPassword] = useState('doctor-access');
 
-  const [assistantUser, setAssistantUser] = useState('assistant1');
+  const [assistantUser, setAssistantUser] = useState('assistant@medsys.local');
   const [assistantPassword, setAssistantPassword] = useState('assistant-access');
 
   type ActiveModal = 'owner' | 'doctor' | 'assistant' | null;
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  const [loadingRole, setLoadingRole] = useState<'owner' | 'doctor' | 'assistant' | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const signIn = async (
+    role: 'owner' | 'doctor' | 'assistant',
+    email: string,
+    password: string,
+    redirectPath: string,
+  ) => {
+    setLoadingRole(role);
+    setAuthError(null);
+    try {
+      const tokens = await authApi.login({ email, password });
+      setTokens(tokens.accessToken, tokens.refreshToken);
+      setUserRole(role);
+      setActiveModal(null);
+      router.replace(redirectPath);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        setAuthError(error.message || 'Login failed');
+      } else {
+        setAuthError('Login failed');
+      }
+    } finally {
+      setLoadingRole(null);
+    }
+  };
 
   const handleSectionClick = (role: Exclude<ActiveModal, null>) => (
     event: React.MouseEvent<HTMLDivElement>,
@@ -222,6 +281,9 @@ export default function Login() {
           password={ownerPassword}
           onEmailChange={setOwnerEmail}
           onPasswordChange={setOwnerPassword}
+          onSubmit={() => void signIn('owner', ownerEmail, ownerPassword, '/owner')}
+          isLoading={loadingRole === 'owner'}
+          errorMessage={authError}
         />
       ),
       doctor: (
@@ -231,6 +293,9 @@ export default function Login() {
           password={doctorPassword}
           onUsernameChange={setDoctorUser}
           onPasswordChange={setDoctorPassword}
+          onSubmit={() => void signIn('doctor', doctorUser, doctorPassword, '/')}
+          isLoading={loadingRole === 'doctor'}
+          errorMessage={authError}
         />
       ),
       assistant: (
@@ -240,6 +305,9 @@ export default function Login() {
           password={assistantPassword}
           onUsernameChange={setAssistantUser}
           onPasswordChange={setAssistantPassword}
+          onSubmit={() => void signIn('assistant', assistantUser, assistantPassword, '/assistant')}
+          isLoading={loadingRole === 'assistant'}
+          errorMessage={authError}
         />
       ),
     };
@@ -300,6 +368,9 @@ export default function Login() {
               password={ownerPassword}
               onEmailChange={setOwnerEmail}
               onPasswordChange={setOwnerPassword}
+              onSubmit={() => void signIn('owner', ownerEmail, ownerPassword, '/owner')}
+              isLoading={loadingRole === 'owner'}
+              errorMessage={authError}
             />
 
             <Card className="p-8 transition-transform duration-300 ease-out">
@@ -324,6 +395,9 @@ export default function Login() {
                     password={doctorPassword}
                     onUsernameChange={setDoctorUser}
                     onPasswordChange={setDoctorPassword}
+                    onSubmit={() => void signIn('doctor', doctorUser, doctorPassword, '/')}
+                    isLoading={loadingRole === 'doctor'}
+                    errorMessage={authError}
                   />
                   <AssistantPanel
                     onClick={handleSectionClick('assistant')}
@@ -331,6 +405,9 @@ export default function Login() {
                     password={assistantPassword}
                     onUsernameChange={setAssistantUser}
                     onPasswordChange={setAssistantPassword}
+                    onSubmit={() => void signIn('assistant', assistantUser, assistantPassword, '/assistant')}
+                    isLoading={loadingRole === 'assistant'}
+                    errorMessage={authError}
                   />
                 </div>
 

@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import React, { useMemo, useState } from 'react';
-import { getProfileIdByNicOrName, patientProfiles, type PatientProfile } from '../data/patientProfiles';
+import React, { useEffect, useMemo, useState } from 'react';
+import { patientsApi } from '@/app/lib/api-client';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 
 type Gender = 'Male' | 'Female';
@@ -59,44 +58,6 @@ const Chip = ({ children }: { children: React.ReactNode }) => (
     </span>
 );
 
-const patients: Patient[] = Object.values(patientProfiles).map((profile) => {
-    // Sort timeline to find last visit
-    const sortedTimeline = [...profile.timeline].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    const lastVisitDate = sortedTimeline[0]?.date;
-
-    // Calculate relative time (simple approximation)
-    const daysSince = lastVisitDate
-        ? Math.floor((new Date().getTime() - new Date(lastVisitDate).getTime()) / (1000 * 3600 * 24))
-        : 0;
-
-    let lastVisitDisplay = 'New patient';
-    if (daysSince > 0) {
-        if (daysSince < 7) lastVisitDisplay = `${daysSince} days ago`;
-        else if (daysSince < 30) lastVisitDisplay = `${Math.floor(daysSince / 7)} weeks ago`;
-        else lastVisitDisplay = `${Math.floor(daysSince / 30)} months ago`;
-    } else if (lastVisitDate) {
-        lastVisitDisplay = 'Today';
-    }
-
-    return {
-        id: profile.id, // Using profile ID as patient ID for consistency
-        name: profile.name,
-        nic: profile.nic,
-        age: profile.age,
-        gender: profile.gender,
-        mobile: '+94 71 723 4567', // Mocked as it's not in profile
-        family: profile.family.name === 'N/A' ? 'Unassigned' : profile.family.name,
-        visits: profile.timeline.length + 1, // Base visits + timeline entries
-        lastVisit: lastVisitDisplay,
-        nextAppointment: Math.random() > 0.7 ? 'Tomorrow 10:00 AM' : undefined, // Random mock
-        tags: profile.conditions,
-        conditions: [...profile.conditions, ...profile.allergies.map(a => `Allergy: ${a}`)],
-        profileId: profile.id,
-    };
-});
-
 const ageBuckets = [
     { id: 'all', label: 'All Ages' },
     { id: '18-30', label: 'Age 18-30' },
@@ -104,20 +65,62 @@ const ageBuckets = [
     { id: '46+', label: 'Age 46+' },
 ];
 
-const families = ['All Families', 'Wickramasinghe', 'Bandaranayaka', 'Rajapaksha'];
-
-const genderFilters: { id: Gender | 'all'; label: string }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'Male', label: 'Male' },
-    { id: 'Female', label: 'Female' },
-];
-
 export default function PatientSection() {
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [family, setFamily] = useState<string>('All Families');
     const [ageRange, setAgeRange] = useState<string>('all');
     const [gender, setGender] = useState<Gender | 'all'>('all');
     const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadPatients = async () => {
+            try {
+                setLoading(true);
+                const response = await patientsApi.list(1, 200);
+                const mapped: Patient[] = response.data.map((entry) => {
+                    const dob = entry.dob ? new Date(entry.dob) : null;
+                    const age = dob ? Math.max(0, new Date().getFullYear() - dob.getFullYear()) : 0;
+                    const genderValue: Gender = entry.gender === 'female' ? 'Female' : 'Male';
+                    const allergyTags = (entry.allergies ?? []).map((a) => `Allergy: ${a.allergy_name}`);
+                    return {
+                        id: String(entry.id),
+                        name: entry.full_name,
+                        nic: entry.nic ?? 'N/A',
+                        age,
+                        gender: genderValue,
+                        mobile: entry.phone ?? 'N/A',
+                        family: 'Unassigned',
+                        visits: 1,
+                        lastVisit: 'Today',
+                        tags: [],
+                        conditions: allergyTags,
+                        profileId: undefined,
+                    };
+                });
+                if (mounted) {
+                    setPatients(mapped);
+                }
+            } catch (error) {
+                console.error('Failed to load patients', error);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
+        };
+        void loadPatients();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const families = useMemo(
+        () => ['All Families', ...Array.from(new Set(patients.map((entry) => entry.family))).filter(Boolean)],
+        [patients]
+    );
 
     const filteredPatients = useMemo(() => {
         return patients.filter((patient) => {
@@ -137,7 +140,7 @@ export default function PatientSection() {
 
             return matchesSearch && matchesFamily && matchesGender && matchesAge;
         });
-    }, [search, family, ageRange, gender]);
+    }, [patients, search, family, ageRange, gender]);
 
     return (
         <div id="patients" className="px-4 py-8 md:px-8">
@@ -256,6 +259,11 @@ export default function PatientSection() {
                     </div>
 
                     <div className="mt-5 space-y-4">
+                        {loading && (
+                            <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-500">
+                                Loading patients...
+                            </div>
+                        )}
                         {filteredPatients.map((patient) => (
                             <article
                                 key={patient.id}

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { analyticsApi } from '@/app/lib/api-client';
 
 interface DiseaseRecord {
     id: string;
@@ -41,141 +42,6 @@ const TileCard: React.FC<{ className?: string; tone?: 'sky' | 'slate' | 'emerald
     );
 };
 
-const diseaseRecords: DiseaseRecord[] = [
-    {
-        id: 'd-01',
-        disease: 'Fever',
-        patient: 'Ranil Wickramasinghe',
-        gender: 'Male',
-        age: 70,
-        family: 'Wickramasinghe',
-        month: '2024-05',
-        recurrence: 2,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-02',
-        disease: 'Headache',
-        patient: 'Chandraka Bandaranayaka',
-        gender: 'Female',
-        age: 65,
-        family: 'Bandaranayaka',
-        month: '2024-04',
-        recurrence: 1,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-03',
-        disease: 'Diabetes',
-        patient: 'Mahinda Rajapaksha',
-        gender: 'Male',
-        age: 66,
-        family: 'Rajapaksha',
-        month: '2024-03',
-        recurrence: 4,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-04',
-        disease: 'Fever',
-        patient: 'Chandrika Bandranayaka',
-        gender: 'Female',
-        age: 63,
-        family: 'Bandaranayaka',
-        month: '2024-06',
-        recurrence: 1,
-        source: 'Outside',
-    },
-    {
-        id: 'd-05',
-        disease: 'Hypertension',
-        patient: 'Premadasa',
-        gender: 'Male',
-        age: 66,
-        family: 'Premadasa',
-        month: '2024-06',
-        recurrence: 3,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-06',
-        disease: 'Asthma',
-        patient: 'JR Jayawardhana',
-        gender: 'Male',
-        age: 62,
-        family: 'Jayawardhana',
-        month: '2024-05',
-        recurrence: 2,
-        source: 'Outside',
-    },
-    {
-        id: 'd-07',
-        disease: 'Fever',
-        patient: 'Mitreepala Sirisena',
-        gender: 'Male',
-        age: 68,
-        family: 'Sirisena',
-        month: '2024-04',
-        recurrence: 1,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-08',
-        disease: 'Hypertension',
-        patient: 'Dulani Wickramasinghe',
-        gender: 'Female',
-        age: 54,
-        family: 'Wickramasinghe',
-        month: '2024-02',
-        recurrence: 2,
-        source: 'Outside',
-    },
-    {
-        id: 'd-09',
-        disease: 'Diabetes',
-        patient: 'Tharindu Perera',
-        gender: 'Male',
-        age: 48,
-        family: 'Perera',
-        month: '2024-05',
-        recurrence: 1,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-10',
-        disease: 'Asthma',
-        patient: 'Ishara Perera',
-        gender: 'Female',
-        age: 44,
-        family: 'Perera',
-        month: '2024-03',
-        recurrence: 2,
-        source: 'Clinic',
-    },
-    {
-        id: 'd-11',
-        disease: 'Fever',
-        patient: 'Pramod Silva',
-        gender: 'Male',
-        age: 29,
-        family: 'Silva',
-        month: '2024-06',
-        recurrence: 1,
-        source: 'Outside',
-    },
-    {
-        id: 'd-12',
-        disease: 'Headache',
-        patient: 'Samanthi Silva',
-        gender: 'Female',
-        age: 31,
-        family: 'Silva',
-        month: '2024-05',
-        recurrence: 1,
-        source: 'Clinic',
-    },
-];
-
 const monthName = (month: string) => {
     const [year, monthIndex] = month.split('-').map(Number);
     return new Date(year, monthIndex - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -190,10 +56,83 @@ export default function AnalyticsSection() {
     const [family, setFamily] = useState<string>('all');
     const [disease, setDisease] = useState<string>('all');
     const [compareDisease, setCompareDisease] = useState<string>('Fever');
+    const [diseaseRecords, setDiseaseRecords] = useState<DiseaseRecord[]>([]);
 
-    const families = useMemo(() => Array.from(new Set(diseaseRecords.map((item) => item.family))), []);
-    const diseaseNames = useMemo(() => Array.from(new Set(diseaseRecords.map((item) => item.disease))), []);
-    const months = useMemo(() => Array.from(new Set(diseaseRecords.map((item) => item.month))).sort(), []);
+    useEffect(() => {
+        let mounted = true;
+
+        const normalizeRecords = (payload: Record<string, unknown>): DiseaseRecord[] => {
+            const maybeRecords = payload.records;
+            if (Array.isArray(maybeRecords)) {
+                return maybeRecords
+                    .map((entry, index) => {
+                        if (!entry || typeof entry !== 'object') return null;
+                        const row = entry as Record<string, unknown>;
+                        const genderRaw = String(row.gender ?? 'Male').toLowerCase();
+                        const sourceRaw = String(row.source ?? 'Clinic').toLowerCase();
+                        return {
+                            id: String(row.id ?? `r-${index + 1}`),
+                            disease: String(row.disease ?? 'Unknown'),
+                            patient: String(row.patient ?? 'N/A'),
+                            gender: genderRaw === 'female' ? 'Female' : 'Male',
+                            age: Number(row.age ?? 0),
+                            family: String(row.family ?? 'Unassigned'),
+                            month: String(row.month ?? new Date().toISOString().slice(0, 7)),
+                            recurrence: Number(row.recurrence ?? 1),
+                            source: sourceRaw === 'outside' ? 'Outside' : 'Clinic',
+                        } as DiseaseRecord;
+                    })
+                    .filter((entry): entry is DiseaseRecord => Boolean(entry));
+            }
+
+            const diseasesRaw = payload.top_diseases;
+            if (Array.isArray(diseasesRaw)) {
+                return diseasesRaw
+                    .map((entry, index) => {
+                        if (!entry || typeof entry !== 'object') return null;
+                        const row = entry as Record<string, unknown>;
+                        return {
+                            id: `agg-${index + 1}`,
+                            disease: String(row.disease ?? row.name ?? 'Unknown'),
+                            patient: 'Aggregated',
+                            gender: 'Male',
+                            age: 0,
+                            family: 'All',
+                            month: new Date().toISOString().slice(0, 7),
+                            recurrence: Number(row.count ?? row.total ?? 1),
+                            source: 'Clinic',
+                        } as DiseaseRecord;
+                    })
+                    .filter((entry): entry is DiseaseRecord => Boolean(entry));
+            }
+
+            return [];
+        };
+
+        const loadAnalytics = async () => {
+            try {
+                const payload = await analyticsApi.overview();
+                if (!mounted) return;
+                const records = normalizeRecords(payload);
+                setDiseaseRecords(records);
+            } catch (error) {
+                console.error('Failed to load analytics overview', error);
+                if (mounted) {
+                    setDiseaseRecords([]);
+                }
+            }
+        };
+
+        void loadAnalytics();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const families = useMemo(() => Array.from(new Set(diseaseRecords.map((item) => item.family))), [diseaseRecords]);
+    const diseaseNames = useMemo(() => Array.from(new Set(diseaseRecords.map((item) => item.disease))), [diseaseRecords]);
+    const months = useMemo(() => Array.from(new Set(diseaseRecords.map((item) => item.month))).sort(), [diseaseRecords]);
 
     const filteredRecords = useMemo(() => {
         return diseaseRecords.filter((entry) => {
@@ -207,7 +146,7 @@ export default function AnalyticsSection() {
 
             return matchesSearch && matchesGender && matchesMonth && matchesFamily && matchesDisease;
         });
-    }, [search, gender, month, family, disease]);
+    }, [diseaseRecords, search, gender, month, family, disease]);
 
     const diseaseBreakdown = useMemo(() => {
         const map = new Map<string, { total: number; male: number; female: number; ages: number[] }>();
@@ -226,7 +165,7 @@ export default function AnalyticsSection() {
     }, [filteredRecords]);
 
     const topDisease = diseaseBreakdown[0];
-    const allFamilies = useMemo(() => new Set(diseaseRecords.map((item) => item.family)), []);
+    const allFamilies = useMemo(() => new Set(diseaseRecords.map((item) => item.family)), [diseaseRecords]);
     const activeFamilies = useMemo(() => new Set(filteredRecords.map((item) => item.family)), [filteredRecords]);
 
     const monthlyTrend = useMemo(() => {

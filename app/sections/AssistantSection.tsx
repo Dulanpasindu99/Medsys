@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getProfileIdByNicOrName } from '../data/patientProfiles';
+import { appointmentsApi, patientsApi, usersApi } from '@/app/lib/api-client';
 
 const SHADOWS = {
     card: 'shadow-[0_18px_42px_rgba(28,63,99,0.08)]',
@@ -35,36 +36,7 @@ type CompletedPatient = {
 };
 
 export default function AssistantSection() {
-    const [pendingPatients, setPendingPatients] = useState<Prescription[]>([
-        {
-            id: 'MH0001',
-            patient: 'Ranil Wickramasinghe',
-            nic: '156546658V',
-            age: 70,
-            gender: 'Male',
-            diagnosis: 'Fever, head ache',
-            clinical: [
-                { name: 'Cough Syrup', dose: '20ml', terms: '3 x 4', amount: 1 },
-                { name: 'Cough Strops', dose: '1', terms: '4', amount: 7 },
-            ],
-            outside: [
-                { name: 'Zink', dose: '2', terms: '3 x 4', amount: 24 },
-                { name: 'Paracetamol', dose: '500mg', terms: '2 x 4', amount: 16 },
-            ],
-            allergies: ['Penicillin', 'Piriton'],
-        },
-        {
-            id: 'MH0002',
-            patient: 'Chathura Deshan',
-            nic: '865637762V',
-            age: 32,
-            gender: 'Male',
-            diagnosis: 'Flu',
-            clinical: [{ name: 'Napa', dose: '500mg', terms: '2 x 5', amount: 10 }],
-            outside: [{ name: 'Vitamin C', dose: '500mg', terms: 'Daily', amount: 7 }],
-            allergies: ['—'],
-        },
-    ]);
+    const [pendingPatients, setPendingPatients] = useState<Prescription[]>([]);
 
     const [activeIndex, setActiveIndex] = useState(0);
     const activePrescription = pendingPatients[activeIndex];
@@ -83,53 +55,108 @@ export default function AssistantSection() {
 
     const [completedSearch, setCompletedSearch] = useState('');
 
-    const stats = useMemo(
-        () => ({ total: 101, male: 20, female: 81, existing: 79, new: 22 }),
-        []
-    );
+    const [stats, setStats] = useState({ total: 0, male: 0, female: 0, existing: 0, new: 0 });
+    const [loadError, setLoadError] = useState<string | null>(null);
 
-    const availableDoctors = useMemo(
-        () => [
-            { name: 'Dr. Malith', status: 'Online' },
-            { name: 'Dr. Jay', status: 'Online' },
-            { name: 'Dr. Naveen', status: 'Offline' },
-        ],
-        []
-    );
+    const [availableDoctors, setAvailableDoctors] = useState<{ name: string; status: string }[]>([]);
 
-    const completed = useMemo<CompletedPatient[]>(
-        () => [
-            {
-                name: 'Rani Fernando',
-                age: 34,
-                nic: '856456456V',
-                time: '5.45 PM',
-                profileId: getProfileIdByNicOrName('856456456V', 'Rani Fernando'),
-            },
-            {
-                name: 'Sathya Dev',
-                age: 65,
-                nic: '222343222V',
-                time: '5.25 PM',
-                profileId: getProfileIdByNicOrName('222343222V', 'Sathya Dev'),
-            },
-            {
-                name: 'Chathura Deshan',
-                age: 32,
-                nic: '865637762V',
-                time: '5.00 PM',
-                profileId: getProfileIdByNicOrName('865637762V', 'Chathura Deshan'),
-            },
-            {
-                name: 'Rathmalie De Silva',
-                age: 42,
-                nic: '650002343V',
-                time: '4.15 PM',
-                profileId: getProfileIdByNicOrName('650002343V', 'Rathmalie De Silva'),
-            },
-        ],
-        []
-    );
+    const [completed, setCompleted] = useState<CompletedPatient[]>([]);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadAssistantData = async () => {
+            try {
+                setLoadError(null);
+                const [patientsResponse, waitingResponse, completedResponse, usersResponse] = await Promise.all([
+                    patientsApi.list(1, 500),
+                    appointmentsApi.list(1, 500, 'waiting'),
+                    appointmentsApi.list(1, 500, 'completed'),
+                    usersApi.list(1, 200),
+                ]);
+
+                const patientById = new Map(
+                    patientsResponse.data.map((patient) => [String(patient.id), patient])
+                );
+
+                const toAge = (dob: string | null) => {
+                    if (!dob) return 0;
+                    const date = new Date(dob);
+                    return Number.isNaN(date.getTime())
+                        ? 0
+                        : Math.max(0, new Date().getFullYear() - date.getFullYear());
+                };
+
+                const pending = waitingResponse.data
+                    .map((appointment) => {
+                        const patient = patientById.get(String(appointment.patient_id));
+                        if (!patient) return null;
+                        return {
+                            id: `AP-${appointment.id}`,
+                            patient: patient.full_name,
+                            nic: patient.nic ?? 'N/A',
+                            age: toAge(patient.dob),
+                            gender: patient.gender === 'female' ? 'Female' : 'Male',
+                            diagnosis: appointment.reason ?? 'Awaiting doctor',
+                            clinical: [],
+                            outside: [],
+                            allergies: (patient.allergies ?? []).map((a) => a.allergy_name),
+                        } as Prescription;
+                    })
+                    .filter((entry): entry is Prescription => Boolean(entry));
+
+                const done = completedResponse.data
+                    .map((appointment) => {
+                        const patient = patientById.get(String(appointment.patient_id));
+                        if (!patient) return null;
+                        return {
+                            name: patient.full_name,
+                            age: toAge(patient.dob),
+                            nic: patient.nic ?? 'N/A',
+                            time: new Date(appointment.scheduled_at).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                            }),
+                            profileId: patient.nic
+                                ? getProfileIdByNicOrName(patient.nic, patient.full_name)
+                                : undefined,
+                        } as CompletedPatient;
+                    })
+                    .filter((entry): entry is CompletedPatient => Boolean(entry));
+
+                const male = patientsResponse.data.filter((patient) => patient.gender === 'male').length;
+                const female = patientsResponse.data.filter((patient) => patient.gender === 'female').length;
+
+                if (!mounted) return;
+                setPendingPatients(pending);
+                setCompleted(done);
+                setAvailableDoctors(
+                    usersResponse.data
+                        .filter((user) => user.role === 'doctor')
+                        .map((user) => ({
+                            name: user.full_name,
+                            status: user.is_active ? 'Online' : 'Offline',
+                        }))
+                );
+                setStats({
+                    total: patientsResponse.data.length,
+                    male,
+                    female,
+                    existing: Math.max(0, patientsResponse.data.length - waitingResponse.data.length),
+                    new: waitingResponse.data.length,
+                });
+            } catch (error) {
+                if (mounted) {
+                    setLoadError(error instanceof Error ? error.message : 'Failed to load assistant data');
+                }
+            }
+        };
+
+        void loadAssistantData();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     const filteredCompleted = completed.filter((entry) =>
         `${entry.name} ${entry.nic}`.toLowerCase().includes(completedSearch.toLowerCase())
@@ -186,6 +213,11 @@ export default function AssistantSection() {
                         <div className="relative flex flex-1 flex-col px-6 py-8 lg:px-10">
                             <div className="mx-auto flex w-full flex-col gap-6">
                                 <div className="flex-1 space-y-6">
+                                    {loadError ? (
+                                        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                                            {loadError}
+                                        </div>
+                                    ) : null}
                                     <header className="flex flex-col gap-3 rounded-[22px] border border-white/80 bg-white/70 px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
                                         <div className="flex items-center gap-3">
                                             <span className="h-2 w-2 rounded-full bg-slate-400" aria-hidden="true" />
@@ -509,9 +541,9 @@ export default function AssistantSection() {
                                                 <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Live</div>
                                             </div>
                                             <div className="mt-3 flex flex-wrap gap-2">
-                                                {availableDoctors.map((doc) => (
+                                                {availableDoctors.map((doc, index) => (
                                                     <span
-                                                        key={doc.name}
+                                                        key={`${doc.name}-${doc.status}-${index}`}
                                                         className={`rounded-full px-4 py-2 text-xs font-semibold ${doc.status === 'Online'
                                                             ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
                                                             : 'bg-slate-100 text-slate-600'
@@ -561,3 +593,6 @@ export default function AssistantSection() {
         </section>
     );
 }
+
+
+

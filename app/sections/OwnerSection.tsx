@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ApiClientError, usersApi } from '@/app/lib/api-client';
+import { getAccessToken, getRefreshToken } from '@/app/lib/auth-store';
 
 type Role = 'Doctor' | 'Assistant';
 
@@ -61,36 +64,91 @@ const defaultPermissions = (role: Role): Record<PermissionKey, boolean> =>
         };
 
 export default function OwnerSection() {
+    const router = useRouter();
     const [role, setRole] = useState<Role>('Doctor');
     const [name, setName] = useState('Dr. Charuka Gamage');
     const [username, setUsername] = useState('dr.charuka');
     const [password, setPassword] = useState('medsys-123');
     const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(defaultPermissions('Doctor'));
 
-    const [staffUsers, setStaffUsers] = useState<StaffUser[]>([
-        {
-            id: 'u1',
-            role: 'Doctor',
-            name: 'Dr. Charuka Gamage',
-            username: 'dr.charuka',
-            permissions: { staffLogin: true, doctorScreen: true, assistantScreen: true, sharedDashboards: true, ownerTools: false },
-        },
-        {
-            id: 'u2',
-            role: 'Assistant',
-            name: 'Ayoma (Assistant)',
-            username: 'assistant1',
-            permissions: { staffLogin: true, doctorScreen: false, assistantScreen: true, sharedDashboards: true, ownerTools: false },
-        },
-    ]);
+    const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadUsers = async () => {
+            if (!getAccessToken() && !getRefreshToken()) {
+                router.replace('/login');
+                return;
+            }
+
+            try {
+                setLoadError(null);
+                const response = await usersApi.list(1, 20);
+                const mapped: StaffUser[] = response.data
+                    .filter((entry) => entry.role !== 'owner')
+                    .map((entry) => {
+                        const roleValue: Role = entry.role === 'doctor' ? 'Doctor' : 'Assistant';
+                        return {
+                            id: String(entry.id),
+                            role: roleValue,
+                            name: entry.full_name,
+                            username: entry.email,
+                            permissions: defaultPermissions(roleValue),
+                        };
+                    });
+                if (mounted) {
+                    setStaffUsers(mapped);
+                }
+            } catch (error) {
+                if (error instanceof ApiClientError && error.status === 401) {
+                    router.replace('/login');
+                    return;
+                }
+                if (error instanceof ApiClientError) {
+                    if (mounted) {
+                        setLoadError(error.message);
+                    }
+                    return;
+                }
+                if (mounted) {
+                    setLoadError('Failed to load users');
+                }
+            }
+        };
+        void loadUsers();
+        return () => {
+            mounted = false;
+        };
+    }, [router]);
 
     const togglePermission = (key: PermissionKey) => {
         setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
-    const handleCreate = () => {
-        const id = crypto.randomUUID();
-        setStaffUsers((prev) => [...prev, { id, role, name, username, permissions }]);
+    const handleCreate = async () => {
+        try {
+            const payload = {
+                full_name: name,
+                email: username,
+                role: role === 'Doctor' ? 'doctor' : 'assistant',
+                password,
+            };
+            const created = await usersApi.create(payload);
+            const roleValue: Role = created.role === 'doctor' ? 'Doctor' : 'Assistant';
+            setStaffUsers((prev) => [
+                ...prev,
+                {
+                    id: String(created.id),
+                    role: roleValue,
+                    name: created.full_name,
+                    username: created.email,
+                    permissions,
+                },
+            ]);
+        } catch (error) {
+            console.error('Failed to create user', error);
+        }
     };
 
     const presets = useMemo(
@@ -143,6 +201,11 @@ export default function OwnerSection() {
                             </span>
                         </div>
                     </header>
+                    {loadError ? (
+                        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                            {loadError}
+                        </div>
+                    ) : null}
 
                     <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                         <Card className="p-7">
