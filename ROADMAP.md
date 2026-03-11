@@ -9,7 +9,7 @@ It is intentionally practical and tied to the current repository state:
 - Frontend: Next.js 16, React 19, TypeScript, Tailwind
 - Current API access: `app/lib/api-client.ts`
 - Current feature sections: `app/sections/*`
-- Current local file-backed store: `app/lib/store.ts`
+- Prototype file-backed store has been retired from the active frontend tree
 - Current quality gate: lint + typecheck + unit/component/route tests
 
 ## Current State Summary
@@ -331,7 +331,7 @@ These should happen before broad feature expansion.
 2. Define and align target backend contracts for patients, appointments, encounters, prescriptions, and inventory.
 3. Complete the shared query/mutation rollout for remaining feature hooks and mutation invalidation.
    Current progress: patient directory, auth/current-user, doctor queue, assistant, owner, analytics, AI, patient-profile, doctor patient details, and inventory board reads are now query-backed.
-4. Remove or archive `app/lib/store.ts` now that BE-020 closure proof exists.
+4. Retire remaining stale prototype references now that BE-020 closure proof exists.
 5. Add audit logging for sensitive access and mutation flows.
 6. Add integration and end-to-end coverage for authorization-sensitive and validation-sensitive workflows.
 

@@ -397,13 +397,14 @@ Recommended backend delivery order:
 
 ### BE-020 Store Replacement
 
-- Status: `In Progress`
+- Status: `Implemented`
 - Priority: `P0`
 - Required outcomes:
-  - production workflows no longer depend on `app/lib/store.ts`
+  - production workflows no longer depend on prototype frontend persistence
   - backend becomes the source of truth for patient and user data
-- Current gap:
-  - auth status/register, patient, patient-history, and user browser flows now use backend-backed BFF routes, but some other internal routes still depend on the prototype store path
+- Current status:
+  - active frontend production-path flows run through backend-backed `/api/...` BFF routes
+  - `app/lib/store.ts` has been removed from the frontend repository after a no-import audit
 
 ## 7. What Is Actually Left
 
