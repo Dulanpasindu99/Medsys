@@ -24,6 +24,7 @@ import {
   usePatientsQuery,
   usePendingDispenseQueueQuery,
 } from "../../../lib/query-hooks";
+import { queryKeys } from "../../../lib/query-keys";
 import type { AssistantFormState, CompletedPatient, Prescription } from "../types";
 
 type AnyRecord = Record<string, unknown>;
@@ -296,6 +297,24 @@ export function useAssistantWorkflow() {
   );
   const currentUserId = currentUserQuery.data?.id ?? null;
 
+  const refreshAssistantQueries = async (includeCurrentUser = false) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.pendingDispenseQueue }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
+      ...(includeCurrentUser
+        ? [queryClient.invalidateQueries({ queryKey: queryKeys.auth.currentUser })]
+        : []),
+      pendingQueueQuery.refetch(),
+      allAppointmentsQuery.refetch(),
+      completedAppointmentsQuery.refetch(),
+      patientsQuery.refetch(),
+      analyticsOverviewQuery.refetch(),
+      ...(includeCurrentUser ? [currentUserQuery.refetch()] : []),
+    ]);
+  };
+
   const loadState: LoadState = useMemo(() => {
     const criticalQueries = [pendingQueueQuery, allAppointmentsQuery, completedAppointmentsQuery, patientsQuery];
     const allPending = criticalQueries.every((query) => query.isPending);
@@ -383,13 +402,7 @@ export function useAssistantWorkflow() {
         regularDrug: "",
         priority: "Normal",
       }));
-      await Promise.all([
-        pendingQueueQuery.refetch(),
-        allAppointmentsQuery.refetch(),
-        completedAppointmentsQuery.refetch(),
-        patientsQuery.refetch(),
-        analyticsOverviewQuery.refetch(),
-      ]);
+      await refreshAssistantQueries();
       setCreatePatientState(successMutationState("Patient added successfully."));
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Failed to create patient.";
@@ -430,13 +443,7 @@ export function useAssistantWorkflow() {
         notes: "Dispensed from assistant queue",
         items: activePrescription.dispenseItems ?? [],
       });
-      await Promise.all([
-        pendingQueueQuery.refetch(),
-        allAppointmentsQuery.refetch(),
-        completedAppointmentsQuery.refetch(),
-        patientsQuery.refetch(),
-        analyticsOverviewQuery.refetch(),
-      ]);
+      await refreshAssistantQueries();
       setDispenseState(successMutationState("Prescription marked as dispensed."));
     } catch (error) {
       const message = (error as ApiClientError)?.message ?? "Failed to mark dispense.";
@@ -464,15 +471,7 @@ export function useAssistantWorkflow() {
     createPatientState,
     dispenseState,
     reload: () => {
-      void Promise.all([
-        queryClient.invalidateQueries(),
-        pendingQueueQuery.refetch(),
-        allAppointmentsQuery.refetch(),
-        completedAppointmentsQuery.refetch(),
-        patientsQuery.refetch(),
-        analyticsOverviewQuery.refetch(),
-        currentUserQuery.refetch(),
-      ]);
+      void refreshAssistantQueries(true);
     },
     isSyncing:
       pendingQueueQuery.isFetching ||

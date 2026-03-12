@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   createEncounter,
@@ -22,6 +23,7 @@ import {
   usePatientsQuery,
   usePatientVitalsQuery,
 } from "../../../lib/query-hooks";
+import { queryKeys } from "../../../lib/query-keys";
 import type { useDoctorClinicalWorkflow } from "./useDoctorClinicalWorkflow";
 import type { useVisitPlanner } from "./useVisitPlanner";
 import type { AllergyAlert, Patient, PatientGender, PatientVital } from "../types";
@@ -204,6 +206,7 @@ export function useDoctorWorkspaceData(
   clinicalWorkflow: ClinicalWorkflow,
   visitPlanner: VisitPlannerState
 ) {
+  const queryClient = useQueryClient();
   const patientsQuery = usePatientsQuery();
   const waitingAppointmentsQuery = useAppointmentsQuery({ status: "waiting" });
   const currentUserQuery = useCurrentUserQuery();
@@ -347,6 +350,16 @@ export function useDoctorWorkspaceData(
     setSearch("");
   };
 
+  const refreshDoctorQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list("waiting") }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.encounters.list }),
+      patientsQuery.refetch(),
+      waitingAppointmentsQuery.refetch(),
+    ]);
+  };
+
   const handleSaveRecord = async () => {
     if (!selectedPatientId || !selectedAppointmentId) {
       setSaveState(errorMutationState("Select a waiting appointment before saving encounter."));
@@ -394,11 +407,7 @@ export function useDoctorWorkspaceData(
         },
       });
       setSaveState(successMutationState("Encounter saved to backend."));
-      await Promise.all([
-        patientsQuery.refetch(),
-        waitingAppointmentsQuery.refetch(),
-        currentUserQuery.refetch(),
-      ]);
+      await Promise.all([refreshDoctorQueries(), currentUserQuery.refetch()]);
     } catch (error) {
       setSaveState(
         errorMutationState((error as ApiClientError)?.message ?? "Failed to save encounter.")
@@ -437,8 +446,7 @@ export function useDoctorWorkspaceData(
     handleSaveRecord,
     reload: () => {
       void Promise.all([
-        patientsQuery.refetch(),
-        waitingAppointmentsQuery.refetch(),
+        refreshDoctorQueries(),
         currentUserQuery.refetch(),
         ...(selectedPatientId
           ? [patientVitalsQuery.refetch(), patientAllergiesQuery.refetch()]

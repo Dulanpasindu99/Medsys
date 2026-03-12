@@ -1,5 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createQueryWrapper } from "../../../lib/test-query-client";
+import { queryKeys } from "../../../lib/query-keys";
 import { useDoctorWorkspaceData } from "../hooks/useDoctorWorkspaceData";
 
 vi.mock("../../../lib/api-client", () => ({
@@ -88,7 +91,9 @@ describe("useDoctorWorkspaceData", () => {
     } as never;
     const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
 
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner));
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
 
     act(() => {
       result.current.handlePatientSelect({
@@ -119,6 +124,9 @@ describe("useDoctorWorkspaceData", () => {
   });
 
   it("submits encounters and refetches queue queries after save", async () => {
+    const invalidateQueriesSpy = vi
+      .spyOn(QueryClient.prototype, "invalidateQueries")
+      .mockResolvedValue(undefined);
     const patientsQuery = buildQueryState({
       data: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
     });
@@ -137,7 +145,9 @@ describe("useDoctorWorkspaceData", () => {
     } as never;
     const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
 
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner));
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
 
     act(() => {
       result.current.handlePatientSelect({
@@ -159,6 +169,15 @@ describe("useDoctorWorkspaceData", () => {
     });
 
     expect(mockedCreateEncounter).toHaveBeenCalledTimes(1);
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.patients.list,
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.appointments.list("waiting"),
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.encounters.list,
+    });
     expect(patientsQuery.refetch).toHaveBeenCalled();
     expect(appointmentsQuery.refetch).toHaveBeenCalled();
     expect(currentUserQuery.refetch).toHaveBeenCalled();

@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryWrapper } from "../../../lib/test-query-client";
+import { queryKeys } from "../../../lib/query-keys";
 import { useOwnerAccess, defaultPermissions } from "../hooks/useOwnerAccess";
 import { createUser, getCurrentUser, listAppointments, listAuditLogs, listUsers } from "../../../lib/api-client";
 
@@ -55,6 +57,9 @@ describe("useOwnerAccess", () => {
   });
 
   it("creates a staff user through the backend-backed users API", async () => {
+    const invalidateQueriesSpy = vi
+      .spyOn(QueryClient.prototype, "invalidateQueries")
+      .mockResolvedValue(undefined);
     const { result } = renderHook(() => useOwnerAccess(), {
       wrapper: createQueryWrapper(),
     });
@@ -78,6 +83,9 @@ describe("useOwnerAccess", () => {
       email: "meredith.grey@medsys.local",
       password: "secret-123",
       role: "doctor",
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.users.list(),
     });
     expect(result.current.createState.status).toBe("success");
   });

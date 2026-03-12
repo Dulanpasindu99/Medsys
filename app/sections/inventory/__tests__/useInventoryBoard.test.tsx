@@ -1,5 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createQueryWrapper } from "../../../lib/test-query-client";
+import { queryKeys } from "../../../lib/query-keys";
 import { useInventoryBoard } from "../hooks/useInventoryBoard";
 
 vi.mock("../../../lib/api-client", () => ({
@@ -51,7 +54,9 @@ describe("useInventoryBoard", () => {
   });
 
   it("hydrates inventory items and selected movement history from shared queries", async () => {
-    const { result } = renderHook(() => useInventoryBoard());
+    const { result } = renderHook(() => useInventoryBoard(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.loadState.status).toBe("ready");
@@ -64,6 +69,9 @@ describe("useInventoryBoard", () => {
   });
 
   it("creates items and movements, then refetches the shared queries", async () => {
+    const invalidateQueriesSpy = vi
+      .spyOn(QueryClient.prototype, "invalidateQueries")
+      .mockResolvedValue(undefined);
     const inventoryQuery = buildQueryState({
       data: [{ id: 2, name: "Paracetamol", quantity: 10, category: "medicine" }],
     });
@@ -73,7 +81,9 @@ describe("useInventoryBoard", () => {
     mockedUseInventoryQuery.mockReturnValue(inventoryQuery as never);
     mockedUseInventoryMovementsQuery.mockReturnValue(movementQuery as never);
 
-    const { result } = renderHook(() => useInventoryBoard());
+    const { result } = renderHook(() => useInventoryBoard(), {
+      wrapper: createQueryWrapper(),
+    });
 
     await waitFor(() => {
       expect(result.current.selectedItemId).toBe(2);
@@ -94,6 +104,9 @@ describe("useInventoryBoard", () => {
       quantity: 25,
       unit: "units",
     });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.inventory.list,
+    });
     expect(inventoryQuery.refetch).toHaveBeenCalled();
 
     await act(async () => {
@@ -104,6 +117,9 @@ describe("useInventoryBoard", () => {
       type: "out",
       quantity: 1,
       note: "Quick out from frontend",
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.inventory.movements(2),
     });
     expect(movementQuery.refetch).toHaveBeenCalled();
     expect(inventoryQuery.refetch).toHaveBeenCalledTimes(2);

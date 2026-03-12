@@ -101,6 +101,25 @@ describe("/api/users BFF routes", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("forwards valid role filters to the backend users route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ users: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(
+      buildRequest("owner", { url: "http://localhost/api/users?role=doctor" })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/users?role=doctor");
+    expect(body).toEqual({ users: [] });
+  });
+
   it("rejects invalid user create payloads", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

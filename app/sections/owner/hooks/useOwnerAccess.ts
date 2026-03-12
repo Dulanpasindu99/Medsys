@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from "@tanstack/react-query";
 import { type SetStateAction, useMemo, useState } from 'react';
 import {
   createUser,
@@ -23,6 +24,7 @@ import {
   useCurrentUserQuery,
   useUsersQuery,
 } from '../../../lib/query-hooks';
+import { queryKeys } from "../../../lib/query-keys";
 import type { PermissionKey, Role, StaffUser } from '../types';
 
 type AnyRecord = Record<string, unknown>;
@@ -222,6 +224,7 @@ function mergeStaff(primary: StaffUser[], secondary: StaffUser[]) {
 }
 
 export function useOwnerAccess() {
+  const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
   const usersQuery = useUsersQuery();
   const auditLogsQuery = useAuditLogsQuery({ limit: 200 });
@@ -336,6 +339,17 @@ export function useOwnerAccess() {
     setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const refreshStaffQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.audit.logs() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
+      usersQuery.refetch(),
+      auditLogsQuery.refetch(),
+      appointmentsQuery.refetch(),
+    ]);
+  };
+
   const handleCreate = async () => {
     if (!name.trim() || !username.trim() || !password.trim()) {
       setCreateState(
@@ -356,11 +370,7 @@ export function useOwnerAccess() {
       setUsername('');
       setPassword('');
       setPermissions(defaultPermissions(role));
-      await Promise.all([
-        usersQuery.refetch(),
-        auditLogsQuery.refetch(),
-        appointmentsQuery.refetch(),
-      ]);
+      await refreshStaffQueries();
       setCreateState(successMutationState('Staff user created.'));
     } catch (error) {
       setCreateState(
@@ -399,9 +409,7 @@ export function useOwnerAccess() {
     refresh: () => {
       void Promise.all([
         currentUserQuery.refetch(),
-        usersQuery.refetch(),
-        auditLogsQuery.refetch(),
-        appointmentsQuery.refetch(),
+        refreshStaffQueries(),
       ]);
     },
   };

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   createInventoryItem,
@@ -21,6 +22,7 @@ import {
   useInventoryMovementsQuery,
   useInventoryQuery,
 } from "../../../lib/query-hooks";
+import { queryKeys } from "../../../lib/query-keys";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -54,6 +56,7 @@ export function toString(value: unknown, fallback = "") {
 }
 
 export function useInventoryBoard() {
+  const queryClient = useQueryClient();
   const inventoryQuery = useInventoryQuery();
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
@@ -139,6 +142,27 @@ export function useInventoryBoard() {
     resolvedSelectedItemId,
   ]);
 
+  const invalidateInventoryQueries = () => {
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.list }),
+      ...(resolvedSelectedItemId !== null
+        ? [
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.inventory.movements(resolvedSelectedItemId),
+            }),
+          ]
+        : []),
+    ]);
+  };
+
+  const refreshInventoryQueries = async () => {
+    await invalidateInventoryQueries();
+    await Promise.all([
+      inventoryQuery.refetch(),
+      ...(resolvedSelectedItemId !== null ? [movementQuery.refetch()] : []),
+    ]);
+  };
+
   const handleCreateItem = async () => {
     if (!newItemName.trim()) {
       setCreateState(errorMutationState("Item name is required before creating inventory."));
@@ -155,7 +179,7 @@ export function useInventoryBoard() {
       });
       setNewItemName("");
       setNewItemQty("0");
-      await inventoryQuery.refetch();
+      await refreshInventoryQueries();
       setCreateState(successMutationState("Inventory item created."));
     } catch (error) {
       setCreateState(
@@ -182,6 +206,7 @@ export function useInventoryBoard() {
         note: `Quick ${type} from frontend`,
       });
 
+      await invalidateInventoryQueries();
       const [movementResult, inventoryResult] = await Promise.allSettled([
         movementQuery.refetch(),
         inventoryQuery.refetch(),
@@ -224,10 +249,7 @@ export function useInventoryBoard() {
     movementState,
     refresh: () => {
       setMovementNotice(null);
-      void Promise.all([
-        inventoryQuery.refetch(),
-        ...(resolvedSelectedItemId ? [movementQuery.refetch()] : []),
-      ]);
+      void refreshInventoryQueries();
     },
     handleCreateItem,
     handleQuickMovement,
