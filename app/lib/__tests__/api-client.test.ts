@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createAppointment,
   createEncounter,
   createPatient,
   createUser,
@@ -210,6 +211,39 @@ describe("api client backend compatibility", () => {
       { id: 10, patientId: 7, status: "waiting" },
     ]);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments?status=waiting");
+  });
+
+  it("creates appointments through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ id: 12, patientId: 7, doctorId: 5, assistantId: 42, status: "waiting" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = {
+      patientId: 7,
+      doctorId: 5,
+      assistantId: 42,
+      scheduledAt: "2026-03-12T09:30:00.000Z",
+      status: "waiting" as const,
+      reason: "Follow-up review",
+      priority: "high" as const,
+    };
+
+    await expect(createAppointment(payload)).resolves.toEqual({
+      id: 12,
+      patientId: 7,
+      doctorId: 5,
+      assistantId: 42,
+      status: "waiting",
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
   });
 
   it("loads and saves encounters through the dedicated BFF route", async () => {

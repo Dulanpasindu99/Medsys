@@ -10,13 +10,14 @@ import { createSessionToken, SESSION_COOKIE_NAME } from "../../../lib/session";
 function buildRequest(
   url: string,
   method = "GET",
-  body?: unknown
+  body?: unknown,
+  role: "owner" | "doctor" | "assistant" = "doctor"
 ) {
   const sessionToken = createSessionToken({
     userId: 7,
-    role: "doctor",
-    email: "doctor@example.com",
-    name: "Dr. Jane Doe",
+    role,
+    email: `${role}@example.com`,
+    name: role,
   });
 
   return new NextRequest(url, {
@@ -118,7 +119,7 @@ describe("/api/appointments BFF routes", () => {
       priority: "normal",
     };
     const response = await POST(
-      buildRequest("http://localhost/api/appointments", "POST", payload)
+      buildRequest("http://localhost/api/appointments", "POST", payload, "assistant")
     );
     const body = await response.json();
 
@@ -132,5 +133,71 @@ describe("/api/appointments BFF routes", () => {
       assistantId: 3,
       status: "waiting",
     });
+  });
+
+  it("blocks appointment creation for roles without appointment write access", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = {
+      patientId: 7,
+      doctorId: 5,
+      assistantId: 3,
+      scheduledAt: "2026-03-09T08:00:00.000Z",
+      status: "waiting",
+      reason: "General review",
+      priority: "normal",
+    };
+
+    const response = await POST(
+      buildRequest("http://localhost/api/appointments", "POST", payload, "doctor")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Forbidden." });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid appointment create payloads with a validation envelope", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(
+      buildRequest(
+        "http://localhost/api/appointments",
+        "POST",
+        {
+          patientId: 0,
+          doctorId: "bad",
+          assistantId: 3,
+          scheduledAt: "09-03-2026",
+          status: "scheduled",
+          reason: "",
+          priority: "urgent",
+          extra: true,
+        },
+        "assistant"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Validation failed.");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        { field: "patientId", message: "Must be a positive integer." },
+        { field: "doctorId", message: "Must be an integer." },
+        { field: "scheduledAt", message: "Must be a valid ISO date-time string." },
+        {
+          field: "status",
+          message: "Must be one of waiting, in_consultation, completed, cancelled.",
+        },
+        { field: "reason", message: "Is required." },
+        { field: "priority", message: "Must be one of low, normal, high, critical." },
+        { field: "extra", message: "Unknown field." },
+      ])
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

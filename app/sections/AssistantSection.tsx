@@ -20,17 +20,25 @@ export default function AssistantSection() {
         setCompletedSearch,
         stats,
         availableDoctors,
+        patientOptions,
         filteredCompleted,
         addPatient,
         addAllergy,
+        scheduleForm,
+        setScheduleForm,
+        scheduleAppointment,
         markDoneAndNext,
         loadState,
         createPatientState,
         createPatientFeedback,
+        scheduleAppointmentState,
+        scheduleAppointmentFeedback,
         dispenseState,
         dispenseFeedback,
         canManageAssistantWorkflow,
         workflowActionDisabledReason,
+        canCreateAppointmentsInWorkflow,
+        appointmentActionDisabledReason,
         reload,
     } = useAssistantWorkflow();
     const popup = usePatientProfilePopup();
@@ -61,6 +69,7 @@ export default function AssistantSection() {
                                     <AsyncNotice tone="warning" message={workflowActionDisabledReason} />
                                 ) : null}
                                 {createPatientFeedback ? <AsyncNotice tone={createPatientFeedback.tone} message={createPatientFeedback.message} /> : null}
+                                {scheduleAppointmentFeedback ? <AsyncNotice tone={scheduleAppointmentFeedback.tone} message={scheduleAppointmentFeedback.message} /> : null}
                                 {dispenseFeedback ? <AsyncNotice tone={dispenseFeedback.tone} message={dispenseFeedback.message} /> : null}
 
                                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_2.2fr_1fr]">
@@ -91,6 +100,13 @@ export default function AssistantSection() {
                                     <AssistantPanelShell>
                                         <AssistantSidebar
                                             availableDoctors={availableDoctors}
+                                            patientOptions={patientOptions}
+                                            scheduleForm={scheduleForm}
+                                            onScheduleFormChange={setScheduleForm}
+                                            onScheduleAppointment={scheduleAppointment}
+                                            canCreateAppointments={canCreateAppointmentsInWorkflow}
+                                            appointmentActionDisabledReason={appointmentActionDisabledReason}
+                                            isScheduling={scheduleAppointmentState.status === 'pending'}
                                             completedSearch={completedSearch}
                                             onCompletedSearchChange={setCompletedSearch}
                                             filteredCompleted={filteredCompleted}

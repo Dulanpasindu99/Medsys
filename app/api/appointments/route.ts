@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/app/lib/api-auth";
+import { requirePermission, requireSession } from "@/app/lib/api-auth";
 import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
 import {
   parseJsonBody,
+  validateAppointmentCreatePayload,
   validateAppointmentStatusQuery,
   validationErrorResponse,
 } from "@/app/lib/api-validation";
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = requireSession(request);
+  const auth = requirePermission(request, "appointment.create");
   if (auth.error) {
     return auth.error;
   }
@@ -58,8 +59,13 @@ export async function POST(request: NextRequest) {
     return validationErrorResponse(parsedBody.issues);
   }
 
+  const validated = validateAppointmentCreatePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
+
   const backend = await callBackendRoute(request, "/v1/appointments", {
-    body: JSON.stringify(parsedBody.value),
+    body: JSON.stringify(validated.value),
     includeSearch: false,
   });
   if (!backend.ok) {

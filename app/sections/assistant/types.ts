@@ -1,3 +1,5 @@
+export type AssistantPriority = "Normal" | "Urgent" | "Critical";
+
 export interface Prescription {
   prescriptionId?: number;
   appointmentId?: number;
@@ -29,6 +31,26 @@ export type AssistantFormState = {
   allergyInput: string;
   allergies: string[];
   bloodGroup: string;
-  priority: "Normal" | "Urgent" | "Critical";
+  priority: AssistantPriority;
   regularDrug: string;
+};
+
+export type AssistantPatientOption = {
+  id: number;
+  name: string;
+  nic: string;
+};
+
+export type AssistantDoctorAvailability = {
+  id?: number;
+  name: string;
+  status: string;
+};
+
+export type AssistantScheduleFormState = {
+  patientId: string;
+  doctorId: string;
+  scheduledAt: string;
+  reason: string;
+  priority: AssistantPriority;
 };

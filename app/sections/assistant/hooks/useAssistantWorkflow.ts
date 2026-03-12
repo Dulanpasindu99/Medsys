@@ -1,6 +1,7 @@
 import { type SetStateAction, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  createAppointment,
   createPatient,
   dispensePrescription,
   type ApiClientError,
@@ -27,7 +28,14 @@ import {
   usePendingDispenseQueueQuery,
 } from "../../../lib/query-hooks";
 import { queryKeys } from "../../../lib/query-keys";
-import type { AssistantFormState, CompletedPatient, Prescription } from "../types";
+import type {
+  AssistantDoctorAvailability,
+  AssistantFormState,
+  AssistantPatientOption,
+  AssistantScheduleFormState,
+  CompletedPatient,
+  Prescription,
+} from "../types";
 
 type AnyRecord = Record<string, unknown>;
 const EMPTY_ROWS: unknown[] = [];
@@ -73,6 +81,17 @@ function toDisplayTime(value: unknown) {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw;
   return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function toDateTimeLocalValue(value: Date) {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function getDefaultScheduledAt() {
+  const nextSlot = new Date();
+  nextSlot.setMinutes(Math.ceil(nextSlot.getMinutes() / 15) * 15, 0, 0);
+  return toDateTimeLocalValue(nextSlot);
 }
 
 function normalizePatientsById(rawPatients: unknown) {
@@ -221,24 +240,47 @@ function normalizeCompletedPatients(rawCompletedAppointments: unknown, patientBy
   });
 }
 
-function normalizeDoctorAvailability(rawAppointments: unknown) {
-  const doctorMap = new Map<string, { name: string; status: string }>();
+function normalizeDoctorAvailability(rawAppointments: unknown): AssistantDoctorAvailability[] {
+  const doctorMap = new Map<string, AssistantDoctorAvailability>();
   asArray(rawAppointments).forEach((row, index) => {
     const nestedDoctor = asRecord(row.doctor);
+    const doctorId = toNumber(row.doctorId ?? row.doctor_id ?? nestedDoctor?.id) ?? undefined;
     const doctorName = toString(
       row.doctorName ??
       row.doctor_name ??
       nestedDoctor?.name,
-      `Doctor ${toNumber(row.doctorId ?? row.doctor_id) ?? index + 1}`
+      `Doctor ${doctorId ?? index + 1}`
     );
     const statusRaw = toString(row.status, "");
     const isOnline = statusRaw === "waiting" || statusRaw === "in_consultation";
-    const current = doctorMap.get(doctorName);
+    const key = doctorId !== undefined ? String(doctorId) : doctorName.toLowerCase();
+    const current = doctorMap.get(key);
     if (!current || (current.status !== "Online" && isOnline)) {
-      doctorMap.set(doctorName, { name: doctorName, status: isOnline ? "Online" : "Offline" });
+      doctorMap.set(key, {
+        id: doctorId,
+        name: doctorName,
+        status: isOnline ? "Online" : "Offline",
+      });
     }
   });
   return Array.from(doctorMap.values());
+}
+
+function normalizePatientOptions(rawPatients: unknown): AssistantPatientOption[] {
+  return asArray(rawPatients)
+    .map((row, index) => {
+      const id = toNumber(row.id ?? row.patientId ?? row.patient_id);
+      if (id === null) {
+        return null;
+      }
+
+      return {
+        id,
+        name: toString(row.name ?? row.fullName, `Patient ${index + 1}`),
+        nic: toString(row.nic, "N/A"),
+      } satisfies AssistantPatientOption;
+    })
+    .filter((patient): patient is AssistantPatientOption => !!patient);
 }
 
 function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
@@ -278,15 +320,36 @@ export function useAssistantWorkflow() {
 
   const [completedSearch, setCompletedSearch] = useState("");
   const [createPatientState, setCreatePatientState] = useState<MutationState>(idleMutationState());
+  const [scheduleAppointmentState, setScheduleAppointmentState] = useState<MutationState>(
+    idleMutationState()
+  );
   const [dispenseState, setDispenseState] = useState<MutationState>(idleMutationState());
+  const [scheduleForm, setScheduleFormState] = useState<AssistantScheduleFormState>({
+    patientId: "",
+    doctorId: "",
+    scheduledAt: getDefaultScheduledAt(),
+    reason: "",
+    priority: "Normal",
+  });
 
   const clearCreatePatientState = () => {
     setCreatePatientState((current) => (current.status === "idle" ? current : idleMutationState()));
   };
 
+  const clearScheduleAppointmentState = () => {
+    setScheduleAppointmentState((current) =>
+      current.status === "idle" ? current : idleMutationState()
+    );
+  };
+
   const setFormState = (value: SetStateAction<AssistantFormState>) => {
     clearCreatePatientState();
     setFormStateState(value);
+  };
+
+  const setScheduleForm = (value: SetStateAction<AssistantScheduleFormState>) => {
+    clearScheduleAppointmentState();
+    setScheduleFormState(value);
   };
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const patientById = useMemo(() => normalizePatientsById(rawPatients), [rawPatients]);
@@ -302,6 +365,10 @@ export function useAssistantWorkflow() {
     () => normalizeDoctorAvailability(allAppointmentsQuery.data ?? EMPTY_ROWS),
     [allAppointmentsQuery.data]
   );
+  const patientOptions = useMemo(
+    () => normalizePatientOptions(rawPatients),
+    [rawPatients]
+  );
   const stats = useMemo(
     () => normalizeStats(analyticsOverviewQuery.data ?? {}, rawPatients),
     [analyticsOverviewQuery.data, rawPatients]
@@ -315,12 +382,21 @@ export function useAssistantWorkflow() {
       : currentUserQuery.data?.role && !canManageAssistantWorkflow
         ? "Only assistant and owner accounts can complete intake and dispense actions."
         : null;
+  const canCreateAppointmentsInWorkflow =
+    !!currentUserQuery.data?.role && hasPermission(currentUserQuery.data.role, "appointment.create");
+  const appointmentActionDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? "Checking appointment scheduling access."
+      : currentUserQuery.data?.role && !canCreateAppointmentsInWorkflow
+        ? "Only assistant and owner accounts can schedule appointments."
+        : null;
 
   const refreshAssistantQueries = async (includeCurrentUser = false) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.pendingDispenseQueue }),
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
       ...(includeCurrentUser
         ? [queryClient.invalidateQueries({ queryKey: queryKeys.auth.currentUser })]
@@ -406,7 +482,7 @@ export function useAssistantWorkflow() {
     }
     try {
       setCreatePatientState(pendingMutationState());
-      await createPatient({
+      const createdPatient = await createPatient({
         name: formState.name,
         nic: formState.nic,
         age: Number(formState.age),
@@ -419,6 +495,12 @@ export function useAssistantWorkflow() {
             ? "high"
             : "normal",
       });
+      const createdPatientRecord = asRecord(createdPatient);
+      const createdPatientId = toNumber(
+        createdPatientRecord?.id ??
+          createdPatientRecord?.patientId ??
+          createdPatientRecord?.patient_id
+      );
 
       setFormState((prev) => ({
         ...prev,
@@ -431,6 +513,12 @@ export function useAssistantWorkflow() {
         regularDrug: "",
         priority: "Normal",
       }));
+      if (createdPatientId !== null) {
+        setScheduleForm((prev) => ({
+          ...prev,
+          patientId: String(createdPatientId),
+        }));
+      }
       await refreshAssistantQueries();
       setCreatePatientState(successMutationState("Patient added successfully."));
     } catch (error) {
@@ -447,6 +535,86 @@ export function useAssistantWorkflow() {
       allergies: Array.from(new Set([...prev.allergies.filter((v) => v !== "No allergies"), entry])),
       allergyInput: "",
     }));
+  };
+
+  const scheduleAppointment = async () => {
+    if (!canCreateAppointmentsInWorkflow) {
+      setScheduleAppointmentState(
+        errorMutationState(
+          appointmentActionDisabledReason ??
+            "Appointment scheduling access is required before creating appointments."
+        )
+      );
+      return;
+    }
+
+    const patientId = Number(scheduleForm.patientId);
+    const doctorId = Number(scheduleForm.doctorId);
+    if (!Number.isInteger(patientId) || patientId <= 0) {
+      setScheduleAppointmentState(
+        errorMutationState("Select a patient before scheduling an appointment.")
+      );
+      return;
+    }
+
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      setScheduleAppointmentState(
+        errorMutationState("Select a doctor before scheduling an appointment.")
+      );
+      return;
+    }
+
+    if (!scheduleForm.reason.trim()) {
+      setScheduleAppointmentState(
+        errorMutationState("Consultation reason is required before scheduling an appointment.")
+      );
+      return;
+    }
+
+    if (!scheduleForm.scheduledAt.trim()) {
+      setScheduleAppointmentState(
+        errorMutationState("Select an appointment time before scheduling.")
+      );
+      return;
+    }
+
+    if (!currentUserId) {
+      setScheduleAppointmentState(
+        errorMutationState("Assistant identity is missing for appointment scheduling.")
+      );
+      return;
+    }
+
+    try {
+      setScheduleAppointmentState(pendingMutationState());
+      await createAppointment({
+        patientId,
+        doctorId,
+        assistantId: currentUserId,
+        scheduledAt: new Date(scheduleForm.scheduledAt).toISOString(),
+        status: "waiting",
+        reason: scheduleForm.reason.trim(),
+        priority:
+          scheduleForm.priority === "Critical"
+            ? "critical"
+            : scheduleForm.priority === "Urgent"
+              ? "high"
+              : "normal",
+      });
+
+      setScheduleForm({
+        patientId: "",
+        doctorId: "",
+        scheduledAt: getDefaultScheduledAt(),
+        reason: "",
+        priority: "Normal",
+      });
+      await refreshAssistantQueries();
+      setScheduleAppointmentState(successMutationState("Appointment scheduled successfully."));
+    } catch (error) {
+      const message = (error as ApiClientError)?.message ?? "Failed to schedule appointment.";
+      setScheduleAppointmentState(errorMutationState(message));
+    }
   };
 
   const markDoneAndNext = async () => {
@@ -494,6 +662,10 @@ export function useAssistantWorkflow() {
     pendingMessage: "Adding patient...",
     errorMessage: "Failed to create patient.",
   });
+  const scheduleAppointmentFeedback = getMutationFeedback(scheduleAppointmentState, {
+    pendingMessage: "Scheduling appointment...",
+    errorMessage: "Failed to schedule appointment.",
+  });
   const dispenseFeedback = getMutationFeedback(dispenseState, {
     pendingMessage: "Saving dispense action...",
     errorMessage: "Failed to mark dispense.",
@@ -511,17 +683,25 @@ export function useAssistantWorkflow() {
     setCompletedSearch,
     stats,
     availableDoctors,
+    patientOptions,
     filteredCompleted,
     addPatient,
     addAllergy,
+    scheduleForm,
+    setScheduleForm,
+    scheduleAppointment,
     markDoneAndNext,
     loadState,
     createPatientState,
     createPatientFeedback,
+    scheduleAppointmentState,
+    scheduleAppointmentFeedback,
     dispenseState,
     dispenseFeedback,
     canManageAssistantWorkflow,
     workflowActionDisabledReason,
+    canCreateAppointmentsInWorkflow,
+    appointmentActionDisabledReason,
     reload: () => {
       void refreshAssistantQueries(true);
     },
@@ -532,6 +712,10 @@ export function useAssistantWorkflow() {
       patientsQuery.isFetching ||
       analyticsOverviewQuery.isFetching ||
       currentUserQuery.isFetching,
-    syncError: loadState.error ?? createPatientState.error ?? dispenseState.error,
+    syncError:
+      loadState.error ??
+      createPatientState.error ??
+      scheduleAppointmentState.error ??
+      dispenseState.error,
   };
 }

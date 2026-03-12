@@ -258,7 +258,10 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   });
   if (!mobile.ok) issues.push(...mobile.issues);
 
-  const priority = normalizePatientPriority(payload.priority, "priority");
+  const priority =
+    payload.priority === undefined
+      ? failure([{ field: "priority", message: "Is required." }])
+      : normalizePatientPriority(payload.priority, "priority");
   if (!priority.ok) issues.push(...priority.issues);
 
   if (
@@ -483,6 +486,104 @@ export function validateAppointmentStatusQuery(value: string | null) {
   }
 
   return success(value);
+}
+
+function normalizeRequiredPositiveInteger(value: unknown, field: string) {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return failure([{ field, message: "Must be an integer." }]);
+  }
+
+  if (value <= 0) {
+    return failure([{ field, message: "Must be a positive integer." }]);
+  }
+
+  return success(value);
+}
+
+function normalizeAppointmentStatus(
+  value: unknown,
+  field: string
+): ValidationResult<"waiting" | "in_consultation" | "completed" | "cancelled"> {
+  if (value !== "waiting" && value !== "in_consultation" && value !== "completed" && value !== "cancelled") {
+    return failure([
+      {
+        field,
+        message: "Must be one of waiting, in_consultation, completed, cancelled.",
+      },
+    ]);
+  }
+
+  return success(value);
+}
+
+function normalizeRequiredIsoDateTime(value: unknown, field: string) {
+  const normalized = normalizeRequiredString(value, field, { maxLength: 64 });
+  if (!normalized.ok) {
+    return normalized;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(normalized.value) || Number.isNaN(Date.parse(normalized.value))) {
+    return failure([{ field, message: "Must be a valid ISO date-time string." }]);
+  }
+
+  return normalized;
+}
+
+export function validateAppointmentCreatePayload(payload: Record<string, unknown>) {
+  const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
+    "patientId",
+    "doctorId",
+    "assistantId",
+    "scheduledAt",
+    "status",
+    "reason",
+    "priority",
+  ]);
+
+  const patientId = normalizeRequiredPositiveInteger(payload.patientId, "patientId");
+  if (!patientId.ok) issues.push(...patientId.issues);
+
+  const doctorId = normalizeRequiredPositiveInteger(payload.doctorId, "doctorId");
+  if (!doctorId.ok) issues.push(...doctorId.issues);
+
+  const assistantId = normalizeRequiredPositiveInteger(payload.assistantId, "assistantId");
+  if (!assistantId.ok) issues.push(...assistantId.issues);
+
+  const scheduledAt = normalizeRequiredIsoDateTime(payload.scheduledAt, "scheduledAt");
+  if (!scheduledAt.ok) issues.push(...scheduledAt.issues);
+
+  const status = normalizeAppointmentStatus(payload.status, "status");
+  if (!status.ok) issues.push(...status.issues);
+
+  const reason = normalizeRequiredString(payload.reason, "reason", { maxLength: 255 });
+  if (!reason.ok) issues.push(...reason.issues);
+
+  const priority = normalizePatientPriority(payload.priority, "priority");
+  if (!priority.ok) issues.push(...priority.issues);
+
+  if (
+    issues.length > 0 ||
+    !patientId.ok ||
+    !doctorId.ok ||
+    !assistantId.ok ||
+    !scheduledAt.ok ||
+    !status.ok ||
+    !reason.ok ||
+    !priority.ok ||
+    priority.value === undefined
+  ) {
+    return failure(issues);
+  }
+
+  return success({
+    patientId: patientId.value,
+    doctorId: doctorId.value,
+    assistantId: assistantId.value,
+    scheduledAt: scheduledAt.value,
+    status: status.value,
+    reason: reason.value,
+    priority: priority.value,
+  });
 }
 
 export function validateDiseaseSuggestionQuery(value: string | null) {

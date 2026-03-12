@@ -68,18 +68,32 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     completedSearch: "",
     setCompletedSearch: vi.fn(),
     stats: { total: 12, male: 7, female: 5, existing: 10, new: 2 },
-    availableDoctors: [{ name: "Dr. House", status: "Online" }],
+    availableDoctors: [{ id: 5, name: "Dr. House", status: "Online" }],
+    patientOptions: [{ id: 7, name: "Jane Doe", nic: "990011223V" }],
+    scheduleForm: {
+      patientId: "",
+      doctorId: "",
+      scheduledAt: "2026-03-12T09:30",
+      reason: "",
+      priority: "Normal" as const,
+    },
+    setScheduleForm: vi.fn(),
     filteredCompleted: [{ name: "Jane Doe", age: 31, nic: "990011223V", time: "10:30", profileId: "7" }],
     addPatient: vi.fn(),
     addAllergy: vi.fn(),
+    scheduleAppointment: vi.fn(),
     markDoneAndNext: vi.fn(),
     loadState: readyLoadState(),
     createPatientState: idleMutationState(),
     createPatientFeedback: null,
+    scheduleAppointmentState: idleMutationState(),
+    scheduleAppointmentFeedback: null,
     dispenseState: idleMutationState(),
     dispenseFeedback: null,
     canManageAssistantWorkflow: true,
     workflowActionDisabledReason: null,
+    canCreateAppointmentsInWorkflow: true,
+    appointmentActionDisabledReason: null,
     reload: vi.fn(),
     isSyncing: false,
     syncError: null,
@@ -117,9 +131,10 @@ describe("AssistantSection", () => {
     const openProfile = vi.fn();
     const closeProfile = vi.fn();
     const markDoneAndNext = vi.fn();
+    const scheduleAppointment = vi.fn();
 
     mockedUseAssistantWorkflow.mockReturnValue(
-      buildWorkflowState({ markDoneAndNext })
+      buildWorkflowState({ markDoneAndNext, scheduleAppointment })
     );
     mockedUsePatientProfilePopup.mockReturnValue({
       selectedProfileId: "7",
@@ -130,9 +145,11 @@ describe("AssistantSection", () => {
     render(<AssistantSection />);
 
     await user.click(screen.getByRole("button", { name: /jane doe/i }));
+    await user.click(screen.getByRole("button", { name: /schedule appointment/i }));
     await user.click(screen.getByRole("button", { name: /done & next/i }));
 
     expect(openProfile).toHaveBeenCalledWith("7");
+    expect(scheduleAppointment).toHaveBeenCalledTimes(1);
     expect(markDoneAndNext).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("patient-profile-modal")).toHaveTextContent("7");
   });
@@ -143,6 +160,9 @@ describe("AssistantSection", () => {
         canManageAssistantWorkflow: false,
         workflowActionDisabledReason:
           "Only assistant and owner accounts can complete intake and dispense actions.",
+        canCreateAppointmentsInWorkflow: false,
+        appointmentActionDisabledReason:
+          "Only assistant and owner accounts can schedule appointments.",
       })
     );
 
@@ -150,9 +170,13 @@ describe("AssistantSection", () => {
 
     expect(screen.getByRole("button", { name: /done & next/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /add patient/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /schedule appointment/i })).toBeDisabled();
     expect(
       screen.getAllByText(/only assistant and owner accounts can complete intake and dispense actions/i)
         .length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/only assistant and owner accounts can schedule appointments/i).length
     ).toBeGreaterThan(0);
   });
 });
