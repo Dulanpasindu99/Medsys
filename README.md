@@ -8,6 +8,10 @@ This repository now keeps two primary documentation deliverables:
 - Developer document:
   - Markdown: `docs/Medsys_Developer_Documentation.md`
   - PDF: `docs/Medsys_Developer_Documentation.pdf`
+- Frontend client specification:
+  - Markdown source: `docs/MEDSYS_Frontend_Client_Specification.md`
+  - Styled HTML source: `docs/MEDSYS_Frontend_Client_Specification.html`
+  - Final PDF deliverable: `docs/MEDSYS_Frontend_Client_Specification.pdf`
 - Roadmap:
   - Markdown: `ROADMAP.md`
 

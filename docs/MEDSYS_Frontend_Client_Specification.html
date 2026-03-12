@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MEDSYS Frontend Client Specification</title>
+  <style>
+    :root {
+      --ink: #182531;
+      --muted: #596673;
+      --line: #d8dee4;
+      --panel: #f6f8fa;
+      --accent: #0f766e;
+      --accent-soft: #e7f5f3;
+      --accent-strong: #0a4f4a;
+      --gold: #b8872e;
+      --shadow: 0 18px 40px rgba(17, 24, 39, 0.08);
+    }
+
+    @page {
+      size: A4;
+      margin: 16mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    html {
+      background: #dde4e8;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 34%),
+        linear-gradient(180deg, #eef3f5 0%, #f8fafb 100%);
+      font-family: "Aptos", "Segoe UI", "Calibri", sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+
+    .document {
+      width: 190mm;
+      margin: 0 auto;
+      padding: 10mm 0 18mm;
+    }
+
+    .cover {
+      min-height: 265mm;
+      padding: 18mm;
+      border-radius: 20px;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(255, 255, 255, 0) 42%),
+        linear-gradient(180deg, #ffffff 0%, #fbfcfc 100%);
+      border: 1px solid rgba(15, 118, 110, 0.14);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+    }
+
+    .cover::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 16px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--gold) 100%);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 26mm;
+      color: var(--accent-strong);
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, var(--accent), var(--gold));
+      box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.08);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 120mm;
+      font-family: "Aptos Display", "Segoe UI", sans-serif;
+      font-size: 28pt;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      max-width: 120mm;
+      margin-top: 12px;
+      font-size: 13pt;
+      color: var(--muted);
+    }
+
+    .status-row {
+      margin-top: 14mm;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 118, 110, 0.16);
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 10pt;
+      font-weight: 700;
+    }
+
+    .meta-grid {
+      margin-top: 18mm;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .meta-card {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(248, 250, 251, 0.96);
+      border: 1px solid var(--line);
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .meta-value {
+      font-size: 12pt;
+      font-weight: 600;
+    }
+
+    .cover-note {
+      margin-top: 18mm;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(24, 37, 49, 0.96), rgba(31, 55, 73, 0.96));
+      color: #eef4f7;
+    }
+
+    .cover-note strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 10pt;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    main {
+      margin-top: 10mm;
+      display: grid;
+      gap: 10mm;
+    }
+
+    .section {
+      padding: 14px 16px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.97);
+      border: 1px solid rgba(24, 37, 49, 0.08);
+      box-shadow: var(--shadow);
+      break-inside: avoid;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--accent-soft);
+      font-family: "Aptos Display", "Segoe UI", sans-serif;
+      font-size: 17pt;
+      line-height: 1.25;
+      color: var(--accent-strong);
+    }
+
+    h3 {
+      margin: 20px 0 10px;
+      font-size: 12.5pt;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0 12px 18px;
+      padding: 0;
+    }
+
+    li {
+      margin: 0 0 6px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .highlight {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fafcfb 0%, #f4f8f7 100%);
+      border: 1px solid var(--line);
+    }
+
+    .highlight strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent-strong);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 10.5pt;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel);
+      color: var(--accent-strong);
+      font-size: 9.5pt;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .small {
+      font-size: 10pt;
+      color: var(--muted);
+    }
+
+    @media print {
+      html,
+      body {
+        background: #ffffff;
+      }
+
+      .document {
+        width: auto;
+        margin: 0;
+        padding: 0;
+      }
+
+      .section,
+      .cover {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <section class="cover">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>MEDSYS Specification Series</span>
+      </div>
+
+      <h1>MEDSYS Frontend Client Specification</h1>
+      <p class="subtitle">Client overview, scope, user flows, requirements baseline, and implementation position for the MEDSYS frontend.</p>
+
+      <div class="status-row">
+        <span class="pill">Client Review Draft</span>
+        <span class="pill">Frontend 0.1.0</span>
+        <span class="pill">March 12, 2026</span>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-card">
+          <span class="meta-label">Audience</span>
+          <div class="meta-value">Clients, sponsors, business stakeholders, delivery management</div>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Document Version</span>
+          <div class="meta-value">1.0</div>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">System Version</span>
+          <div class="meta-value">Frontend 0.1.0</div>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Status</span>
+          <div class="meta-value">Client Review Draft</div>
+        </div>
+      </div>
+
+      <div class="cover-note">
+        <strong>Document Intent</strong>
+        This specification provides the full client-facing frontend baseline without removing sections from the original documentation structure.
+      </div>
+    </section>
+
+    <main>
+      <section class="section">
+        <h2>1. Executive Summary</h2>
+        <p>Medsys is a web-based healthcare operations platform designed for internal clinic use. The current product supports role-based workflows for owners, doctors, and assistants across patient management, appointments, encounters, prescriptions, inventory, analytics, AI-assisted summaries, and patient-profile viewing.</p>
+        <p>The application is positioned as an operational clinical workspace rather than a public patient portal. It is built to give staff one controlled interface for day-to-day patient flow, consultation support, dispensing support, staff administration, and operational visibility.</p>
+      </section>
+
+      <section class="section">
+        <h2>2. Purpose</h2>
+        <p>This document provides a client-facing view of the Medsys frontend application. It explains:</p>
+        <ul>
+          <li>what the system is</li>
+          <li>why it exists</li>
+          <li>what it currently does</li>
+          <li>which user roles it supports</li>
+          <li>the major UI flows</li>
+          <li>the current functional and non-functional requirements baseline</li>
+          <li>the current technology baseline</li>
+        </ul>
+        <p>This document is intended to support product review, stakeholder communication, procurement discussion, implementation planning, and business sign-off conversations.</p>
+      </section>
+
+      <section class="section">
+        <h2>3. Aims And Objectives</h2>
+        <p>The current Medsys implementation is intended to:</p>
+        <ul>
+          <li>centralize clinic operations in one browser-based workspace</li>
+          <li>reduce fragmented staff workflows across patient intake, consultation, and dispensing</li>
+          <li>provide clear role-based access to operational and clinical functions</li>
+          <li>improve visibility of appointments, patient records, prescriptions, and inventory</li>
+          <li>provide a maintainable path toward a production-grade healthcare platform</li>
+        </ul>
+        <p>Current business objectives supported by the product include:</p>
+        <ul>
+          <li>faster patient handling from registration through consultation and dispensing</li>
+          <li>clearer doctor access to patient context</li>
+          <li>assistant support for intake and dispense queues</li>
+          <li>owner visibility into staff and operational activity</li>
+          <li>better operational oversight through analytics and AI summary views</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>4. Product Scope</h2>
+        <div class="grid-2">
+          <div class="highlight">
+            <strong>In scope</strong>
+            <ul>
+              <li>authentication and role-based access</li>
+              <li>doctor workspace</li>
+              <li>assistant workspace</li>
+              <li>patient directory</li>
+              <li>patient profile</li>
+              <li>appointments</li>
+              <li>encounters</li>
+              <li>prescriptions and dispensing</li>
+              <li>inventory</li>
+              <li>analytics</li>
+              <li>AI insights</li>
+              <li>owner workspace</li>
+            </ul>
+          </div>
+          <div class="highlight">
+            <strong>Out of scope</strong>
+            <ul>
+              <li>patient self-service portal</li>
+              <li>billing and claims workflows</li>
+              <li>laboratory system integration</li>
+              <li>imaging integration</li>
+              <li>external pharmacy integration</li>
+              <li>formal compliance certification</li>
+              <li>advanced enterprise reporting</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>5. Product Overview</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Current Responsibilities</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Owner</strong></td>
+              <td>staff oversight, access visibility, high-level operational administration</td>
+            </tr>
+            <tr>
+              <td><strong>Doctor</strong></td>
+              <td>waiting queue review, patient context review, encounter submission, diagnosis, tests, and prescription entry</td>
+            </tr>
+            <tr>
+              <td><strong>Assistant</strong></td>
+              <td>patient intake, dispense queue handling, workflow coordination</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>The application uses a protected shell experience for authenticated users, with route and action visibility controlled by shared authorization rules.</p>
+      </section>
+
+      <section class="section">
+        <h2>6. Technology Stack</h2>
+        <p>Current frontend technology baseline:</p>
+        <ul>
+          <li>Next.js 16</li>
+          <li>React 19</li>
+          <li>TypeScript 5</li>
+          <li>Tailwind CSS 4</li>
+          <li>TanStack Query</li>
+          <li>Vitest and Testing Library</li>
+        </ul>
+        <p>Current architecture baseline:</p>
+        <ul>
+          <li>browser calls same-origin <code>/api/...</code> routes</li>
+          <li>frontend BFF routes call backend <code>/v1/...</code> services server-side</li>
+          <li>signed application session cookies are used for app identity</li>
+          <li>backend access and refresh tokens are stored in secure <code>httpOnly</code> cookies</li>
+        </ul>
+        <p>This architecture keeps backend tokens out of browser JavaScript and provides a controlled integration layer between the UI and backend services.</p>
+      </section>
+
+      <section class="section">
+        <h2>7. User Roles And Permission Model</h2>
+        <p>The current application supports three operational roles:</p>
+        <ul>
+          <li><code>Owner</code></li>
+          <li><code>Doctor</code></li>
+          <li><code>Assistant</code></li>
+        </ul>
+        <p>Current permission behavior:</p>
+        <ul>
+          <li>route access is role-aware</li>
+          <li>navigation visibility is permission-aware</li>
+          <li>selected UI actions are aligned to backend policy</li>
+          <li>internal API routes enforce shared permissions on the frontend BFF layer</li>
+        </ul>
+        <p>Current important policy example:</p>
+        <ul>
+          <li>appointment creation is currently allowed for <code>Owner</code> and <code>Assistant</code></li>
+          <li>appointment creation is not currently allowed for <code>Doctor</code></li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>8. Core UI Flows</h2>
+
+        <h3>8.1 Login And Session Flow</h3>
+        <ol>
+          <li>User opens the login page.</li>
+          <li>Credentials are submitted to the frontend authentication route.</li>
+          <li>Frontend authenticates against the backend.</li>
+          <li>Signed app session and secure backend auth cookies are created.</li>
+          <li>User is redirected to the correct workspace based on role.</li>
+        </ol>
+
+        <h3>8.2 Doctor Workflow</h3>
+        <ol>
+          <li>Doctor enters the doctor workspace.</li>
+          <li>Waiting appointments are loaded.</li>
+          <li>Doctor selects a patient from the queue.</li>
+          <li>Patient context, vitals, and allergies are loaded when available.</li>
+          <li>Doctor records notes, diagnoses, tests, prescriptions, and next-visit information.</li>
+          <li>Encounter is submitted to the backend.</li>
+        </ol>
+
+        <h3>8.3 Assistant Workflow</h3>
+        <ol>
+          <li>Assistant enters the assistant workspace.</li>
+          <li>Pending dispense queue and supporting workflow data are loaded.</li>
+          <li>Assistant may register a new patient through intake.</li>
+          <li>Assistant selects a pending prescription.</li>
+          <li>Prescription details are displayed.</li>
+          <li>Assistant completes dispensing using available inventory.</li>
+        </ol>
+
+        <h3>8.4 Patient Directory And Profile Flow</h3>
+        <ol>
+          <li>User opens the patient directory.</li>
+          <li>Patient list is loaded.</li>
+          <li>User searches or selects a patient.</li>
+          <li>Patient profile view loads summary, family, allergies, conditions, vitals, and timeline feeds.</li>
+          <li>The screen shows warnings if some detail feeds are partially unavailable.</li>
+        </ol>
+
+        <h3>8.5 Owner Workflow</h3>
+        <ol>
+          <li>Owner opens the owner workspace.</li>
+          <li>Backend-backed staff list and operational visibility data are loaded.</li>
+          <li>Owner reviews staff access information.</li>
+          <li>Owner creates staff accounts through the users API.</li>
+        </ol>
+
+        <h3>8.6 Analytics And AI Flow</h3>
+        <ol>
+          <li>Analytics workspace loads operational overview and supporting feeds.</li>
+          <li>AI workspace derives summary insights from analytics, appointments, patients, and audit activity.</li>
+          <li>Both screens provide loading, error, empty, and retry states.</li>
+        </ol>
+
+        <h3>8.7 Inventory Flow</h3>
+        <ol>
+          <li>Inventory list loads.</li>
+          <li>User selects an item.</li>
+          <li>Item details and movement history are displayed.</li>
+          <li>User creates items or inventory movements through backend-backed routes.</li>
+        </ol>
+      </section>
+
+      <section class="section">
+        <h2>9. Functional Requirements Baseline</h2>
+        <p>The current functional requirements baseline includes the following major capabilities.</p>
+
+        <h3>9.1 Authentication And Access</h3>
+        <ul>
+          <li>login</li>
+          <li>logout</li>
+          <li>authenticated session handling</li>
+          <li>route protection</li>
+          <li>role-based workspace routing</li>
+          <li>backend-aware auth status checks</li>
+        </ul>
+
+        <h3>9.2 Doctor Functions</h3>
+        <ul>
+          <li>waiting queue display</li>
+          <li>patient context loading</li>
+          <li>encounter notes</li>
+          <li>diagnoses</li>
+          <li>tests</li>
+          <li>prescription entry</li>
+          <li>next visit entry</li>
+          <li>encounter submission</li>
+        </ul>
+
+        <h3>9.3 Assistant Functions</h3>
+        <ul>
+          <li>intake form</li>
+          <li>patient creation</li>
+          <li>pending dispense queue</li>
+          <li>prescription detail display</li>
+          <li>dispense action completion</li>
+        </ul>
+
+        <h3>9.4 Patient Functions</h3>
+        <ul>
+          <li>patient directory listing</li>
+          <li>patient search</li>
+          <li>patient profile launch</li>
+          <li>patient history access</li>
+        </ul>
+
+        <h3>9.5 Owner Functions</h3>
+        <ul>
+          <li>staff visibility</li>
+          <li>backend-backed staff account creation</li>
+          <li>permission preset presentation</li>
+        </ul>
+
+        <h3>9.6 Operations Functions</h3>
+        <ul>
+          <li>appointments listing and creation</li>
+          <li>encounters listing and submission</li>
+          <li>inventory listing and movement creation</li>
+          <li>analytics overview</li>
+          <li>AI insight generation</li>
+          <li>ICD-10 suggestion access</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>10. Non-Functional Requirements Baseline</h2>
+        <p>The current non-functional requirements baseline includes:</p>
+
+        <h3>10.1 Security</h3>
+        <ul>
+          <li>secure cookie-based session model</li>
+          <li>backend tokens not exposed to browser JavaScript</li>
+          <li>same-origin BFF integration model</li>
+          <li>protected shell routing</li>
+          <li>permission-aware frontend route handling</li>
+        </ul>
+
+        <h3>10.2 Reliability And Error Handling</h3>
+        <ul>
+          <li>backend availability gating</li>
+          <li>dedicated unavailable and error pages</li>
+          <li>explicit loading, empty, ready, and error states</li>
+          <li>retry behavior on many data screens</li>
+          <li>partial-data warnings where fallback rendering is used</li>
+        </ul>
+
+        <h3>10.3 Maintainability</h3>
+        <ul>
+          <li>feature-organized section structure</li>
+          <li>shared API client</li>
+          <li>shared query/server-state layer</li>
+          <li>shared authorization model</li>
+          <li>centralized BFF integration pattern</li>
+        </ul>
+
+        <h3>10.4 Quality Control</h3>
+        <ul>
+          <li>linting</li>
+          <li>type checking</li>
+          <li>unit and component testing</li>
+          <li>route and hook coverage for core frontend behavior</li>
+        </ul>
+
+        <h3>10.5 Performance And UX</h3>
+        <ul>
+          <li>responsive browser UI</li>
+          <li>disabled actions during in-flight operations</li>
+          <li>server-state caching and refetch handling through shared query hooks</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>11. Current Implementation Status</h2>
+        <p>Current implementation position:</p>
+        <ul>
+          <li>frontend BE-020 integration closure is complete from the frontend scope</li>
+          <li>active production browser flows use backend-backed <code>/api/...</code> BFF routes</li>
+          <li>prototype persistence has been removed from the active frontend tree</li>
+          <li>query-based server-state infrastructure is in place across the main read-heavy sections</li>
+        </ul>
+        <p>Current product maturity statement:</p>
+        <ul>
+          <li>the application is structurally strong for continued development</li>
+          <li>it is not yet a completed enterprise healthcare platform</li>
+          <li>additional work is still required for deeper workflow hardening, compliance, and production operations</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>12. Known Limitations</h2>
+        <p>Current known limitations include:</p>
+        <ul>
+          <li>no patient self-service or public portal</li>
+          <li>no billing or claims module</li>
+          <li>no full compliance sign-off package</li>
+          <li>no complete audit-governance program at enterprise depth</li>
+          <li>some workflows still require future backend policy refinement</li>
+          <li>some advanced clinical safety and interoperability capabilities are not yet implemented</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>13. Version And Document Control</h2>
+        <table>
+          <tbody>
+            <tr>
+              <th>Document Version</th>
+              <td>1.0</td>
+            </tr>
+            <tr>
+              <th>Document Date</th>
+              <td>March 12, 2026</td>
+            </tr>
+            <tr>
+              <th>System Version Referenced</th>
+              <td>Frontend 0.1.0</td>
+            </tr>
+            <tr>
+              <th>Status</th>
+              <td>client review draft</td>
+            </tr>
+            <tr>
+              <th>Recommended Use</th>
+              <td>client presentation, project onboarding, scope clarification, product review, implementation discussion</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>14. Conclusion</h2>
+        <p>Medsys currently provides a structured, role-based healthcare operations UI for internal clinic users. It already supports the major operational flows needed to manage patients, consultations, prescriptions, dispensing, inventory, analytics, and staff workflows within a controlled browser application.</p>
+        <p>The current baseline is suitable for stakeholder review, phased delivery planning, and ongoing implementation governance.</p>
+        <p class="small">This HTML file is the styled source used to export the final PDF.</p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

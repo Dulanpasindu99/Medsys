@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+/tmp/edge-profile*/
+/tmp/frontend-spec-preview*.png
 
 # debug
 npm-debug.log*
