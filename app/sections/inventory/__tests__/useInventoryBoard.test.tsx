@@ -11,15 +11,17 @@ vi.mock("../../../lib/api-client", () => ({
 }));
 
 vi.mock("../../../lib/query-hooks", () => ({
+  useCurrentUserQuery: vi.fn(),
   useInventoryQuery: vi.fn(),
   useInventoryMovementsQuery: vi.fn(),
 }));
 
 import { createInventoryItem, createInventoryMovement } from "../../../lib/api-client";
-import { useInventoryMovementsQuery, useInventoryQuery } from "../../../lib/query-hooks";
+import { useCurrentUserQuery, useInventoryMovementsQuery, useInventoryQuery } from "../../../lib/query-hooks";
 
 const mockedCreateInventoryItem = vi.mocked(createInventoryItem);
 const mockedCreateInventoryMovement = vi.mocked(createInventoryMovement);
+const mockedUseCurrentUserQuery = vi.mocked(useCurrentUserQuery);
 const mockedUseInventoryQuery = vi.mocked(useInventoryQuery);
 const mockedUseInventoryMovementsQuery = vi.mocked(useInventoryMovementsQuery);
 
@@ -42,6 +44,11 @@ describe("useInventoryBoard", () => {
     mockedUseInventoryQuery.mockReturnValue(
       buildQueryState({
         data: [{ id: 2, name: "Paracetamol", quantity: 10, category: "medicine" }],
+      }) as never
+    );
+    mockedUseCurrentUserQuery.mockReturnValue(
+      buildQueryState({
+        data: { id: 42, role: "assistant" },
       }) as never
     );
     mockedUseInventoryMovementsQuery.mockReturnValue(
@@ -124,5 +131,29 @@ describe("useInventoryBoard", () => {
     expect(movementQuery.refetch).toHaveBeenCalled();
     expect(inventoryQuery.refetch).toHaveBeenCalledTimes(2);
     expect(result.current.movementState.status).toBe("success");
+  });
+
+  it("blocks inventory writes for read-only roles", async () => {
+    mockedUseCurrentUserQuery.mockReturnValue(
+      buildQueryState({
+        data: { id: 77, role: "doctor" },
+      }) as never
+    );
+
+    const { result } = renderHook(() => useInventoryBoard(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadState.status).toBe("ready");
+    });
+
+    await act(async () => {
+      await result.current.handleCreateItem();
+    });
+
+    expect(result.current.canWriteInventory).toBe(false);
+    expect(mockedCreateInventoryItem).not.toHaveBeenCalled();
+    expect(result.current.createState.error).toMatch(/owner and assistant accounts/i);
   });
 });

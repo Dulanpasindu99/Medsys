@@ -5,6 +5,7 @@ import {
   createInventoryMovement,
   type ApiClientError,
 } from "../../../lib/api-client";
+import { hasPermission } from "../../../lib/authorization";
 import {
   emptyLoadState,
   errorMutationState,
@@ -19,6 +20,7 @@ import {
   type MutationState,
 } from "../../../lib/async-state";
 import {
+  useCurrentUserQuery,
   useInventoryMovementsQuery,
   useInventoryQuery,
 } from "../../../lib/query-hooks";
@@ -57,6 +59,7 @@ export function toString(value: unknown, fallback = "") {
 
 export function useInventoryBoard() {
   const queryClient = useQueryClient();
+  const currentUserQuery = useCurrentUserQuery();
   const inventoryQuery = useInventoryQuery();
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [newItemName, setNewItemName] = useState("");
@@ -98,6 +101,14 @@ export function useInventoryBoard() {
       null,
     [items, resolvedSelectedItemId]
   );
+  const canWriteInventory =
+    !!currentUserQuery.data?.role && hasPermission(currentUserQuery.data.role, "inventory.write");
+  const writeDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? "Checking inventory write access."
+      : currentUserQuery.data?.role && !canWriteInventory
+        ? "Only owner and assistant accounts can change inventory stock."
+        : null;
 
   const loadState: LoadState = useMemo(() => {
     if ((inventoryQuery.isPending || inventoryQuery.isFetching) && !items.length) {
@@ -164,6 +175,15 @@ export function useInventoryBoard() {
   };
 
   const handleCreateItem = async () => {
+    if (!canWriteInventory) {
+      setCreateState(
+        errorMutationState(
+          writeDisabledReason ?? "Inventory write permission is required before creating items."
+        )
+      );
+      return;
+    }
+
     if (!newItemName.trim()) {
       setCreateState(errorMutationState("Item name is required before creating inventory."));
       return;
@@ -192,6 +212,15 @@ export function useInventoryBoard() {
   };
 
   const handleQuickMovement = async (type: "in" | "out") => {
+    if (!canWriteInventory) {
+      setMovementState(
+        errorMutationState(
+          writeDisabledReason ?? "Inventory write permission is required before posting movements."
+        )
+      );
+      return;
+    }
+
     if (!resolvedSelectedItemId) {
       setMovementState(errorMutationState("Select an inventory item before posting stock movements."));
       return;
@@ -240,6 +269,8 @@ export function useInventoryBoard() {
     selectedItem,
     movements: resolvedSelectedItemId ? movements : [],
     movementLoadState,
+    canWriteInventory,
+    writeDisabledReason,
     newItemName,
     setNewItemName,
     newItemQty,

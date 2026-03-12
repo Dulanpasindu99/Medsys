@@ -17,6 +17,8 @@ export default function InventorySection() {
         selectedItem,
         movements,
         movementLoadState,
+        canWriteInventory,
+        writeDisabledReason,
         newItemName,
         setNewItemName,
         newItemQty,
@@ -52,6 +54,7 @@ export default function InventorySection() {
                 {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
                 {createState.error ? <AsyncNotice tone="error" message={createState.error} /> : null}
                 {movementState.error ? <AsyncNotice tone="error" message={movementState.error} /> : null}
+                {!canWriteInventory && writeDisabledReason ? <AsyncNotice tone="warning" message={writeDisabledReason} /> : null}
                 {movementLoadState.error ? <AsyncNotice tone="warning" message={movementLoadState.error} /> : null}
                 {movementLoadState.notice ? <AsyncNotice tone="warning" message={movementLoadState.notice} /> : null}
                 {createState.status === 'success' && createState.message ? <AsyncNotice tone="success" message={createState.message} /> : null}
@@ -122,19 +125,21 @@ export default function InventorySection() {
                                 <input
                                     value={newItemName}
                                     onChange={(event) => setNewItemName(event.target.value)}
+                                    disabled={!canWriteInventory}
                                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 shadow-inner outline-none"
                                     placeholder="Item name"
                                 />
                                 <input
                                     value={newItemQty}
                                     onChange={(event) => setNewItemQty(event.target.value.replace(/[^0-9]/g, ''))}
+                                    disabled={!canWriteInventory}
                                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 shadow-inner outline-none"
                                     placeholder="Quantity"
                                 />
                                 <button
                                     type="button"
                                     onClick={handleCreateItem}
-                                    disabled={createState.status === 'pending'}
+                                    disabled={createState.status === 'pending' || !canWriteInventory}
                                     className="ios-button-primary w-full text-sm disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {createState.status === 'pending' ? 'Adding item...' : 'Add inventory item'}
@@ -151,7 +156,7 @@ export default function InventorySection() {
                                 <button
                                     type="button"
                                     onClick={() => handleQuickMovement('in')}
-                                    disabled={movementState.status === 'pending'}
+                                    disabled={movementState.status === 'pending' || !canWriteInventory}
                                     className="rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     + Stock
@@ -159,7 +164,7 @@ export default function InventorySection() {
                                 <button
                                     type="button"
                                     onClick={() => handleQuickMovement('out')}
-                                    disabled={movementState.status === 'pending'}
+                                    disabled={movementState.status === 'pending' || !canWriteInventory}
                                     className="rounded-2xl bg-amber-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     - Stock

@@ -12,12 +12,17 @@ import {
   POST as createMovementRoute,
 } from "../[id]/movements/route";
 
-function buildRequest(url: string, method = "GET", body?: unknown) {
+function buildRequest(
+  url: string,
+  method = "GET",
+  body?: unknown,
+  role: "owner" | "doctor" | "assistant" = "assistant"
+) {
   const sessionToken = createSessionToken({
     userId: 42,
-    role: "assistant",
-    email: "assistant@example.com",
-    name: "Assistant User",
+    role,
+    email: `${role}@example.com`,
+    name: `${role} user`,
   });
 
   return new NextRequest(url, {
@@ -86,6 +91,25 @@ describe("/api/inventory BFF routes", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/inventory");
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
     expect(body).toEqual({ id: 2, name: "Ibuprofen", quantity: 10 });
+  });
+
+  it("blocks doctors from creating inventory items", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await createInventoryRoute(
+      buildRequest(
+        "http://localhost/api/inventory",
+        "POST",
+        { name: "Ibuprofen", category: "medicine", quantity: 10, unit: "units" },
+        "doctor"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Forbidden." });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("validates inventory ids before update", async () => {
@@ -177,5 +201,20 @@ describe("/api/inventory BFF routes", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/inventory/2/movements");
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
     expect(body).toEqual({ id: 100, type: "out", quantity: 1 });
+  });
+
+  it("blocks doctors from creating inventory movements", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await createMovementRoute(
+      buildRequest("http://localhost/api/inventory/2/movements", "POST", { type: "out", quantity: 1 }, "doctor"),
+      { params: Promise.resolve({ id: "2" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Forbidden." });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

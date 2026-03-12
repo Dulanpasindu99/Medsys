@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/app/lib/api-auth";
+import { requirePermission, requireSession } from "@/app/lib/api-auth";
 import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
 import { parseJsonBody, validationErrorResponse } from "@/app/lib/api-validation";
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = requireSession(request);
+  const auth = requirePermission(request, "inventory.write");
   if (auth.error) {
     return auth.error;
   }

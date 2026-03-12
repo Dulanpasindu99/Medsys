@@ -6,6 +6,7 @@ export type AppPermission =
   | "patient.directory.view"
   | "analytics.view"
   | "inventory.view"
+  | "inventory.write"
   | "ai.workspace.view"
   | "owner.workspace.view"
   | "appointment.create"
@@ -99,6 +100,7 @@ const ROUTE_POLICIES: RoutePolicy[] = [
 const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
   owner: [
     ...ROUTE_POLICIES.map((route) => route.permission),
+    "inventory.write",
     "appointment.create",
     "patient.read",
     "patient.write",
@@ -126,6 +128,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "patient.directory.view",
     "analytics.view",
     "inventory.view",
+    "inventory.write",
     "ai.workspace.view",
     "appointment.create",
     "patient.read",
