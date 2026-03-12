@@ -9,6 +9,7 @@ import {
 import {
   emptyLoadState,
   errorMutationState,
+  getMutationFeedback,
   errorLoadState,
   idleMutationState,
   loadingLoadState,
@@ -229,15 +230,44 @@ export function useOwnerAccess() {
   const usersQuery = useUsersQuery();
   const auditLogsQuery = useAuditLogsQuery({ limit: 200 });
   const appointmentsQuery = useAppointmentsQuery();
-  const [role, setRole] = useState<Role>('Doctor');
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [permissions, setPermissions] = useState<Record<PermissionKey, boolean>>(
+  const [role, setRoleState] = useState<Role>('Doctor');
+  const [name, setNameState] = useState('');
+  const [username, setUsernameState] = useState('');
+  const [password, setPasswordState] = useState('');
+  const [permissions, setPermissionsState] = useState<Record<PermissionKey, boolean>>(
     defaultPermissions('Doctor')
   );
   const [staffOverrides, setStaffOverrides] = useState<StaffUser[]>([]);
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
+
+  const clearCreateState = () => {
+    setCreateState((current) => (current.status === 'idle' ? current : idleMutationState()));
+  };
+
+  const setRole = (value: Role) => {
+    clearCreateState();
+    setRoleState(value);
+  };
+
+  const setName = (value: string) => {
+    clearCreateState();
+    setNameState(value);
+  };
+
+  const setUsername = (value: string) => {
+    clearCreateState();
+    setUsernameState(value);
+  };
+
+  const setPassword = (value: string) => {
+    clearCreateState();
+    setPasswordState(value);
+  };
+
+  const setPermissions = (value: SetStateAction<Record<PermissionKey, boolean>>) => {
+    clearCreateState();
+    setPermissionsState(value);
+  };
 
   const presets = useMemo(
     () => [
@@ -336,6 +366,7 @@ export function useOwnerAccess() {
   ]);
 
   const togglePermission = (key: PermissionKey) => {
+    clearCreateState();
     setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -382,6 +413,11 @@ export function useOwnerAccess() {
     }
   };
 
+  const createFeedback = getMutationFeedback(createState, {
+    pendingMessage: 'Creating staff user...',
+    errorMessage: 'Unable to create staff user.',
+  });
+
   return {
     role,
     setRole,
@@ -400,6 +436,7 @@ export function useOwnerAccess() {
     handleCreate,
     loadState,
     createState,
+    createFeedback,
     syncError: loadState.error ?? createState.error,
     isSyncing:
       currentUserQuery.isFetching ||

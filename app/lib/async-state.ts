@@ -13,6 +13,11 @@ export type MutationState = {
   message: string | null;
 };
 
+export type MutationFeedback = {
+  tone: "info" | "success" | "error";
+  message: string;
+};
+
 export const idleLoadState = (): LoadState => ({
   status: "idle",
   error: null,
@@ -72,3 +77,43 @@ export const errorMutationState = (
   error,
   message: message ?? null,
 });
+
+export function getMutationFeedback(
+  state: MutationState,
+  options?: {
+    pendingMessage?: string;
+    successMessage?: string;
+    errorMessage?: string;
+  }
+): MutationFeedback | null {
+  if (state.status === "pending") {
+    return options?.pendingMessage
+      ? {
+          tone: "info",
+          message: options.pendingMessage,
+        }
+      : null;
+  }
+
+  if (state.status === "success") {
+    const message = state.message ?? options?.successMessage ?? null;
+    return message
+      ? {
+          tone: "success",
+          message,
+        }
+      : null;
+  }
+
+  if (state.status === "error") {
+    const message = state.error ?? options?.errorMessage ?? null;
+    return message
+      ? {
+          tone: "error",
+          message,
+        }
+      : null;
+  }
+
+  return null;
+}

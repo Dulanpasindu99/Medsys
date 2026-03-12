@@ -88,6 +88,39 @@ describe("useOwnerAccess", () => {
       queryKey: queryKeys.users.list(),
     });
     expect(result.current.createState.status).toBe("success");
+    expect(result.current.createFeedback).toEqual({
+      tone: "success",
+      message: "Staff user created.",
+    });
+  });
+
+  it("clears stale create feedback when the staff form changes", async () => {
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadState.status).not.toBe("loading");
+    });
+
+    act(() => {
+      result.current.setName("Dr. Meredith Grey");
+      result.current.setUsername("meredith.grey@medsys.local");
+      result.current.setPassword("secret-123");
+    });
+
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.createState.status).toBe("success");
+
+    act(() => {
+      result.current.setName("Dr. Cristina Yang");
+    });
+
+    expect(result.current.createState.status).toBe("idle");
+    expect(result.current.createFeedback).toBeNull();
   });
 
   it("marks partial live staff syncs with an explicit notice", async () => {

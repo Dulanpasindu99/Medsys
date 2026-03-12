@@ -26,6 +26,7 @@ export default function OwnerSection() {
         handleCreate,
         loadState,
         createState,
+        createFeedback,
         isSyncing,
         refresh,
     } = useOwnerAccess();
@@ -63,11 +64,8 @@ export default function OwnerSection() {
                     </header>
                     {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
                     {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
-                    {createState.error ? <AsyncNotice tone="error" message={createState.error} /> : null}
-                    {createState.status === 'success' && createState.message ? (
-                        <AsyncNotice tone="success" message={createState.message} />
-                    ) : null}
-                    {!loadState.error && createState.status !== 'success' ? (
+                    {createFeedback ? <AsyncNotice tone={createFeedback.tone} message={createFeedback.message} /> : null}
+                    {!loadState.error && !createFeedback ? (
                         <AsyncNotice
                             tone="info"
                             message="Staff accounts now sync from the backend users API, with audit and appointment feeds used as supplemental visibility for recent activity."

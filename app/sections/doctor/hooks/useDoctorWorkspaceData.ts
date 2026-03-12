@@ -210,11 +210,11 @@ export function useDoctorWorkspaceData(
   const patientsQuery = usePatientsQuery();
   const waitingAppointmentsQuery = useAppointmentsQuery({ status: "waiting" });
   const currentUserQuery = useCurrentUserQuery();
-  const [search, setSearch] = useState("");
-  const [patientName, setPatientName] = useState("");
-  const [patientAge, setPatientAge] = useState("");
-  const [nicNumber, setNicNumber] = useState("");
-  const [gender, setGender] = useState<PatientGender>("Male");
+  const [search, setSearchState] = useState("");
+  const [patientName, setPatientNameState] = useState("");
+  const [patientAge, setPatientAgeState] = useState("");
+  const [nicNumber, setNicNumberState] = useState("");
+  const [gender, setGenderState] = useState<PatientGender>("Male");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
@@ -346,7 +346,37 @@ export function useDoctorWorkspaceData(
         ? "Only doctor accounts can submit encounters from this workspace."
         : null;
 
+  const clearSaveState = () => {
+    setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
+  };
+
+  const setSearch = (value: string) => {
+    clearSaveState();
+    setSearchState(value);
+  };
+
+  const setPatientName = (value: string) => {
+    clearSaveState();
+    setPatientNameState(value);
+  };
+
+  const setPatientAge = (value: string) => {
+    clearSaveState();
+    setPatientAgeState(value);
+  };
+
+  const setNicNumber = (value: string) => {
+    clearSaveState();
+    setNicNumberState(value);
+  };
+
+  const setGender = (value: PatientGender) => {
+    clearSaveState();
+    setGenderState(value);
+  };
+
   const handlePatientSelect = (patient: Patient) => {
+    clearSaveState();
     setPatientName(patient.name);
     setPatientAge(patient.age ? String(patient.age) : "");
     setNicNumber(patient.nic);

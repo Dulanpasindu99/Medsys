@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type SetStateAction, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createPatient,
@@ -9,6 +9,7 @@ import { hasPermission } from "../../../lib/authorization";
 import {
   emptyLoadState,
   errorMutationState,
+  getMutationFeedback,
   errorLoadState,
   idleMutationState,
   loadingLoadState,
@@ -263,7 +264,7 @@ export function useAssistantWorkflow() {
   const currentUserQuery = useCurrentUserQuery();
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const [formState, setFormState] = useState<AssistantFormState>({
+  const [formState, setFormStateState] = useState<AssistantFormState>({
     nic: "",
     name: "",
     mobile: "",
@@ -278,6 +279,15 @@ export function useAssistantWorkflow() {
   const [completedSearch, setCompletedSearch] = useState("");
   const [createPatientState, setCreatePatientState] = useState<MutationState>(idleMutationState());
   const [dispenseState, setDispenseState] = useState<MutationState>(idleMutationState());
+
+  const clearCreatePatientState = () => {
+    setCreatePatientState((current) => (current.status === "idle" ? current : idleMutationState()));
+  };
+
+  const setFormState = (value: SetStateAction<AssistantFormState>) => {
+    clearCreatePatientState();
+    setFormStateState(value);
+  };
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const patientById = useMemo(() => normalizePatientsById(rawPatients), [rawPatients]);
   const pendingPatients = useMemo(
@@ -480,6 +490,15 @@ export function useAssistantWorkflow() {
     }
   };
 
+  const createPatientFeedback = getMutationFeedback(createPatientState, {
+    pendingMessage: "Adding patient...",
+    errorMessage: "Failed to create patient.",
+  });
+  const dispenseFeedback = getMutationFeedback(dispenseState, {
+    pendingMessage: "Saving dispense action...",
+    errorMessage: "Failed to mark dispense.",
+  });
+
   return {
     pendingPatients,
     activePrescription:
@@ -498,7 +517,9 @@ export function useAssistantWorkflow() {
     markDoneAndNext,
     loadState,
     createPatientState,
+    createPatientFeedback,
     dispenseState,
+    dispenseFeedback,
     canManageAssistantWorkflow,
     workflowActionDisabledReason,
     reload: () => {

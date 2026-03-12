@@ -282,4 +282,27 @@ describe("useAssistantWorkflow", () => {
     expect(mockedCreatePatient).not.toHaveBeenCalled();
     expect(result.current.createPatientState.error).toMatch(/assistant workflow access/i);
   });
+
+  it("clears stale patient-intake feedback when the form changes", async () => {
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.addPatient();
+    });
+
+    expect(result.current.createPatientState.status).toBe("error");
+
+    act(() => {
+      result.current.setFormState((prev) => ({ ...prev, nic: "991234567V" }));
+    });
+
+    expect(result.current.createPatientState.status).toBe("idle");
+    expect(result.current.createPatientFeedback).toBeNull();
+  });
 });

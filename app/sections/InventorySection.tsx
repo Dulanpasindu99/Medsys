@@ -25,7 +25,9 @@ export default function InventorySection() {
         setNewItemQty,
         loadState,
         createState,
+        createFeedback,
         movementState,
+        movementFeedback,
         refresh,
         handleCreateItem,
         handleQuickMovement,
@@ -52,13 +54,11 @@ export default function InventorySection() {
 
                 {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
                 {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
-                {createState.error ? <AsyncNotice tone="error" message={createState.error} /> : null}
-                {movementState.error ? <AsyncNotice tone="error" message={movementState.error} /> : null}
+                {createFeedback ? <AsyncNotice tone={createFeedback.tone} message={createFeedback.message} /> : null}
+                {movementFeedback ? <AsyncNotice tone={movementFeedback.tone} message={movementFeedback.message} /> : null}
                 {!canWriteInventory && writeDisabledReason ? <AsyncNotice tone="warning" message={writeDisabledReason} /> : null}
                 {movementLoadState.error ? <AsyncNotice tone="warning" message={movementLoadState.error} /> : null}
                 {movementLoadState.notice ? <AsyncNotice tone="warning" message={movementLoadState.notice} /> : null}
-                {createState.status === 'success' && createState.message ? <AsyncNotice tone="success" message={createState.message} /> : null}
-                {movementState.status === 'success' && movementState.message ? <AsyncNotice tone="success" message={movementState.message} /> : null}
 
                 <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
                     <div className="rounded-3xl border border-white/80 bg-white/90 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)] ring-1 ring-slate-100/70">

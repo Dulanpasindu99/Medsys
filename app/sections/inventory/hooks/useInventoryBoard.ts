@@ -9,6 +9,7 @@ import { hasPermission } from "../../../lib/authorization";
 import {
   emptyLoadState,
   errorMutationState,
+  getMutationFeedback,
   errorLoadState,
   idleLoadState,
   idleMutationState,
@@ -61,12 +62,36 @@ export function useInventoryBoard() {
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
   const inventoryQuery = useInventoryQuery();
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-  const [newItemName, setNewItemName] = useState("");
-  const [newItemQty, setNewItemQty] = useState("0");
+  const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
+  const [newItemName, setNewItemNameState] = useState("");
+  const [newItemQty, setNewItemQtyState] = useState("0");
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
   const [movementState, setMovementState] = useState<MutationState>(idleMutationState());
   const [movementNotice, setMovementNotice] = useState<string | null>(null);
+
+  const clearCreateState = () => {
+    setCreateState((current) => (current.status === "idle" ? current : idleMutationState()));
+  };
+
+  const clearMovementState = () => {
+    setMovementState((current) => (current.status === "idle" ? current : idleMutationState()));
+  };
+
+  const setSelectedItemId = (value: number | null) => {
+    clearMovementState();
+    setMovementNotice(null);
+    setSelectedItemIdState(value);
+  };
+
+  const setNewItemName = (value: string) => {
+    clearCreateState();
+    setNewItemNameState(value);
+  };
+
+  const setNewItemQty = (value: string) => {
+    clearCreateState();
+    setNewItemQtyState(value);
+  };
 
   const items = useMemo(() => asArray(inventoryQuery.data), [inventoryQuery.data]);
 
@@ -262,6 +287,15 @@ export function useInventoryBoard() {
     }
   };
 
+  const createFeedback = getMutationFeedback(createState, {
+    pendingMessage: "Creating inventory item...",
+    errorMessage: "Failed to create inventory item.",
+  });
+  const movementFeedback = getMutationFeedback(movementState, {
+    pendingMessage: "Posting stock movement...",
+    errorMessage: "Failed to post movement.",
+  });
+
   return {
     items,
     selectedItemId: resolvedSelectedItemId,
@@ -277,7 +311,9 @@ export function useInventoryBoard() {
     setNewItemQty,
     loadState,
     createState,
+    createFeedback,
     movementState,
+    movementFeedback,
     refresh: () => {
       setMovementNotice(null);
       void refreshInventoryQueries();

@@ -131,6 +131,10 @@ describe("useInventoryBoard", () => {
     expect(movementQuery.refetch).toHaveBeenCalled();
     expect(inventoryQuery.refetch).toHaveBeenCalledTimes(2);
     expect(result.current.movementState.status).toBe("success");
+    expect(result.current.movementFeedback).toEqual({
+      tone: "success",
+      message: "Stock removed successfully.",
+    });
   });
 
   it("blocks inventory writes for read-only roles", async () => {
@@ -155,5 +159,46 @@ describe("useInventoryBoard", () => {
     expect(result.current.canWriteInventory).toBe(false);
     expect(mockedCreateInventoryItem).not.toHaveBeenCalled();
     expect(result.current.createState.error).toMatch(/owner and assistant accounts/i);
+  });
+
+  it("clears settled mutation feedback when inputs or selection change", async () => {
+    const { result } = renderHook(() => useInventoryBoard(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedItemId).toBe(2);
+    });
+
+    act(() => {
+      result.current.setNewItemName("Ibuprofen");
+      result.current.setNewItemQty("25");
+    });
+
+    await act(async () => {
+      await result.current.handleCreateItem();
+    });
+
+    expect(result.current.createState.status).toBe("success");
+
+    act(() => {
+      result.current.setNewItemName("Aspirin");
+    });
+
+    expect(result.current.createState.status).toBe("idle");
+    expect(result.current.createFeedback).toBeNull();
+
+    await act(async () => {
+      await result.current.handleQuickMovement("in");
+    });
+
+    expect(result.current.movementState.status).toBe("success");
+
+    act(() => {
+      result.current.setSelectedItemId(2);
+    });
+
+    expect(result.current.movementState.status).toBe("idle");
+    expect(result.current.movementFeedback).toBeNull();
   });
 });

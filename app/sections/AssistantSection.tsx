@@ -26,7 +26,9 @@ export default function AssistantSection() {
         markDoneAndNext,
         loadState,
         createPatientState,
+        createPatientFeedback,
         dispenseState,
+        dispenseFeedback,
         canManageAssistantWorkflow,
         workflowActionDisabledReason,
         reload,
@@ -58,10 +60,8 @@ export default function AssistantSection() {
                                 {!canManageAssistantWorkflow && workflowActionDisabledReason ? (
                                     <AsyncNotice tone="warning" message={workflowActionDisabledReason} />
                                 ) : null}
-                                {createPatientState.error ? <AsyncNotice tone="error" message={createPatientState.error} /> : null}
-                                {dispenseState.error ? <AsyncNotice tone="error" message={dispenseState.error} /> : null}
-                                {createPatientState.status === 'success' && createPatientState.message ? <AsyncNotice tone="success" message={createPatientState.message} /> : null}
-                                {dispenseState.status === 'success' && dispenseState.message ? <AsyncNotice tone="success" message={dispenseState.message} /> : null}
+                                {createPatientFeedback ? <AsyncNotice tone={createPatientFeedback.tone} message={createPatientFeedback.message} /> : null}
+                                {dispenseFeedback ? <AsyncNotice tone={dispenseFeedback.tone} message={dispenseFeedback.message} /> : null}
 
                                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_2.2fr_1fr]">
                                     <AssistantPanelShell>
