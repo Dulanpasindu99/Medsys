@@ -10,6 +10,8 @@ type DoctorSidebarProps = {
     patientVitals: PatientVital[];
     patientAllergies: AllergyAlert[];
     onSaveRecord: () => void;
+    canSaveRecord?: boolean;
+    saveDisabledReason?: string | null;
     saveFeedback?: { tone: 'info' | 'success' | 'error'; message: string } | null;
     isSavingRecord?: boolean;
 };
@@ -47,6 +49,8 @@ export function DoctorSidebar({
     patientVitals,
     patientAllergies,
     onSaveRecord,
+    canSaveRecord = true,
+    saveDisabledReason = null,
     saveFeedback,
     isSavingRecord = false,
 }: DoctorSidebarProps) {
@@ -147,12 +151,15 @@ export function DoctorSidebar({
                 <button
                     type="button"
                     onClick={onSaveRecord}
-                    disabled={isSavingRecord}
+                    disabled={isSavingRecord || !canSaveRecord}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
                 >
                     {isSavingRecord ? 'Saving record...' : 'Save & Print Record'}
                 </button>
             </div>
+            {!canSaveRecord && saveDisabledReason ? (
+                <p className="mt-2 text-sm font-semibold text-amber-700">{saveDisabledReason}</p>
+            ) : null}
             {saveFeedback ? (
                 <p
                     className={`mt-2 text-sm font-semibold ${saveFeedback.tone === 'success'

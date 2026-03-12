@@ -338,6 +338,13 @@ export function useDoctorWorkspaceData(
     patientVitalsQuery.isPending,
     selectedPatientId,
   ]);
+  const canSaveRecord = currentUserQuery.data?.role === "doctor";
+  const saveDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? "Checking doctor access before encounter submission."
+      : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
+        ? "Only doctor accounts can submit encounters from this workspace."
+        : null;
 
   const handlePatientSelect = (patient: Patient) => {
     setPatientName(patient.name);
@@ -361,6 +368,15 @@ export function useDoctorWorkspaceData(
   };
 
   const handleSaveRecord = async () => {
+    if (!canSaveRecord) {
+      setSaveState(
+        errorMutationState(
+          saveDisabledReason ?? "Doctor permission is required before saving an encounter."
+        )
+      );
+      return;
+    }
+
     if (!selectedPatientId || !selectedAppointmentId) {
       setSaveState(errorMutationState("Select a waiting appointment before saving encounter."));
       return;
@@ -440,6 +456,8 @@ export function useDoctorWorkspaceData(
     patientAllergies: selectedPatientId ? patientAllergies : [],
     queueState,
     patientDetailsState,
+    canSaveRecord,
+    saveDisabledReason,
     saveState,
     saveFeedback,
     handlePatientSelect,

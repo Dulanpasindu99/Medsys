@@ -72,7 +72,7 @@ describe("useDoctorWorkspaceData", () => {
       }) as never
     );
     mockedUseCurrentUserQuery.mockReturnValue(
-      buildQueryState({ data: { id: 5 } }) as never
+      buildQueryState({ data: { id: 5, role: "doctor" } }) as never
     );
     mockedUsePatientVitalsQuery.mockReturnValue(
       buildQueryState({ data: [{ label: "BP", value: "120/80" }] }) as never
@@ -133,7 +133,7 @@ describe("useDoctorWorkspaceData", () => {
     const appointmentsQuery = buildQueryState({
       data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", nic: "990011223V", age: 31, gender: "female", reason: "Fever", scheduledAt: "2026-03-10T10:30:00.000Z" }],
     });
-    const currentUserQuery = buildQueryState({ data: { id: 5 } });
+    const currentUserQuery = buildQueryState({ data: { id: 5, role: "doctor" } });
     mockedUsePatientsQuery.mockReturnValue(patientsQuery as never);
     mockedUseAppointmentsQuery.mockReturnValue(appointmentsQuery as never);
     mockedUseCurrentUserQuery.mockReturnValue(currentUserQuery as never);
@@ -182,5 +182,46 @@ describe("useDoctorWorkspaceData", () => {
     expect(appointmentsQuery.refetch).toHaveBeenCalled();
     expect(currentUserQuery.refetch).toHaveBeenCalled();
     expect(result.current.saveState.status).toBe("success");
+  });
+
+  it("blocks encounter submission for non-doctor roles", async () => {
+    mockedUseCurrentUserQuery.mockReturnValue(
+      buildQueryState({ data: { id: 5, role: "owner" } }) as never
+    );
+
+    const clinicalWorkflow = {
+      selectedDiseases: ["Influenza"],
+      selectedTests: [],
+      rxRows: [],
+    } as never;
+    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
+
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
+
+    act(() => {
+      result.current.handlePatientSelect({
+        patientId: 7,
+        appointmentId: 22,
+        doctorId: 5,
+        name: "Jane Doe",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        reason: "Fever",
+        time: "10:30",
+        profileId: "7",
+      });
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(result.current.canSaveRecord).toBe(false);
+    expect(mockedCreateEncounter).not.toHaveBeenCalled();
+    expect(result.current.saveState.status).toBe("error");
+    expect(result.current.saveState.error).toMatch(/only doctor accounts/i);
   });
 });

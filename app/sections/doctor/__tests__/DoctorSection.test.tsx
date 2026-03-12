@@ -34,6 +34,8 @@ vi.mock("../components/DoctorSidebar", () => ({
   DoctorSidebar: ({
     onSearchSelect,
     onSaveRecord,
+    canSaveRecord,
+    saveDisabledReason,
     isSavingRecord,
   }: {
     onSearchSelect: (patient: {
@@ -49,6 +51,8 @@ vi.mock("../components/DoctorSidebar", () => ({
       time: string;
     }) => void;
     onSaveRecord: () => void;
+    canSaveRecord?: boolean;
+    saveDisabledReason?: string | null;
     isSavingRecord?: boolean;
   }) => (
     <div>
@@ -71,9 +75,10 @@ vi.mock("../components/DoctorSidebar", () => ({
       >
         Select patient
       </button>
-      <button type="button" onClick={onSaveRecord} disabled={isSavingRecord}>
+      <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
         {isSavingRecord ? "Saving record..." : "Save & Print Record"}
       </button>
+      {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
     </div>
   ),
 }));
@@ -107,6 +112,8 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     patientAllergies: [],
     queueState: readyLoadState(),
     patientDetailsState: emptyLoadState(),
+    canSaveRecord: true,
+    saveDisabledReason: null,
     saveState: idleMutationState(),
     saveFeedback: null,
     handlePatientSelect: vi.fn(),
@@ -185,5 +192,19 @@ describe("DoctorSection", () => {
     render(<DoctorSection />);
 
     expect(screen.getByRole("button", { name: /saving record/i })).toBeDisabled();
+  });
+
+  it("disables encounter submission when the active role cannot save records", () => {
+    mockedUseDoctorWorkspaceData.mockReturnValue(
+      buildWorkspaceState({
+        canSaveRecord: false,
+        saveDisabledReason: "Only doctor accounts can submit encounters from this workspace.",
+      })
+    );
+
+    render(<DoctorSection />);
+
+    expect(screen.getByRole("button", { name: /save & print record/i })).toBeDisabled();
+    expect(screen.getByText(/only doctor accounts can submit encounters/i)).toBeInTheDocument();
   });
 });

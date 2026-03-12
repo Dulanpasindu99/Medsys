@@ -27,6 +27,8 @@ export default function DoctorSection() {
         patientAllergies,
         queueState,
         patientDetailsState,
+        canSaveRecord,
+        saveDisabledReason,
         saveState,
         saveFeedback,
         handlePatientSelect,
@@ -66,6 +68,8 @@ export default function DoctorSection() {
                                 patientVitals={patientVitals}
                                 patientAllergies={patientAllergies}
                                 onSaveRecord={handleSaveRecord}
+                                canSaveRecord={canSaveRecord}
+                                saveDisabledReason={saveDisabledReason}
                                 saveFeedback={saveFeedback}
                                 isSavingRecord={saveState.status === 'pending'}
                             />
