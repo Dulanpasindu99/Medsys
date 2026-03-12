@@ -28,10 +28,16 @@ export default function DoctorSection() {
         queueState,
         patientDetailsState,
         canSaveRecord,
+        canTransitionAppointments,
         saveDisabledReason,
+        transitionDisabledReason,
+        selectedAppointmentStatus,
         saveState,
         saveFeedback,
+        transitionState,
+        transitionFeedback,
         handlePatientSelect,
+        handleStartConsultation,
         handleSaveRecord,
     } = useDoctorWorkspaceData(clinicalWorkflow, visitPlanner);
     const popup = usePatientProfilePopup();
@@ -67,7 +73,13 @@ export default function DoctorSection() {
                                 }}
                                 patientVitals={patientVitals}
                                 patientAllergies={patientAllergies}
+                                onStartConsultation={handleStartConsultation}
                                 onSaveRecord={handleSaveRecord}
+                                canTransitionAppointments={canTransitionAppointments}
+                                selectedAppointmentStatus={selectedAppointmentStatus}
+                                transitionDisabledReason={transitionDisabledReason}
+                                transitionFeedback={transitionFeedback}
+                                isTransitioningAppointment={transitionState.status === 'pending'}
                                 canSaveRecord={canSaveRecord}
                                 saveDisabledReason={saveDisabledReason}
                                 saveFeedback={saveFeedback}

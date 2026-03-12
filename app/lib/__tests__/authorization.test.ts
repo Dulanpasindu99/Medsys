@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canAccessRoute,
   canCreateAppointments,
+  canUpdateAppointments,
   getDefaultRouteForRole,
   getNavigationIndexForPath,
   getNavigationItemsForRole,
@@ -29,18 +30,27 @@ describe("authorization policy", () => {
     expect(hasPermission("assistant", "patient.delete")).toBe(false);
     expect(hasPermission("assistant", "inventory.write")).toBe(true);
     expect(hasPermission("assistant", "prescription.dispense")).toBe(true);
+    expect(hasPermission("assistant", "appointment.update")).toBe(false);
     expect(hasPermission("doctor", "user.read")).toBe(false);
     expect(hasPermission("doctor", "inventory.write")).toBe(false);
     expect(hasPermission("doctor", "prescription.dispense")).toBe(false);
+    expect(hasPermission("doctor", "appointment.update")).toBe(true);
     expect(hasPermission("owner", "user.write")).toBe(true);
     expect(hasPermission("owner", "inventory.write")).toBe(true);
     expect(hasPermission("owner", "prescription.dispense")).toBe(true);
+    expect(hasPermission("owner", "appointment.update")).toBe(true);
   });
 
   it("matches appointment creation to the live backend policy", () => {
     expect(canCreateAppointments("owner")).toBe(true);
     expect(canCreateAppointments("assistant")).toBe(true);
     expect(canCreateAppointments("doctor")).toBe(false);
+  });
+
+  it("matches appointment lifecycle updates to the live frontend policy", () => {
+    expect(canUpdateAppointments("owner")).toBe(true);
+    expect(canUpdateAppointments("doctor")).toBe(true);
+    expect(canUpdateAppointments("assistant")).toBe(false);
   });
 
   it("returns role-specific navigation sets from the same policy", () => {

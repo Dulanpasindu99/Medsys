@@ -1,9 +1,16 @@
 import type { ClinicalDrug } from "../../data/diagnosisMapping";
 
+export type AppointmentLifecycleStatus =
+  | "waiting"
+  | "in_consultation"
+  | "completed"
+  | "cancelled";
+
 export type Patient = {
   patientId?: number;
   appointmentId?: number;
   doctorId?: number;
+  appointmentStatus?: AppointmentLifecycleStatus;
   name: string;
   nic: string;
   time: string;

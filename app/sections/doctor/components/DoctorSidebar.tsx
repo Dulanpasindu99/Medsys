@@ -1,6 +1,6 @@
 import { SurfaceCard } from '../../../components/ui/SurfaceCard';
 import { SectionHeading } from '../../../components/ui/SectionHeading';
-import type { AllergyAlert, Patient, PatientVital } from '../types';
+import type { AllergyAlert, AppointmentLifecycleStatus, Patient, PatientVital } from '../types';
 
 type DoctorSidebarProps = {
     search: string;
@@ -9,7 +9,13 @@ type DoctorSidebarProps = {
     onSearchSelect: (patient: Patient) => void;
     patientVitals: PatientVital[];
     patientAllergies: AllergyAlert[];
+    onStartConsultation: () => void;
     onSaveRecord: () => void;
+    canTransitionAppointments?: boolean;
+    selectedAppointmentStatus?: AppointmentLifecycleStatus | null;
+    transitionDisabledReason?: string | null;
+    transitionFeedback?: { tone: 'info' | 'success' | 'error'; message: string } | null;
+    isTransitioningAppointment?: boolean;
     canSaveRecord?: boolean;
     saveDisabledReason?: string | null;
     saveFeedback?: { tone: 'info' | 'success' | 'error'; message: string } | null;
@@ -48,7 +54,13 @@ export function DoctorSidebar({
     onSearchSelect,
     patientVitals,
     patientAllergies,
+    onStartConsultation,
     onSaveRecord,
+    canTransitionAppointments = true,
+    selectedAppointmentStatus = null,
+    transitionDisabledReason = null,
+    transitionFeedback,
+    isTransitioningAppointment = false,
     canSaveRecord = true,
     saveDisabledReason = null,
     saveFeedback,
@@ -147,31 +159,62 @@ export function DoctorSidebar({
                 </div>
             </SurfaceCard>
 
-            <div className="mt-2 flex justify-end">
-                <button
-                    type="button"
-                    onClick={onSaveRecord}
-                    disabled={isSavingRecord || !canSaveRecord}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                    {isSavingRecord ? 'Saving record...' : 'Save & Print Record'}
-                </button>
-            </div>
-            {!canSaveRecord && saveDisabledReason ? (
-                <p className="mt-2 text-sm font-semibold text-amber-700">{saveDisabledReason}</p>
-            ) : null}
-            {saveFeedback ? (
-                <p
-                    className={`mt-2 text-sm font-semibold ${saveFeedback.tone === 'success'
-                            ? 'text-emerald-700'
-                            : saveFeedback.tone === 'error'
-                                ? 'text-rose-700'
-                                : 'text-slate-600'
-                        }`}
-                >
-                    {saveFeedback.message}
-                </p>
-            ) : null}
+            <SurfaceCard className="flex flex-col gap-4 p-5">
+                <div className="flex items-center justify-between">
+                    <SectionHeading title="Consultation Status" subtitle="Appointment lifecycle" />
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                        {selectedAppointmentStatus ? selectedAppointmentStatus.replace("_", " ") : "No selection"}
+                    </span>
+                </div>
+                <div className="flex flex-col gap-3">
+                    <button
+                        type="button"
+                        onClick={onStartConsultation}
+                        disabled={isTransitioningAppointment || !canTransitionAppointments}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                        {isTransitioningAppointment ? 'Starting consultation...' : 'Start Consultation'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSaveRecord}
+                        disabled={isSavingRecord || !canSaveRecord}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                        {isSavingRecord ? 'Saving record...' : 'Save & Print Record'}
+                    </button>
+                </div>
+                {!canTransitionAppointments && transitionDisabledReason ? (
+                    <p className="text-sm font-semibold text-amber-700">{transitionDisabledReason}</p>
+                ) : null}
+                {transitionFeedback ? (
+                    <p
+                        className={`text-sm font-semibold ${transitionFeedback.tone === 'success'
+                                ? 'text-emerald-700'
+                                : transitionFeedback.tone === 'error'
+                                    ? 'text-rose-700'
+                                    : 'text-slate-600'
+                            }`}
+                    >
+                        {transitionFeedback.message}
+                    </p>
+                ) : null}
+                {!canSaveRecord && saveDisabledReason ? (
+                    <p className="text-sm font-semibold text-amber-700">{saveDisabledReason}</p>
+                ) : null}
+                {saveFeedback ? (
+                    <p
+                        className={`text-sm font-semibold ${saveFeedback.tone === 'success'
+                                ? 'text-emerald-700'
+                                : saveFeedback.tone === 'error'
+                                    ? 'text-rose-700'
+                                    : 'text-slate-600'
+                            }`}
+                    >
+                        {saveFeedback.message}
+                    </p>
+                ) : null}
+            </SurfaceCard>
         </div>
     );
 }

@@ -2,12 +2,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   createEncounter,
+  updateAppointment,
   type ApiClientError,
 } from "../../../lib/api-client";
 import {
   emptyLoadState,
   errorLoadState,
   errorMutationState,
+  getMutationFeedback,
   idleMutationState,
   loadingLoadState,
   pendingMutationState,
@@ -26,7 +28,13 @@ import {
 import { queryKeys } from "../../../lib/query-keys";
 import type { useDoctorClinicalWorkflow } from "./useDoctorClinicalWorkflow";
 import type { useVisitPlanner } from "./useVisitPlanner";
-import type { AllergyAlert, Patient, PatientGender, PatientVital } from "../types";
+import type {
+  AllergyAlert,
+  AppointmentLifecycleStatus,
+  Patient,
+  PatientGender,
+  PatientVital,
+} from "../types";
 
 type AnyRecord = Record<string, unknown>;
 type ClinicalWorkflow = ReturnType<typeof useDoctorClinicalWorkflow>;
@@ -132,11 +140,18 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
 
     const reason = getString(row.reason ?? row.chiefComplaint ?? row.notes, "Consultation");
     const time = getDateLabel(row.scheduledAt ?? row.scheduled_at ?? row.createdAt ?? row.created_at);
+    const appointmentStatus = getString(row.status).toLowerCase();
 
     return {
       patientId,
       appointmentId,
       doctorId,
+      appointmentStatus:
+        appointmentStatus === "in_consultation" ||
+        appointmentStatus === "completed" ||
+        appointmentStatus === "cancelled"
+          ? (appointmentStatus as AppointmentLifecycleStatus)
+          : "waiting",
       name,
       nic,
       time,
@@ -218,7 +233,10 @@ export function useDoctorWorkspaceData(
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
+  const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
+    useState<AppointmentLifecycleStatus | null>(null);
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
+  const [transitionState, setTransitionState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
   const currentUserId = currentUserQuery.data?.id ?? null;
@@ -339,44 +357,61 @@ export function useDoctorWorkspaceData(
     selectedPatientId,
   ]);
   const canSaveRecord = currentUserQuery.data?.role === "doctor";
+  const canTransitionAppointments = currentUserQuery.data?.role === "doctor";
   const saveDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking doctor access before encounter submission."
       : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
         ? "Only doctor accounts can submit encounters from this workspace."
         : null;
+  const transitionDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? "Checking doctor access before updating appointment status."
+      : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
+        ? "Only doctor accounts can advance appointment status from this workspace."
+        : null;
 
   const clearSaveState = () => {
     setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
   };
 
+  const clearTransitionState = () => {
+    setTransitionState((current) => (current.status === "idle" ? current : idleMutationState()));
+  };
+
   const setSearch = (value: string) => {
     clearSaveState();
+    clearTransitionState();
     setSearchState(value);
   };
 
   const setPatientName = (value: string) => {
     clearSaveState();
+    clearTransitionState();
     setPatientNameState(value);
   };
 
   const setPatientAge = (value: string) => {
     clearSaveState();
+    clearTransitionState();
     setPatientAgeState(value);
   };
 
   const setNicNumber = (value: string) => {
     clearSaveState();
+    clearTransitionState();
     setNicNumberState(value);
   };
 
   const setGender = (value: PatientGender) => {
     clearSaveState();
+    clearTransitionState();
     setGenderState(value);
   };
 
   const handlePatientSelect = (patient: Patient) => {
     clearSaveState();
+    clearTransitionState();
     setPatientName(patient.name);
     setPatientAge(patient.age ? String(patient.age) : "");
     setNicNumber(patient.nic);
@@ -384,13 +419,16 @@ export function useDoctorWorkspaceData(
     setSelectedPatientId(patient.patientId ?? null);
     setSelectedAppointmentId(patient.appointmentId ?? null);
     setSelectedDoctorId(patient.doctorId ?? null);
+    setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
     setSearch("");
   };
 
   const refreshDoctorQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list("waiting") }),
+      queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
       queryClient.invalidateQueries({ queryKey: queryKeys.encounters.list }),
       patientsQuery.refetch(),
       waitingAppointmentsQuery.refetch(),
@@ -452,6 +490,10 @@ export function useDoctorWorkspaceData(
             .filter((row) => row.quantity > 0),
         },
       });
+      await updateAppointment(selectedAppointmentId, {
+        status: "completed",
+      });
+      setSelectedAppointmentStatus("completed");
       setSaveState(successMutationState("Encounter saved to backend."));
       await Promise.all([refreshDoctorQueries(), currentUserQuery.refetch()]);
     } catch (error) {
@@ -461,14 +503,61 @@ export function useDoctorWorkspaceData(
     }
   };
 
-  const saveFeedback =
-    saveState.status === "error"
-      ? { tone: "error" as const, message: saveState.error ?? "Failed to save encounter." }
-      : saveState.status === "success" && saveState.message
-        ? { tone: "success" as const, message: saveState.message }
-        : saveState.status === "pending"
-          ? { tone: "info" as const, message: "Submitting encounter..." }
-          : null;
+  const handleStartConsultation = async () => {
+    if (!canTransitionAppointments) {
+      setTransitionState(
+        errorMutationState(
+          transitionDisabledReason ??
+            "Doctor permission is required before advancing appointment status."
+        )
+      );
+      return;
+    }
+
+    if (!selectedAppointmentId) {
+      setTransitionState(
+        errorMutationState("Select a waiting appointment before starting consultation.")
+      );
+      return;
+    }
+
+    if (selectedAppointmentStatus === "in_consultation") {
+      setTransitionState(successMutationState("Consultation already started for this appointment."));
+      return;
+    }
+
+    if (selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled") {
+      setTransitionState(
+        errorMutationState("Only waiting appointments can be moved into consultation.")
+      );
+      return;
+    }
+
+    try {
+      setTransitionState(pendingMutationState());
+      await updateAppointment(selectedAppointmentId, {
+        status: "in_consultation",
+      });
+      setSelectedAppointmentStatus("in_consultation");
+      await refreshDoctorQueries();
+      setTransitionState(successMutationState("Appointment moved to in consultation."));
+    } catch (error) {
+      setTransitionState(
+        errorMutationState(
+          (error as ApiClientError)?.message ?? "Failed to update appointment status."
+        )
+      );
+    }
+  };
+
+  const saveFeedback = getMutationFeedback(saveState, {
+    pendingMessage: "Submitting encounter...",
+    errorMessage: "Failed to save encounter.",
+  });
+  const transitionFeedback = getMutationFeedback(transitionState, {
+    pendingMessage: "Starting consultation...",
+    errorMessage: "Failed to update appointment status.",
+  });
 
   return {
     search,
@@ -487,10 +576,16 @@ export function useDoctorWorkspaceData(
     queueState,
     patientDetailsState,
     canSaveRecord,
+    canTransitionAppointments,
     saveDisabledReason,
+    transitionDisabledReason,
+    selectedAppointmentStatus,
     saveState,
     saveFeedback,
+    transitionState,
+    transitionFeedback,
     handlePatientSelect,
+    handleStartConsultation,
     handleSaveRecord,
     reload: () => {
       void Promise.all([

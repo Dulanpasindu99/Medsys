@@ -7,6 +7,7 @@ import { useDoctorWorkspaceData } from "../hooks/useDoctorWorkspaceData";
 
 vi.mock("../../../lib/api-client", () => ({
   createEncounter: vi.fn(),
+  updateAppointment: vi.fn(),
 }));
 
 vi.mock("../../../lib/query-hooks", () => ({
@@ -17,7 +18,7 @@ vi.mock("../../../lib/query-hooks", () => ({
   usePatientAllergiesQuery: vi.fn(),
 }));
 
-import { createEncounter } from "../../../lib/api-client";
+import { createEncounter, updateAppointment } from "../../../lib/api-client";
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
@@ -27,6 +28,7 @@ import {
 } from "../../../lib/query-hooks";
 
 const mockedCreateEncounter = vi.mocked(createEncounter);
+const mockedUpdateAppointment = vi.mocked(updateAppointment);
 const mockedUsePatientsQuery = vi.mocked(usePatientsQuery);
 const mockedUseAppointmentsQuery = vi.mocked(useAppointmentsQuery);
 const mockedUseCurrentUserQuery = vi.mocked(useCurrentUserQuery);
@@ -81,6 +83,7 @@ describe("useDoctorWorkspaceData", () => {
       buildQueryState({ data: [{ name: "Peanut", severity: "high" }] }) as never
     );
     mockedCreateEncounter.mockResolvedValue({ id: 91 });
+    mockedUpdateAppointment.mockResolvedValue({ id: 22, status: "in_consultation" });
   });
 
   it("loads selected patient clinical detail queries and normalizes the results", async () => {
@@ -169,11 +172,14 @@ describe("useDoctorWorkspaceData", () => {
     });
 
     expect(mockedCreateEncounter).toHaveBeenCalledTimes(1);
+    expect(mockedUpdateAppointment).toHaveBeenCalledWith(22, {
+      status: "completed",
+    });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: queryKeys.patients.list,
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
-      queryKey: queryKeys.appointments.list("waiting"),
+      queryKey: ["appointments"],
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: queryKeys.encounters.list,
@@ -182,6 +188,7 @@ describe("useDoctorWorkspaceData", () => {
     expect(appointmentsQuery.refetch).toHaveBeenCalled();
     expect(currentUserQuery.refetch).toHaveBeenCalled();
     expect(result.current.saveState.status).toBe("success");
+    expect(result.current.selectedAppointmentStatus).toBe("completed");
   });
 
   it("blocks encounter submission for non-doctor roles", async () => {
@@ -225,6 +232,61 @@ describe("useDoctorWorkspaceData", () => {
     expect(result.current.saveState.error).toMatch(/only doctor accounts/i);
   });
 
+  it("starts consultation and refreshes appointment queries", async () => {
+    const invalidateQueriesSpy = vi
+      .spyOn(QueryClient.prototype, "invalidateQueries")
+      .mockResolvedValue(undefined);
+    const patientsQuery = buildQueryState({
+      data: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
+    });
+    const appointmentsQuery = buildQueryState({
+      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", nic: "990011223V", age: 31, gender: "female", reason: "Fever", status: "waiting", scheduledAt: "2026-03-10T10:30:00.000Z" }],
+    });
+    mockedUsePatientsQuery.mockReturnValue(patientsQuery as never);
+    mockedUseAppointmentsQuery.mockReturnValue(appointmentsQuery as never);
+
+    const clinicalWorkflow = {
+      selectedDiseases: [],
+      selectedTests: [],
+      rxRows: [],
+    } as never;
+    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
+
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
+
+    act(() => {
+      result.current.handlePatientSelect({
+        patientId: 7,
+        appointmentId: 22,
+        doctorId: 5,
+        appointmentStatus: "waiting",
+        name: "Jane Doe",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        reason: "Fever",
+        time: "10:30",
+        profileId: "7",
+      });
+    });
+
+    await act(async () => {
+      await result.current.handleStartConsultation();
+    });
+
+    expect(mockedUpdateAppointment).toHaveBeenCalledWith(22, {
+      status: "in_consultation",
+    });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ["appointments"],
+    });
+    expect(appointmentsQuery.refetch).toHaveBeenCalled();
+    expect(result.current.transitionState.status).toBe("success");
+    expect(result.current.selectedAppointmentStatus).toBe("in_consultation");
+  });
+
   it("clears stale save feedback when the selected patient context changes", async () => {
     const clinicalWorkflow = {
       selectedDiseases: [],
@@ -242,6 +304,7 @@ describe("useDoctorWorkspaceData", () => {
         patientId: 7,
         appointmentId: 22,
         doctorId: 5,
+        appointmentStatus: "waiting",
         name: "Jane Doe",
         nic: "990011223V",
         age: 31,

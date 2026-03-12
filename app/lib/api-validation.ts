@@ -586,6 +586,19 @@ export function validateAppointmentCreatePayload(payload: Record<string, unknown
   });
 }
 
+export function validateAppointmentUpdatePayload(payload: Record<string, unknown>) {
+  const issues: ValidationIssue[] = ensureAllowedKeys(payload, ["status"]);
+
+  const status = normalizeAppointmentStatus(payload.status, "status");
+  if (!status.ok) issues.push(...status.issues);
+
+  return issues.length > 0 || !status.ok
+    ? failure(issues)
+    : success({
+        status: status.value,
+      });
+}
+
 export function validateDiseaseSuggestionQuery(value: string | null) {
   const terms = normalizeRequiredString(value ?? "", "terms", { minLength: 2, maxLength: 100 });
   return terms.ok ? success({ terms: terms.value }) : terms;

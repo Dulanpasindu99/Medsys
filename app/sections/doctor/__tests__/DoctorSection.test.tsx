@@ -33,15 +33,20 @@ vi.mock("../../../hooks/usePatientProfilePopup", () => ({
 vi.mock("../components/DoctorSidebar", () => ({
   DoctorSidebar: ({
     onSearchSelect,
+    onStartConsultation,
     onSaveRecord,
+    canTransitionAppointments,
+    transitionDisabledReason,
     canSaveRecord,
     saveDisabledReason,
+    isTransitioningAppointment,
     isSavingRecord,
   }: {
     onSearchSelect: (patient: {
       patientId: number;
       appointmentId: number;
       doctorId: number;
+      appointmentStatus?: string;
       profileId: string;
       name: string;
       nic: string;
@@ -50,9 +55,13 @@ vi.mock("../components/DoctorSidebar", () => ({
       reason: string;
       time: string;
     }) => void;
+    onStartConsultation: () => void;
     onSaveRecord: () => void;
+    canTransitionAppointments?: boolean;
+    transitionDisabledReason?: string | null;
     canSaveRecord?: boolean;
     saveDisabledReason?: string | null;
+    isTransitioningAppointment?: boolean;
     isSavingRecord?: boolean;
   }) => (
     <div>
@@ -63,6 +72,7 @@ vi.mock("../components/DoctorSidebar", () => ({
             patientId: 7,
             appointmentId: 22,
             doctorId: 5,
+            appointmentStatus: "waiting",
             profileId: "7",
             name: "Jane Doe",
             nic: "990011223V",
@@ -75,9 +85,17 @@ vi.mock("../components/DoctorSidebar", () => ({
       >
         Select patient
       </button>
+      <button
+        type="button"
+        onClick={onStartConsultation}
+        disabled={isTransitioningAppointment || !canTransitionAppointments}
+      >
+        {isTransitioningAppointment ? "Starting consultation..." : "Start Consultation"}
+      </button>
       <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
         {isSavingRecord ? "Saving record..." : "Save & Print Record"}
       </button>
+      {transitionDisabledReason ? <p>{transitionDisabledReason}</p> : null}
       {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
     </div>
   ),
@@ -113,10 +131,16 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     queueState: readyLoadState(),
     patientDetailsState: emptyLoadState(),
     canSaveRecord: true,
+    canTransitionAppointments: true,
     saveDisabledReason: null,
+    transitionDisabledReason: null,
+    selectedAppointmentStatus: "waiting" as const,
     saveState: idleMutationState(),
     saveFeedback: null,
+    transitionState: idleMutationState(),
+    transitionFeedback: null,
     handlePatientSelect: vi.fn(),
+    handleStartConsultation: vi.fn(),
     handleSaveRecord: vi.fn(),
     reload: vi.fn(),
     ...overrides,
@@ -160,10 +184,11 @@ describe("DoctorSection", () => {
     const user = userEvent.setup();
     const openProfile = vi.fn();
     const handlePatientSelect = vi.fn();
+    const handleStartConsultation = vi.fn();
     const handleSaveRecord = vi.fn();
 
     mockedUseDoctorWorkspaceData.mockReturnValue(
-      buildWorkspaceState({ handlePatientSelect, handleSaveRecord })
+      buildWorkspaceState({ handlePatientSelect, handleStartConsultation, handleSaveRecord })
     );
     mockedUsePatientProfilePopup.mockReturnValue({
       selectedProfileId: "7",
@@ -174,9 +199,11 @@ describe("DoctorSection", () => {
     render(<DoctorSection />);
 
     await user.click(screen.getByRole("button", { name: /select patient/i }));
+    await user.click(screen.getByRole("button", { name: /start consultation/i }));
     await user.click(screen.getByRole("button", { name: /save & print record/i }));
 
     expect(handlePatientSelect).toHaveBeenCalledTimes(1);
+    expect(handleStartConsultation).toHaveBeenCalledTimes(1);
     expect(openProfile).toHaveBeenCalledWith("7");
     expect(handleSaveRecord).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("doctor-workspace")).toHaveTextContent("7");
@@ -194,17 +221,33 @@ describe("DoctorSection", () => {
     expect(screen.getByRole("button", { name: /saving record/i })).toBeDisabled();
   });
 
-  it("disables encounter submission when the active role cannot save records", () => {
+  it("shows the consultation transition pending label while appointment status updates are in flight", () => {
     mockedUseDoctorWorkspaceData.mockReturnValue(
       buildWorkspaceState({
-        canSaveRecord: false,
-        saveDisabledReason: "Only doctor accounts can submit encounters from this workspace.",
+        transitionState: pendingMutationState(),
       })
     );
 
     render(<DoctorSection />);
 
+    expect(screen.getByRole("button", { name: /starting consultation/i })).toBeDisabled();
+  });
+
+  it("disables encounter submission when the active role cannot save records", () => {
+    mockedUseDoctorWorkspaceData.mockReturnValue(
+      buildWorkspaceState({
+        canSaveRecord: false,
+        canTransitionAppointments: false,
+        saveDisabledReason: "Only doctor accounts can submit encounters from this workspace.",
+        transitionDisabledReason: "Only doctor accounts can advance appointment status from this workspace.",
+      })
+    );
+
+    render(<DoctorSection />);
+
+    expect(screen.getByRole("button", { name: /start consultation/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /save & print record/i })).toBeDisabled();
+    expect(screen.getByText(/only doctor accounts can advance appointment status/i)).toBeInTheDocument();
     expect(screen.getByText(/only doctor accounts can submit encounters/i)).toBeInTheDocument();
   });
 });

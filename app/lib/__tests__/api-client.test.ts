@@ -29,6 +29,7 @@ import {
   listUsers,
   loginUser,
   registerUser,
+  updateAppointment,
   updateInventoryItem,
 } from "../api-client";
 
@@ -244,6 +245,28 @@ describe("api client backend compatibility", () => {
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments");
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
+  });
+
+  it("updates appointment lifecycle state through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ id: 12, status: "completed" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      updateAppointment(12, {
+        status: "completed",
+      })
+    ).resolves.toEqual({ id: 12, status: "completed" });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments/12");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({ status: "completed" }));
   });
 
   it("loads and saves encounters through the dedicated BFF route", async () => {

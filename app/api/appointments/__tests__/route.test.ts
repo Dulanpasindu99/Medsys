@@ -5,6 +5,7 @@ import {
   BACKEND_REFRESH_COOKIE_NAME,
 } from "../../../lib/backend-auth-cookies";
 import { GET, POST } from "../route";
+import { PATCH } from "../[id]/route";
 import { createSessionToken, SESSION_COOKIE_NAME } from "../../../lib/session";
 
 function buildRequest(
@@ -198,6 +199,63 @@ describe("/api/appointments BFF routes", () => {
         { field: "extra", message: "Unknown field." },
       ])
     );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("updates appointment status through the backend-backed detail route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 12,
+          patientId: 7,
+          status: "in_consultation",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await PATCH(
+      buildRequest(
+        "http://localhost/api/appointments/12",
+        "PATCH",
+        { status: "in_consultation" },
+        "doctor"
+      ),
+      { params: Promise.resolve({ id: "12" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/appointments/12");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({ status: "in_consultation" }));
+    expect(body).toEqual({
+      id: 12,
+      patientId: 7,
+      status: "in_consultation",
+    });
+  });
+
+  it("blocks appointment status updates for roles without lifecycle access", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await PATCH(
+      buildRequest(
+        "http://localhost/api/appointments/12",
+        "PATCH",
+        { status: "cancelled" },
+        "assistant"
+      ),
+      { params: Promise.resolve({ id: "12" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Forbidden." });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

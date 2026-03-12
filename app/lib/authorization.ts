@@ -10,6 +10,7 @@ export type AppPermission =
   | "ai.workspace.view"
   | "owner.workspace.view"
   | "appointment.create"
+  | "appointment.update"
   | "prescription.dispense"
   | "patient.read"
   | "patient.write"
@@ -103,6 +104,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     ...ROUTE_POLICIES.map((route) => route.permission),
     "inventory.write",
     "appointment.create",
+    "appointment.update",
     "prescription.dispense",
     "patient.read",
     "patient.write",
@@ -123,6 +125,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "patient.write",
     "patient.history.read",
     "patient.history.write",
+    "appointment.update",
     "clinical.icd10.read",
   ],
   assistant: [
@@ -170,6 +173,10 @@ export function hasAnyPermission(role: AppRole, permissions: readonly AppPermiss
 
 export function canCreateAppointments(role: AppRole) {
   return hasPermission(role, "appointment.create");
+}
+
+export function canUpdateAppointments(role: AppRole) {
+  return hasPermission(role, "appointment.update");
 }
 
 export function canAccessRoute(role: AppRole, routeId: AppRouteId) {

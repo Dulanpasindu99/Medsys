@@ -322,6 +322,18 @@ export async function createAppointment(input: {
   });
 }
 
+export async function updateAppointment(
+  appointmentId: number | string,
+  input: {
+    status: AppointmentStatus;
+  }
+) {
+  return apiFetch(`/api/appointments/${appointmentId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function createEncounter(input: {
   appointmentId: number;
   patientId: number;
