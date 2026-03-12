@@ -6,13 +6,23 @@ type AssistantIntakePanelProps = {
     setFormState: React.Dispatch<React.SetStateAction<AssistantFormState>>;
     addAllergy: () => void;
     addPatient: () => void;
+    canManageAssistantWorkflow?: boolean;
+    workflowActionDisabledReason?: string | null;
     isSubmitting?: boolean;
 };
 
 const bloodGroups = ['A+', 'A-', 'B+', 'O+', 'AB+'] as const;
 const priorityLevels = ['Normal', 'Urgent', 'Critical'] as const;
 
-export function AssistantIntakePanel({ formState, setFormState, addAllergy, addPatient, isSubmitting = false }: AssistantIntakePanelProps) {
+export function AssistantIntakePanel({
+    formState,
+    setFormState,
+    addAllergy,
+    addPatient,
+    canManageAssistantWorkflow = true,
+    workflowActionDisabledReason = null,
+    isSubmitting = false,
+}: AssistantIntakePanelProps) {
     return (
         <>
             <div className="mb-4 flex items-center justify-between">
@@ -25,24 +35,28 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                         className="rounded-2xl border border-slate-200 px-4 py-3 shadow-inner"
                         placeholder="Enter Patient NIC"
                         value={formState.nic}
+                        disabled={!canManageAssistantWorkflow}
                         onChange={(e) => setFormState((prev) => ({ ...prev, nic: e.target.value }))}
                     />
                     <input
                         className="rounded-2xl border border-slate-200 px-4 py-3 shadow-inner"
                         placeholder="Patient Name"
                         value={formState.name}
+                        disabled={!canManageAssistantWorkflow}
                         onChange={(e) => setFormState((prev) => ({ ...prev, name: e.target.value }))}
                     />
                     <input
                         className="rounded-2xl border border-slate-200 px-4 py-3 shadow-inner"
                         placeholder="Mobile Number"
                         value={formState.mobile}
+                        disabled={!canManageAssistantWorkflow}
                         onChange={(e) => setFormState((prev) => ({ ...prev, mobile: e.target.value }))}
                     />
                     <input
                         className="rounded-2xl border border-slate-200 px-4 py-3 shadow-inner"
                         placeholder="Age"
                         value={formState.age}
+                        disabled={!canManageAssistantWorkflow}
                         onChange={(e) => setFormState((prev) => ({ ...prev, age: e.target.value.replace(/[^0-9]/g, '') }))}
                     />
                 </div>
@@ -54,6 +68,7 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                             <button
                                 type="button"
                                 className="rounded-full bg-white px-2 text-rose-600 ring-1 ring-rose-100"
+                                disabled={!canManageAssistantWorkflow}
                                 onClick={() =>
                                     setFormState((prev) => ({
                                         ...prev,
@@ -70,6 +85,7 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                             className="bg-transparent text-xs outline-none"
                             placeholder="Add allergies"
                             value={formState.allergyInput}
+                            disabled={!canManageAssistantWorkflow}
                             onChange={(e) => setFormState((prev) => ({ ...prev, allergyInput: e.target.value }))}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -82,7 +98,7 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                             type="button"
                             className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white shadow-[0_10px_22px_rgba(16,185,129,0.22)] transition hover:bg-emerald-600"
                             onClick={addAllergy}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !canManageAssistantWorkflow}
                         >
                             Add
                         </button>
@@ -100,6 +116,7 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                                         ? 'bg-slate-700 text-white shadow-[0_10px_22px_rgba(71,85,105,0.22)]'
                                         : 'bg-slate-100 text-slate-700'
                                     }`}
+                                disabled={!canManageAssistantWorkflow}
                                 onClick={() => setFormState((prev) => ({ ...prev, bloodGroup: group }))}
                             >
                                 {group}
@@ -114,6 +131,7 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                                 key={level}
                                 type="button"
                                 className={`rounded-full px-3 py-1 ${formState.priority === level ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700'}`}
+                                disabled={!canManageAssistantWorkflow}
                                 onClick={() => setFormState((prev) => ({ ...prev, priority: level }))}
                             >
                                 {level}
@@ -126,12 +144,15 @@ export function AssistantIntakePanel({ formState, setFormState, addAllergy, addP
                     <button
                         type="button"
                         onClick={addPatient}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !canManageAssistantWorkflow}
                         className="rounded-2xl bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
                     >
                         {isSubmitting ? 'Adding patient...' : 'Add Patient'}
                     </button>
                 </div>
+                {!canManageAssistantWorkflow && workflowActionDisabledReason ? (
+                    <p className="text-sm font-semibold text-amber-700">{workflowActionDisabledReason}</p>
+                ) : null}
             </div>
         </>
     );

@@ -10,6 +10,7 @@ export type AppPermission =
   | "ai.workspace.view"
   | "owner.workspace.view"
   | "appointment.create"
+  | "prescription.dispense"
   | "patient.read"
   | "patient.write"
   | "patient.delete"
@@ -102,6 +103,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     ...ROUTE_POLICIES.map((route) => route.permission),
     "inventory.write",
     "appointment.create",
+    "prescription.dispense",
     "patient.read",
     "patient.write",
     "patient.delete",
@@ -131,6 +133,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "inventory.write",
     "ai.workspace.view",
     "appointment.create",
+    "prescription.dispense",
     "patient.read",
     "patient.write",
     "patient.history.read",

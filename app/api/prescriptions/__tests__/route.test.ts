@@ -9,12 +9,17 @@ import { GET as queueRoute } from "../queue/pending-dispense/route";
 import { GET as detailRoute } from "../[id]/route";
 import { POST as dispenseRoute } from "../[id]/dispense/route";
 
-function buildRequest(url: string, method = "GET", body?: unknown) {
+function buildRequest(
+  url: string,
+  method = "GET",
+  body?: unknown,
+  role: "owner" | "doctor" | "assistant" = "assistant"
+) {
   const sessionToken = createSessionToken({
     userId: 42,
-    role: "assistant",
-    email: "assistant@example.com",
-    name: "Assistant User",
+    role,
+    email: `${role}@example.com`,
+    name: `${role} user`,
   });
 
   return new NextRequest(url, {
@@ -133,5 +138,31 @@ describe("/api/prescriptions BFF routes", () => {
     );
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
     expect(body).toEqual({ success: true, prescriptionId: 101 });
+  });
+
+  it("blocks doctors from dispensing prescriptions", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await dispenseRoute(
+      buildRequest(
+        "http://localhost/api/prescriptions/101/dispense",
+        "POST",
+        {
+          assistantId: 42,
+          dispensedAt: "2026-03-09T10:00:00.000Z",
+          status: "completed",
+          notes: "Dispensed",
+          items: [{ inventoryItemId: 99, quantity: 10 }],
+        },
+        "doctor"
+      ),
+      { params: Promise.resolve({ id: "101" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({ error: "Forbidden." });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

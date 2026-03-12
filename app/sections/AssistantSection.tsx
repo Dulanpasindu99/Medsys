@@ -27,6 +27,8 @@ export default function AssistantSection() {
         loadState,
         createPatientState,
         dispenseState,
+        canManageAssistantWorkflow,
+        workflowActionDisabledReason,
         reload,
     } = useAssistantWorkflow();
     const popup = usePatientProfilePopup();
@@ -53,6 +55,9 @@ export default function AssistantSection() {
                                 </div>
                                 {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
                                 {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
+                                {!canManageAssistantWorkflow && workflowActionDisabledReason ? (
+                                    <AsyncNotice tone="warning" message={workflowActionDisabledReason} />
+                                ) : null}
                                 {createPatientState.error ? <AsyncNotice tone="error" message={createPatientState.error} /> : null}
                                 {dispenseState.error ? <AsyncNotice tone="error" message={dispenseState.error} /> : null}
                                 {createPatientState.status === 'success' && createPatientState.message ? <AsyncNotice tone="success" message={createPatientState.message} /> : null}
@@ -65,6 +70,8 @@ export default function AssistantSection() {
                                             setFormState={setFormState}
                                             addAllergy={addAllergy}
                                             addPatient={addPatient}
+                                            canManageAssistantWorkflow={canManageAssistantWorkflow}
+                                            workflowActionDisabledReason={workflowActionDisabledReason}
                                             isSubmitting={createPatientState.status === 'pending'}
                                         />
                                     </AssistantPanelShell>
@@ -74,6 +81,8 @@ export default function AssistantSection() {
                                             activePrescription={activePrescription}
                                             queueCount={pendingPatients.length}
                                             onDoneAndNext={markDoneAndNext}
+                                            canManageAssistantWorkflow={canManageAssistantWorkflow}
+                                            workflowActionDisabledReason={workflowActionDisabledReason}
                                             isSubmitting={dispenseState.status === 'pending'}
                                             isLoading={loadState.status === 'loading'}
                                         />

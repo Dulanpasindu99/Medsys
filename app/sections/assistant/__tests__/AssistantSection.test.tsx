@@ -76,6 +76,8 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     loadState: readyLoadState(),
     createPatientState: idleMutationState(),
     dispenseState: idleMutationState(),
+    canManageAssistantWorkflow: true,
+    workflowActionDisabledReason: null,
     reload: vi.fn(),
     isSyncing: false,
     syncError: null,
@@ -131,5 +133,24 @@ describe("AssistantSection", () => {
     expect(openProfile).toHaveBeenCalledWith("7");
     expect(markDoneAndNext).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("patient-profile-modal")).toHaveTextContent("7");
+  });
+
+  it("disables assistant-only actions for read-only roles", () => {
+    mockedUseAssistantWorkflow.mockReturnValue(
+      buildWorkflowState({
+        canManageAssistantWorkflow: false,
+        workflowActionDisabledReason:
+          "Only assistant and owner accounts can complete intake and dispense actions.",
+      })
+    );
+
+    render(<AssistantSection />);
+
+    expect(screen.getByRole("button", { name: /done & next/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /add patient/i })).toBeDisabled();
+    expect(
+      screen.getAllByText(/only assistant and owner accounts can complete intake and dispense actions/i)
+        .length
+    ).toBeGreaterThan(0);
   });
 });

@@ -5,6 +5,7 @@ import {
   dispensePrescription,
   type ApiClientError,
 } from "../../../lib/api-client";
+import { hasPermission } from "../../../lib/authorization";
 import {
   emptyLoadState,
   errorMutationState,
@@ -296,6 +297,14 @@ export function useAssistantWorkflow() {
     [analyticsOverviewQuery.data, rawPatients]
   );
   const currentUserId = currentUserQuery.data?.id ?? null;
+  const canManageAssistantWorkflow =
+    !!currentUserQuery.data?.role && hasPermission(currentUserQuery.data.role, "prescription.dispense");
+  const workflowActionDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? "Checking assistant workflow access."
+      : currentUserQuery.data?.role && !canManageAssistantWorkflow
+        ? "Only assistant and owner accounts can complete intake and dispense actions."
+        : null;
 
   const refreshAssistantQueries = async (includeCurrentUser = false) => {
     await Promise.all([
@@ -369,6 +378,16 @@ export function useAssistantWorkflow() {
   );
 
   const addPatient = async () => {
+    if (!canManageAssistantWorkflow) {
+      setCreatePatientState(
+        errorMutationState(
+          workflowActionDisabledReason ??
+            "Assistant workflow access is required before adding patients."
+        )
+      );
+      return;
+    }
+
     if (!formState.nic || !formState.name || !formState.age) {
       setCreatePatientState(
         errorMutationState("NIC, patient name, and age are required before adding a patient.")
@@ -421,6 +440,16 @@ export function useAssistantWorkflow() {
   };
 
   const markDoneAndNext = async () => {
+    if (!canManageAssistantWorkflow) {
+      setDispenseState(
+        errorMutationState(
+          workflowActionDisabledReason ??
+            "Assistant workflow access is required before dispensing prescriptions."
+        )
+      );
+      return;
+    }
+
     const activePrescription =
       pendingPatients[
         pendingPatients.length ? Math.min(activeIndex, pendingPatients.length - 1) : 0
@@ -470,6 +499,8 @@ export function useAssistantWorkflow() {
     loadState,
     createPatientState,
     dispenseState,
+    canManageAssistantWorkflow,
+    workflowActionDisabledReason,
     reload: () => {
       void refreshAssistantQueries(true);
     },

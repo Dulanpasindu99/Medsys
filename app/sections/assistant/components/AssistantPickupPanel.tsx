@@ -4,6 +4,8 @@ type AssistantPickupPanelProps = {
     activePrescription?: Prescription;
     queueCount: number;
     onDoneAndNext: () => void;
+    canManageAssistantWorkflow?: boolean;
+    workflowActionDisabledReason?: string | null;
     isSubmitting?: boolean;
     isLoading?: boolean;
 };
@@ -46,6 +48,8 @@ export function AssistantPickupPanel({
     activePrescription,
     queueCount,
     onDoneAndNext,
+    canManageAssistantWorkflow = true,
+    workflowActionDisabledReason = null,
     isSubmitting = false,
     isLoading = false,
 }: AssistantPickupPanelProps) {
@@ -115,11 +119,14 @@ export function AssistantPickupPanel({
                             type="button"
                             className="rounded-2xl bg-[var(--ioc-blue)] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
                             onClick={onDoneAndNext}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !canManageAssistantWorkflow}
                         >
                             {isSubmitting ? 'Saving...' : 'Done & Next'}
                         </button>
                     </div>
+                    {!canManageAssistantWorkflow && workflowActionDisabledReason ? (
+                        <p className="text-sm font-semibold text-amber-700">{workflowActionDisabledReason}</p>
+                    ) : null}
                 </div>
             ) : (
                 <p className="text-sm text-slate-500">No prescriptions waiting for pickup.</p>

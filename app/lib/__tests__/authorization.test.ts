@@ -28,10 +28,13 @@ describe("authorization policy", () => {
     expect(hasPermission("assistant", "patient.read")).toBe(true);
     expect(hasPermission("assistant", "patient.delete")).toBe(false);
     expect(hasPermission("assistant", "inventory.write")).toBe(true);
+    expect(hasPermission("assistant", "prescription.dispense")).toBe(true);
     expect(hasPermission("doctor", "user.read")).toBe(false);
     expect(hasPermission("doctor", "inventory.write")).toBe(false);
+    expect(hasPermission("doctor", "prescription.dispense")).toBe(false);
     expect(hasPermission("owner", "user.write")).toBe(true);
     expect(hasPermission("owner", "inventory.write")).toBe(true);
+    expect(hasPermission("owner", "prescription.dispense")).toBe(true);
   });
 
   it("matches appointment creation to the live backend policy", () => {

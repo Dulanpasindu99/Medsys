@@ -233,7 +233,12 @@ describe("useAssistantWorkflow", () => {
         gender: "male",
       }),
     ]);
-    mockedGetCurrentUser.mockResolvedValue(null);
+    mockedGetCurrentUser.mockResolvedValue({
+      id: null,
+      role: "assistant",
+      email: "assistant@medsys.test",
+      name: "Assistant",
+    } as never);
 
     const { result } = renderHook(() => useAssistantWorkflow(), {
       wrapper: createQueryWrapper(),
@@ -251,5 +256,30 @@ describe("useAssistantWorkflow", () => {
 
     expect(mockedDispensePrescription).not.toHaveBeenCalled();
     expect(result.current.activePrescription?.patient).toBe("John Doe");
+  });
+
+  it("blocks assistant workflow actions for read-only roles", async () => {
+    mockedGetCurrentUser.mockResolvedValue({
+      id: 5,
+      role: "doctor",
+      email: "doctor@medsys.test",
+      name: "Doctor",
+    });
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.addPatient();
+    });
+
+    expect(result.current.canManageAssistantWorkflow).toBe(false);
+    expect(mockedCreatePatient).not.toHaveBeenCalled();
+    expect(result.current.createPatientState.error).toMatch(/assistant workflow access/i);
   });
 });
