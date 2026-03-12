@@ -18,33 +18,34 @@ function asRecord(value: unknown): AnyRecord | null {
     : null;
 }
 
-function asArray(value: unknown): AnyRecord[] {
+function normalizeRecordArray(value: unknown): AnyRecord[] {
   if (Array.isArray(value)) {
     return value
       .map((entry) => asRecord(entry))
       .filter((entry): entry is AnyRecord => !!entry);
   }
 
-  const record = asRecord(value);
-  if (!record) return [];
+  return [];
+}
 
-  const candidates = [
-    record.patients,
-    record.users,
-    record.history,
-    record.data,
-    record.items,
-    record.rows,
-  ];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate
-        .map((entry) => asRecord(entry))
-        .filter((entry): entry is AnyRecord => !!entry);
-    }
+function readRequiredWrappedArray(
+  record: AnyRecord,
+  key: string,
+  message: string
+): AnyRecord[] {
+  if (!(key in record)) {
+    throw contractMismatch(message);
   }
 
-  return [];
+  return normalizeRecordArray(record[key]);
+}
+
+function readOptionalWrappedArray(record: AnyRecord, key: string): AnyRecord[] {
+  if (!(key in record)) {
+    return [];
+  }
+
+  return normalizeRecordArray(record[key]);
 }
 
 function toString(value: unknown, fallback = "") {
@@ -151,7 +152,7 @@ export function adaptAuthStatusResponse(raw: unknown): AuthStatus {
     throw contractMismatch("auth status response is missing bootstrapping.");
   }
 
-  const users = toNumber(record.users ?? record.userCount ?? record.count);
+  const users = toNumber(record.users);
   if (users === null) {
     throw contractMismatch("auth status response is missing users.");
   }
@@ -164,7 +165,7 @@ export function adaptAuthStatusResponse(raw: unknown): AuthStatus {
 
 export function adaptPatientCollectionResponse(raw: unknown) {
   if (Array.isArray(raw)) {
-    return asArray(raw).map(normalizePatientRecord);
+    return normalizeRecordArray(raw).map(normalizePatientRecord);
   }
 
   const record = asRecord(raw);
@@ -172,11 +173,11 @@ export function adaptPatientCollectionResponse(raw: unknown) {
     throw contractMismatch("patient collection response is not an object or array.");
   }
 
-  if ("patients" in record || "data" in record || "items" in record || "rows" in record) {
-    return asArray(record).map(normalizePatientRecord);
-  }
-
-  throw contractMismatch("patient collection response does not contain a patients array.");
+  return readRequiredWrappedArray(
+    record,
+    "patients",
+    "patient collection response does not contain a patients array."
+  ).map(normalizePatientRecord);
 }
 
 export function adaptPatientDetailResponse(raw: unknown) {
@@ -185,20 +186,14 @@ export function adaptPatientDetailResponse(raw: unknown) {
     throw contractMismatch("patient detail response is not an object.");
   }
 
-  if ("patient" in record) {
-    const patient = asRecord(record.patient);
-    if (!patient) {
-      throw contractMismatch("patient detail payload is missing patient object.");
-    }
-    return {
-      patient: normalizePatientRecord(patient),
-      history: asArray(record.history).map(normalizeHistoryEntry),
-    };
+  const patient = asRecord(record.patient);
+  if (!patient) {
+    throw contractMismatch("patient detail payload is missing patient object.");
   }
 
   return {
-    patient: normalizePatientRecord(record),
-    history: asArray(record.history).map(normalizeHistoryEntry),
+    patient: normalizePatientRecord(patient),
+    history: readOptionalWrappedArray(record, "history").map(normalizeHistoryEntry),
   };
 }
 
@@ -260,7 +255,7 @@ export function adaptCreatedUserResponse(raw: unknown) {
 
 export function adaptUserCollectionResponse(raw: unknown) {
   if (Array.isArray(raw)) {
-    return asArray(raw).map(normalizeUserRecord);
+    return normalizeRecordArray(raw).map(normalizeUserRecord);
   }
 
   const record = asRecord(raw);
@@ -268,16 +263,16 @@ export function adaptUserCollectionResponse(raw: unknown) {
     throw contractMismatch("user collection response is not an object or array.");
   }
 
-  if ("users" in record || "data" in record || "items" in record || "rows" in record) {
-    return asArray(record).map(normalizeUserRecord);
-  }
-
-  throw contractMismatch("user collection response does not contain a users array.");
+  return readRequiredWrappedArray(
+    record,
+    "users",
+    "user collection response does not contain a users array."
+  ).map(normalizeUserRecord);
 }
 
 export function adaptPatientHistoryResponse(raw: unknown) {
   if (Array.isArray(raw)) {
-    return raw.map((entry) => normalizeHistoryEntry(asRecord(entry) ?? {}));
+    return normalizeRecordArray(raw).map(normalizeHistoryEntry);
   }
 
   const record = asRecord(raw);
@@ -285,9 +280,9 @@ export function adaptPatientHistoryResponse(raw: unknown) {
     throw contractMismatch("patient history response is not an object or array.");
   }
 
-  if ("history" in record || "data" in record || "items" in record || "rows" in record) {
-    return asArray(record).map(normalizeHistoryEntry);
-  }
-
-  throw contractMismatch("patient history response does not contain a history array.");
+  return readRequiredWrappedArray(
+    record,
+    "history",
+    "patient history response does not contain a history array."
+  ).map(normalizeHistoryEntry);
 }

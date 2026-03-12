@@ -201,4 +201,34 @@ describe("/api/users BFF routes", () => {
       },
     });
   });
+
+  it("returns 502 when the user collection wrapper drifts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 4,
+                firstName: "Owner",
+                lastName: "User",
+                email: "owner@example.com",
+                role: "owner",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+    );
+
+    const response = await GET(buildRequest("owner"));
+    const body = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(body).toEqual({
+      error: "Backend contract mismatch for the user route.",
+    });
+  });
 });

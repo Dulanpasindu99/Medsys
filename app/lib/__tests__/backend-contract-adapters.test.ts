@@ -4,7 +4,21 @@ import {
   adaptCreatedUserResponse,
   adaptPatientCollectionResponse,
   adaptPatientDetailResponse,
+  adaptPatientHistoryResponse,
+  adaptUserCollectionResponse,
 } from "../backend-contract-adapters";
+
+function expectContractMismatch(action: () => unknown, message: string) {
+  try {
+    action();
+    throw new Error("Expected a backend contract mismatch.");
+  } catch (error) {
+    expect(error).toEqual({
+      message: `Backend contract mismatch: ${message}`,
+      status: 502,
+    });
+  }
+}
 
 describe("backend contract adapters", () => {
   it("normalizes backend-native patient rows into frontend-friendly patient objects", () => {
@@ -82,6 +96,17 @@ describe("backend contract adapters", () => {
     });
   });
 
+  it("rejects auth status payloads that omit the users field", () => {
+    expectContractMismatch(
+      () =>
+      adaptAuthStatusResponse({
+        bootstrapping: false,
+        count: 3,
+      }),
+      "auth status response is missing users."
+    );
+  });
+
   it("normalizes created user responses from wrapper payloads", () => {
     expect(
       adaptCreatedUserResponse({
@@ -102,6 +127,66 @@ describe("backend contract adapters", () => {
         role: "doctor",
         created_at: "2026-03-09T00:00:00.000Z",
       })
+    );
+  });
+
+  it("rejects patient collections wrapped in unsupported generic keys", () => {
+    expectContractMismatch(
+      () =>
+        adaptPatientCollectionResponse({
+        data: [
+          {
+            id: 7,
+            firstName: "Jane",
+            lastName: "Doe",
+          },
+        ],
+      }),
+      "patient collection response does not contain a patients array."
+    );
+  });
+
+  it("rejects patient detail payloads without a patient wrapper", () => {
+    expectContractMismatch(
+      () =>
+        adaptPatientDetailResponse({
+        id: 4,
+        firstName: "John",
+        lastName: "Smith",
+      }),
+      "patient detail payload is missing patient object."
+    );
+  });
+
+  it("rejects patient history payloads wrapped in generic keys", () => {
+    expectContractMismatch(
+      () =>
+        adaptPatientHistoryResponse({
+        rows: [
+          {
+            id: 3,
+            note: "Observed for 24 hours",
+          },
+        ],
+      }),
+      "patient history response does not contain a history array."
+    );
+  });
+
+  it("rejects user collections wrapped in generic keys", () => {
+    expectContractMismatch(
+      () =>
+        adaptUserCollectionResponse({
+        items: [
+          {
+            id: 10,
+            name: "Dr. Jane Doe",
+            email: "doctor@example.com",
+            role: "doctor",
+          },
+        ],
+      }),
+      "user collection response does not contain a users array."
     );
   });
 });

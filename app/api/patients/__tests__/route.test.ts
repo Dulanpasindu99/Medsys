@@ -346,4 +346,31 @@ describe("/api/patients BFF routes", () => {
       ],
     });
   });
+
+  it("returns 502 when the patient detail wrapper drifts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 7,
+            firstName: "Jane",
+            lastName: "Doe",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+    );
+
+    const response = await getPatientRoute(
+      buildRequest("http://localhost/api/patients/7", "doctor"),
+      { params: Promise.resolve({ id: "7" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(body).toEqual({
+      error: "Backend contract mismatch for the patient detail route.",
+    });
+  });
 });
