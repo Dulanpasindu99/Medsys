@@ -2,8 +2,8 @@
 
 Execution And Phase Tracking
 
-Version: 1.0
-Date: March 11, 2026
+Version: 1.1
+Date: March 16, 2026
 Status: Active
 
 ## Purpose
@@ -87,26 +87,26 @@ Completed outcomes:
 
 ## Phase 6: Workflow Hardening
 
-Status: In Progress
+Status: Completed
 
 Goal:
 
 - tighten write-flow behavior, user feedback, and remaining policy alignment now that the architecture is stable
 
-Current focus:
+Completed outcomes:
 
-- mutation feedback consistency
-- mutation invalidation consistency
-- action-level permission affordance review
-- removal of remaining server-side compatibility debt where backend contracts are already stable
+- mutation feedback consistency across the remaining write-heavy workflows
+- mutation invalidation and refetch consistency after writes
+- action-level permission affordance review across assistant, doctor, owner, and inventory workflows
+- removal of the remaining browser-side adapter coupling for active client flows
 
 ## Remaining Work By Track
 
 ## Track A: Mutation UX And Invalidation
 
-Status: In Progress
+Status: Completed
 
-Remaining items:
+Completed items:
 
 - review write-heavy workflows for success/error messaging consistency
 - ensure query invalidation after writes is consistent
@@ -114,29 +114,29 @@ Remaining items:
 
 ## Track B: Permission And Action Alignment
 
-Status: In Progress
+Status: Completed
 
-Remaining items:
+Completed items:
 
 - review visible UI actions against live backend permissions
 - prevent user-facing actions that predictably return `403`
 
 ## Track C: Adapter Reduction
 
-Status: In Progress
+Status: Completed
 
-Remaining items:
+Completed items:
 
 - trim `app/lib/backend-contract-adapters.ts` further as backend contracts stabilize
 - keep backend-compatibility logic server-side only
 
 ## Next Step
 
-Immediate next coding target:
+Steady-state follow-up:
 
-1. harden mutation feedback and invalidation in the remaining write-heavy screens
-2. complete the remaining action-level permission affordance review
-3. trim any leftover server-side adapter paths that are no longer needed
+1. maintain shared query invalidation and permission-aligned affordances for new workflows
+2. trim remaining server-side adapter paths only when backend contracts stabilize further
+3. keep the full quality gate green before shipping new feature work
 
 ## Reference Documents
 

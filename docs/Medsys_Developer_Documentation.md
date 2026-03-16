@@ -2,8 +2,8 @@
 
 Architecture, Implementation, and Delivery Status
 
-Version: 1.0
-Date: March 11, 2026
+Version: 1.1
+Date: March 16, 2026
 Document Status: Developer Reference
 System Version: Frontend `0.1.0`
 Audience: Frontend developers, backend developers, QA, technical leads, solution architects
@@ -189,53 +189,56 @@ Implemented:
 
 Remaining:
 
-- write-heavy mutation invalidation polish
 - future adoption for new read-heavy features
 
 ### Track B: Adapter And Contract Cleanup
 
-Status: `In Progress`
+Status: `Implemented for current active flows`
 
 Implemented:
 
 - browser auth/register flows now consume normalized `/api/...` responses directly
 - stable read-feed guards now live in `app/lib/api-client.ts`
 - analytics, AI, and patient-profile hooks no longer carry broad mixed-shape parsing for their stabilized feeds
+- browser-side adapter coupling is removed from the active API client
+- backend compatibility normalization remains server-side only for the route families that still need it
 
 Remaining:
 
-- trim `app/lib/backend-contract-adapters.ts` further as backend drift disappears
-- keep compatibility normalization server-side only
+- trim `app/lib/backend-contract-adapters.ts` further only when backend drift disappears completely
 
 ### Track C: Permission And UX Alignment
 
-Status: `In Progress`
+Status: `Implemented for current active workflows`
 
 Implemented:
 
 - appointment-create policy aligned to current backend behavior
 - owner and assistant allowed
 - doctor denied
+- assistant, doctor, owner, and inventory UI affordances reviewed against live frontend permission rules
+- actions that predictably return `403` or fail due to missing local workflow context are now blocked earlier in the UI
 
 Remaining:
 
-- continue reviewing action-level UI affordances against live backend policy
+- repeat the same review for new feature work as it is added
 
 ### Track D: Workflow Hardening
 
-Status: `In Progress`
+Status: `Implemented for current active workflows`
 
 Implemented:
 
 - owner staff management now uses backend users API
 - assistant and doctor workflows use backend-backed production paths
 - analytics and AI use shared query-backed reads
+- write-heavy workflows now clear stale feedback when context changes
+- inventory, doctor, assistant, and owner actions use tighter disabled states before invalid operations
+- duplicate-key list rendering issues in owner and assistant workflows are resolved and covered by tests
 
 Remaining:
 
-- mutation feedback consistency in write-heavy workflows
-- invalidation consistency after writes
-- additional UX polish where business rules may still evolve
+- additional UX polish only when future business rules evolve
 
 ### Track E: Artifact Retirement
 
@@ -327,8 +330,8 @@ Current quality gate:
 
 Current implemented verification baseline:
 
-- 30 passing test files
-- 115 passing tests
+- 31 passing test files
+- 155 passing tests
 
 Current note:
 
@@ -364,7 +367,7 @@ Not fully implemented or not yet enterprise-complete:
 - advanced audit governance tooling
 - full backend permission-name parity across every domain action
 - full elimination of server-side compatibility adapters
-- final enterprise-grade mutation UX polish everywhere
+- future workflow polish driven by new backend rules or new feature delivery
 
 ## 12. Developer Workflow Guidance
 
@@ -381,9 +384,9 @@ When extending this codebase:
 
 Immediate next priorities:
 
-1. tighten mutation feedback and invalidation in write-heavy screens
-2. continue action-level permission affordance review
-3. trim remaining server-side contract-adapter debt as backend stabilizes
+1. maintain shared query invalidation and permission-aligned affordances for newly added workflows
+2. trim remaining server-side contract-adapter debt as backend stabilizes
+3. keep the full lint, typecheck, and test gate green during feature delivery
 
 ## 14. Environment And Runtime Notes
 
@@ -400,4 +403,4 @@ Current behavior:
 
 ## 15. Conclusion
 
-The Medsys frontend now has a stable production-oriented architecture: backend-backed BFF routes, secure session handling, shared authorization, shared query infrastructure, and retired prototype persistence. The remaining work is no longer migration or emergency stabilization. It is cleanup, workflow hardening, and backend-alignment refinement.
+The Medsys frontend now has a stable production-oriented architecture: backend-backed BFF routes, secure session handling, shared authorization, shared query infrastructure, and retired prototype persistence. Workflow hardening for the active production UI is complete. Remaining work is now steady-state maintenance, backend-alignment refinement, and future feature delivery rather than migration or core operational stabilization.

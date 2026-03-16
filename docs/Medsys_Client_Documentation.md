@@ -2,8 +2,8 @@
 
 Client Overview, Scope, and Requirements Baseline
 
-Version: 1.0
-Date: March 11, 2026
+Version: 1.1
+Date: March 16, 2026
 Document Status: Client Issue Copy
 System Version: Frontend `0.1.0`
 Audience: Clients, sponsors, business stakeholders, delivery management
@@ -292,12 +292,13 @@ Current implementation position:
 - active production browser flows use backend-backed `/api/...` BFF routes
 - prototype persistence has been removed from the active frontend tree
 - query-based server-state infrastructure is in place across the main read-heavy sections
+- workflow hardening for the active owner, doctor, assistant, and inventory screens is complete
 
 Current product maturity statement:
 
 - the application is structurally strong for continued development
 - it is not yet a completed enterprise healthcare platform
-- additional work is still required for deeper workflow hardening, compliance, and production operations
+- additional work is still required for compliance expansion, production operations maturity, and future feature delivery
 
 ## 12. Known Limitations
 
@@ -314,8 +315,8 @@ Current known limitations include:
 
 Document issue details:
 
-- document version: `1.0`
-- document date: `March 11, 2026`
+- document version: `1.1`
+- document date: `March 16, 2026`
 - system version referenced: `Frontend 0.1.0`
 - status: `client issue copy`
 
@@ -329,4 +330,4 @@ Recommended use:
 
 ## 14. Conclusion
 
-Medsys currently provides a structured, role-based healthcare operations UI for internal clinic users. It already supports the major operational flows needed to manage patients, consultations, prescriptions, dispensing, inventory, analytics, and staff workflows within a controlled browser application. The current baseline is suitable for stakeholder review, phased delivery planning, and ongoing implementation governance.
+Medsys currently provides a structured, role-based healthcare operations UI for internal clinic users. It already supports the major operational flows needed to manage patients, consultations, prescriptions, dispensing, inventory, analytics, and staff workflows within a controlled browser application. The current baseline is suitable for stakeholder review, operational rollout planning, and ongoing implementation governance.
