@@ -126,6 +126,22 @@ export type FrontendUser = {
   extraPermissions?: AppPermission[];
 };
 
+export type PatientWriteInput = {
+  firstName: string;
+  lastName: string;
+  dob: string;
+  gender: "male" | "female" | "other";
+  nic?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  familyId?: number;
+  guardianPatientId?: number;
+  guardianName?: string | null;
+  guardianNic?: string | null;
+  guardianPhone?: string | null;
+  guardianRelationship?: string | null;
+};
+
 export async function loginUser(email: string, password: string, roleHint?: AppRole) {
   const response = await fetch("/api/auth/login", {
     method: "POST",
@@ -259,16 +275,7 @@ export async function listFamilies() {
   return expectApiRecordArray(response, "families");
 }
 
-export async function createPatient(input: {
-  name: string;
-  nic: string;
-  age: number;
-  gender: "male" | "female" | "other";
-  mobile?: string;
-  priority?: "low" | "normal" | "high" | "critical";
-  dateOfBirth?: string;
-  address?: string;
-}) {
+export async function createPatient(input: PatientWriteInput) {
   const response = await apiFetch<{ patient: unknown }>("/api/patients", {
     method: "POST",
     body: JSON.stringify(input),

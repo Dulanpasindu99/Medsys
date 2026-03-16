@@ -71,7 +71,7 @@ export function AssistantPickupPanel({
                             <div className="flex items-center gap-3">
                                 <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">Patient No</span>
                                 <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">
-                                    {activePrescription.prescriptionId ?? "--"}
+                                    {activePrescription.patientCode || activePrescription.prescriptionId || "--"}
                                 </span>
                             </div>
                             <span className="rounded-full bg-lime-100 px-3 py-1 font-semibold text-lime-700">Bill paid</span>
@@ -80,7 +80,10 @@ export function AssistantPickupPanel({
                             <div>
                                 <p className="text-[13px] font-semibold text-slate-500">Patient Name</p>
                                 <p className="text-lg font-semibold text-slate-900">{activePrescription.patient}</p>
-                                <p className="text-xs text-slate-500">NIC {activePrescription.nic}</p>
+                                <p className="text-xs text-slate-500">
+                                    {activePrescription.patientCode ? `Code ${activePrescription.patientCode}` : `NIC ${activePrescription.nic}`}
+                                    {activePrescription.guardianNic ? ` | Guardian NIC ${activePrescription.guardianNic}` : ''}
+                                </p>
                             </div>
                             <div className="flex items-end justify-end gap-3 text-sm font-semibold text-slate-700">
                                 <span className="rounded-full bg-slate-200 px-4 py-2 text-slate-700">Age {activePrescription.age}</span>

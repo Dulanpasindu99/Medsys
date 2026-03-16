@@ -58,7 +58,7 @@ export function AssistantSidebar({
             <option value="">Select patient</option>
             {patientOptions.map((patient) => (
               <option key={patient.id} value={String(patient.id)}>
-                {patient.name} | {patient.nic}
+                {patient.name} | {patient.patientCode || patient.nic || `Patient #${patient.id}`}
               </option>
             ))}
           </select>
@@ -170,7 +170,10 @@ export function AssistantSidebar({
           >
             <div>
               <p className="font-semibold text-slate-900">{entry.name}</p>
-              <p className="text-[11px] text-slate-500">NIC {entry.nic}</p>
+              <p className="text-[11px] text-slate-500">
+                {entry.patientCode ? `Code ${entry.patientCode}` : `NIC ${entry.nic}`}
+                {entry.guardianNic ? ` | Guardian NIC ${entry.guardianNic}` : ""}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-[var(--ioc-blue)] px-3 py-1 text-white">Age {entry.age}</span>

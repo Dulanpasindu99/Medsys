@@ -35,6 +35,7 @@ describe("authorization policy", () => {
     expect(hasPermission("assistant", "prescription.dispense")).toBe(true);
     expect(hasPermission("assistant", "appointment.update")).toBe(false);
     expect(hasPermission("doctor", "user.read")).toBe(false);
+    expect(hasPermission("doctor", "patient.write")).toBe(false);
     expect(hasPermission("doctor", "inventory.write")).toBe(false);
     expect(hasPermission("doctor", "prescription.dispense")).toBe(false);
     expect(hasPermission("doctor", "appointment.update")).toBe(true);
@@ -46,7 +47,7 @@ describe("authorization policy", () => {
 
   it("allows explicit permission overrides on top of the role matrix", () => {
     const permissions: AppPermission[] = [
-      "assistant.workspace.view",
+      "patient.write",
       "appointment.create",
       "prescription.dispense",
     ];
@@ -56,7 +57,7 @@ describe("authorization policy", () => {
     };
 
     expect(hasPermission(doctorWithAssistantCoverage, "doctor.workspace.view")).toBe(true);
-    expect(hasPermission(doctorWithAssistantCoverage, "assistant.workspace.view")).toBe(true);
+    expect(hasPermission(doctorWithAssistantCoverage, "patient.write")).toBe(true);
     expect(hasPermission(doctorWithAssistantCoverage, "appointment.create")).toBe(true);
     expect(hasPermission(doctorWithAssistantCoverage, "prescription.dispense")).toBe(true);
     expect(canAccessRoute(doctorWithAssistantCoverage, "assistantWorkspace")).toBe(true);

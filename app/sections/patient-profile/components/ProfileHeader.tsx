@@ -31,8 +31,15 @@ export function ProfileHeader({ profile, timelineCount, formatDate }: ProfileHea
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-3 text-sm font-semibold text-slate-800">
-                    <span className="rounded-full bg-slate-700 px-4 py-2 text-white shadow-[0_12px_32px_rgba(71,85,105,0.28)]">NIC {profile.nic}</span>
+                    <span className="rounded-full bg-slate-700 px-4 py-2 text-white shadow-[0_12px_32px_rgba(71,85,105,0.28)]">
+                        {profile.patientCode ? `Code ${profile.patientCode}` : `NIC ${profile.nic}`}
+                    </span>
                     <span className="rounded-full bg-slate-100 px-4 py-2 text-slate-700 ring-1 ring-slate-200">Gender {profile.gender}</span>
+                    {profile.guardianRelationship ? (
+                        <span className="rounded-full bg-amber-50 px-4 py-2 text-amber-800 ring-1 ring-amber-100">
+                            Guardian {profile.guardianRelationship}
+                        </span>
+                    ) : null}
                 </div>
             </div>
 
@@ -42,6 +49,13 @@ export function ProfileHeader({ profile, timelineCount, formatDate }: ProfileHea
                 <InfoPill label="First added" value={formatDate(profile.firstSeen)} />
                 <InfoPill label="Total timeline notes" value={String(timelineCount)} />
             </div>
+            {(profile.guardianName || profile.guardianNic || profile.guardianPhone) ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <InfoPill label="Guardian" value={profile.guardianName ?? 'Linked guardian'} />
+                    <InfoPill label="Guardian NIC" value={profile.guardianNic ?? 'Not provided'} />
+                    <InfoPill label="Guardian Phone" value={profile.guardianPhone ?? 'Not provided'} />
+                </div>
+            ) : null}
         </div>
     );
 }

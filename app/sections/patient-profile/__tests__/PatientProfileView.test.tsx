@@ -66,6 +66,7 @@ describe("PatientProfileView", () => {
       profile: {
         id: "12",
         name: "Jane Doe",
+        patientCode: "P-0012",
         nic: "990011223V",
         age: 31,
         gender: "Female",

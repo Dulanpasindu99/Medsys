@@ -53,7 +53,7 @@ describe("useDoctorWorkspaceData", () => {
     vi.clearAllMocks();
     mockedUsePatientsQuery.mockReturnValue(
       buildQueryState({
-        data: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
+        data: [{ id: 7, name: "Jane Doe", patientCode: "P-0007", nic: "990011223V", age: 31, gender: "female" }],
       }) as never
     );
     mockedUseAppointmentsQuery.mockReturnValue(
@@ -64,6 +64,7 @@ describe("useDoctorWorkspaceData", () => {
             patientId: 7,
             doctorId: 5,
             patientName: "Jane Doe",
+            patientCode: "P-0007",
             nic: "990011223V",
             age: 31,
             gender: "female",
@@ -104,6 +105,7 @@ describe("useDoctorWorkspaceData", () => {
         appointmentId: 22,
         doctorId: 5,
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female",
@@ -126,15 +128,69 @@ describe("useDoctorWorkspaceData", () => {
     });
   });
 
+  it("fills the top doctor fields from an exact patient code lookup", async () => {
+    const clinicalWorkflow = {
+      selectedDiseases: [],
+      selectedTests: [],
+      rxRows: [],
+    } as never;
+    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
+
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
+
+    act(() => {
+      result.current.setPatientCode("P-0007");
+    });
+
+    act(() => {
+      result.current.handlePatientCodeCommit();
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientName).toBe("Jane Doe");
+    });
+    expect(result.current.patientAge).toBe("31");
+    expect(result.current.nicNumber).toBe("990011223V");
+    expect(result.current.patientLookupNotice).toBeNull();
+  });
+
+  it("shows a lookup notice when top identity lookup finds no patient", async () => {
+    const clinicalWorkflow = {
+      selectedDiseases: [],
+      selectedTests: [],
+      rxRows: [],
+    } as never;
+    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
+
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
+
+    act(() => {
+      result.current.setNicNumber("200012345678");
+    });
+
+    act(() => {
+      result.current.handleNicLookupCommit();
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientLookupNotice).toEqual(expect.stringMatching(/no patient was found/i));
+    });
+    expect(result.current.patientName).toBe("");
+  });
+
   it("submits encounters and refetches queue queries after save", async () => {
     const invalidateQueriesSpy = vi
       .spyOn(QueryClient.prototype, "invalidateQueries")
       .mockResolvedValue(undefined);
     const patientsQuery = buildQueryState({
-      data: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
+      data: [{ id: 7, name: "Jane Doe", patientCode: "P-0007", nic: "990011223V", age: 31, gender: "female" }],
     });
     const appointmentsQuery = buildQueryState({
-      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", nic: "990011223V", age: 31, gender: "female", reason: "Fever", scheduledAt: "2026-03-10T10:30:00.000Z" }],
+      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", patientCode: "P-0007", nic: "990011223V", age: 31, gender: "female", reason: "Fever", scheduledAt: "2026-03-10T10:30:00.000Z" }],
     });
     const currentUserQuery = buildQueryState({ data: { id: 5, role: "doctor" } });
     mockedUsePatientsQuery.mockReturnValue(patientsQuery as never);
@@ -158,6 +214,7 @@ describe("useDoctorWorkspaceData", () => {
         appointmentId: 22,
         doctorId: 5,
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female",
@@ -213,6 +270,7 @@ describe("useDoctorWorkspaceData", () => {
         appointmentId: 22,
         doctorId: 5,
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female",
@@ -259,10 +317,10 @@ describe("useDoctorWorkspaceData", () => {
       .spyOn(QueryClient.prototype, "invalidateQueries")
       .mockResolvedValue(undefined);
     const patientsQuery = buildQueryState({
-      data: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
+      data: [{ id: 7, name: "Jane Doe", patientCode: "P-0007", nic: "990011223V", age: 31, gender: "female" }],
     });
     const appointmentsQuery = buildQueryState({
-      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", nic: "990011223V", age: 31, gender: "female", reason: "Fever", status: "waiting", scheduledAt: "2026-03-10T10:30:00.000Z" }],
+      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", patientCode: "P-0007", nic: "990011223V", age: 31, gender: "female", reason: "Fever", status: "waiting", scheduledAt: "2026-03-10T10:30:00.000Z" }],
     });
     mockedUsePatientsQuery.mockReturnValue(patientsQuery as never);
     mockedUseAppointmentsQuery.mockReturnValue(appointmentsQuery as never);
@@ -285,6 +343,7 @@ describe("useDoctorWorkspaceData", () => {
         doctorId: 5,
         appointmentStatus: "waiting",
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female",
@@ -328,6 +387,7 @@ describe("useDoctorWorkspaceData", () => {
         doctorId: 5,
         appointmentStatus: "waiting",
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female",
@@ -349,6 +409,7 @@ describe("useDoctorWorkspaceData", () => {
         appointmentId: 22,
         doctorId: 5,
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female",

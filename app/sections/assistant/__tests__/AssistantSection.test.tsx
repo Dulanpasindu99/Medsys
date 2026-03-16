@@ -30,6 +30,7 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
         prescriptionId: 101,
         patientId: 7,
         patient: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female" as const,
@@ -44,6 +45,7 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
       prescriptionId: 101,
       patientId: 7,
       patient: "Jane Doe",
+      patientCode: "P-0007",
       nic: "990011223V",
       age: 31,
       gender: "Female" as const,
@@ -54,22 +56,32 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
       dispenseItems: [{ inventoryItemId: 1, quantity: 10 }],
     },
     formState: {
+      firstName: "",
+      lastName: "",
+      dateOfBirth: "",
+      gender: "Male" as const,
       nic: "",
-      name: "",
       mobile: "",
-      age: "",
       allergyInput: "",
       allergies: ["No allergies"],
       bloodGroup: "O+",
       priority: "Normal" as const,
       regularDrug: "",
+      guardian: {
+        guardianPatientId: "",
+        guardianName: "",
+        guardianNic: "",
+        guardianPhone: "",
+        guardianRelationship: "",
+        familyId: "",
+      },
     },
     setFormState: vi.fn(),
     completedSearch: "",
     setCompletedSearch: vi.fn(),
     stats: { total: 12, male: 7, female: 5, existing: 10, new: 2 },
     availableDoctors: [{ id: 5, name: "Dr. House", status: "Online" }],
-    patientOptions: [{ id: 7, name: "Jane Doe", nic: "990011223V" }],
+    patientOptions: [{ id: 7, name: "Jane Doe", patientCode: "P-0007", nic: "990011223V" }],
     scheduleForm: {
       patientId: "",
       doctorId: "",
@@ -78,7 +90,7 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
       priority: "Normal" as const,
     },
     setScheduleForm: vi.fn(),
-    filteredCompleted: [{ name: "Jane Doe", age: 31, nic: "990011223V", time: "10:30", profileId: "7" }],
+    filteredCompleted: [{ name: "Jane Doe", patientCode: "P-0007", age: 31, nic: "990011223V", time: "10:30", profileId: "7" }],
     addPatient: vi.fn(),
     addAllergy: vi.fn(),
     scheduleAppointment: vi.fn(),
@@ -91,6 +103,8 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     dispenseState: idleMutationState(),
     dispenseFeedback: null,
     canManageAssistantWorkflow: true,
+    canCreatePatientsInWorkflow: true,
+    patientActionDisabledReason: null,
     workflowActionDisabledReason: null,
     canCreateAppointmentsInWorkflow: true,
     appointmentActionDisabledReason: null,
@@ -158,6 +172,9 @@ describe("AssistantSection", () => {
     mockedUseAssistantWorkflow.mockReturnValue(
       buildWorkflowState({
         canManageAssistantWorkflow: false,
+        canCreatePatientsInWorkflow: false,
+        patientActionDisabledReason:
+          "Only assistant and owner accounts can register patients.",
         workflowActionDisabledReason:
           "Only assistant and owner accounts can complete intake and dispense actions.",
         canCreateAppointmentsInWorkflow: false,
@@ -171,6 +188,9 @@ describe("AssistantSection", () => {
     expect(screen.getByRole("button", { name: /done & next/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /add patient/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /schedule appointment/i })).toBeDisabled();
+    expect(
+      screen.getAllByText(/only assistant and owner accounts can register patients/i).length
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/only assistant and owner accounts can complete intake and dispense actions/i)
         .length
@@ -186,8 +206,8 @@ describe("AssistantSection", () => {
     mockedUseAssistantWorkflow.mockReturnValue(
       buildWorkflowState({
         filteredCompleted: [
-          { name: "Jane Doe", age: 31, nic: "N/A", time: "10:30" },
-          { name: "John Doe", age: 29, nic: "N/A", time: "11:00" },
+          { name: "Jane Doe", patientCode: "", age: 31, nic: "N/A", time: "10:30" },
+          { name: "John Doe", patientCode: "", age: 29, nic: "N/A", time: "11:00" },
         ],
       })
     );

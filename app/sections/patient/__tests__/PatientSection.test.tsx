@@ -37,6 +37,7 @@ function buildDirectoryState(overrides?: Partial<ReturnType<typeof usePatientDir
       {
         patientId: 7,
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female" as const,
@@ -54,6 +55,7 @@ function buildDirectoryState(overrides?: Partial<ReturnType<typeof usePatientDir
       {
         patientId: 7,
         name: "Jane Doe",
+        patientCode: "P-0007",
         nic: "990011223V",
         age: 31,
         gender: "Female" as const,

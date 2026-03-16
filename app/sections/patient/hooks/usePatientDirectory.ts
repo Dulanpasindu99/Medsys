@@ -58,6 +58,32 @@ function toGender(value: unknown): Gender {
   return "Male";
 }
 
+function toName(row: AnyRecord, fallback: string) {
+  const direct = toString(row.name ?? row.fullName).trim();
+  if (direct) return direct;
+  const firstName = toString(row.firstName ?? row.first_name).trim();
+  const lastName = toString(row.lastName ?? row.last_name).trim();
+  const combined = `${firstName} ${lastName}`.trim();
+  return combined || fallback;
+}
+
+function toAge(row: AnyRecord) {
+  const directAge = toNumber(row.age);
+  if (directAge !== null) return directAge;
+  const dob = toString(row.dateOfBirth ?? row.date_of_birth ?? row.dob);
+  if (!dob) return 0;
+  const parsed = new Date(`${dob}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return 0;
+  const today = new Date();
+  let years = today.getUTCFullYear() - parsed.getUTCFullYear();
+  const beforeBirthday =
+    today.getUTCMonth() < parsed.getUTCMonth() ||
+    (today.getUTCMonth() === parsed.getUTCMonth() &&
+      today.getUTCDate() < parsed.getUTCDate());
+  if (beforeBirthday) years -= 1;
+  return years;
+}
+
 function getRelativeVisitLabel(lastVisitDate?: string) {
   if (!lastVisitDate) return "New patient";
   const daysSince = Math.floor((Date.now() - new Date(lastVisitDate).getTime()) / (1000 * 3600 * 24));
@@ -113,7 +139,7 @@ export function usePatientDirectory() {
 
   const filteredPatients = useMemo(() => {
     return patients.filter((patient) => {
-      const matchesSearch = `${patient.name} ${patient.nic} ${patient.mobile} ${patient.family}`
+      const matchesSearch = `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.mobile} ${patient.family} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
         .toLowerCase()
         .includes(search.toLowerCase());
 
@@ -187,11 +213,18 @@ async function fetchPatientDirectorySnapshot(): Promise<{
     const normalized = await Promise.all(
       patientRows.map(async (row, index) => {
         const patientId = toNumber(row.id ?? row.patientId ?? row.patient_id) ?? undefined;
-        const name = toString(row.name ?? row.fullName, `Patient ${index + 1}`);
-        const nic = toString(row.nic, "N/A");
-        const age = toNumber(row.age) ?? 0;
+        const name = toName(row, `Patient ${index + 1}`);
+        const nic = toString(row.nic, "No NIC");
+        const age = toAge(row);
         const patientGender = toGender(row.gender);
         const mobile = toString(row.mobile ?? row.phone, "Not provided");
+        const patientCode = toString(row.patientCode ?? row.patient_code, "");
+        const guardianName = toString(row.guardianName ?? row.guardian_name, "");
+        const guardianNic = toString(row.guardianNic ?? row.guardian_nic, "");
+        const guardianRelationship = toString(
+          row.guardianRelationship ?? row.guardian_relationship,
+          ""
+        );
 
         const familyId = toNumber(row.familyId ?? row.family_id);
         const nestedFamily = asRecord(row.family);
@@ -256,7 +289,11 @@ async function fetchPatientDirectorySnapshot(): Promise<{
         return {
           patientId,
           name,
+          patientCode,
           nic,
+          guardianName: guardianName || undefined,
+          guardianNic: guardianNic || undefined,
+          guardianRelationship: guardianRelationship || undefined,
           age,
           gender: patientGender,
           mobile,

@@ -73,7 +73,7 @@ describe("NavigationPanel", () => {
     render(
       <NavigationPanel
         sessionRole="doctor"
-        sessionPermissions={["assistant.workspace.view", "appointment.create", "prescription.dispense"]}
+        sessionPermissions={["patient.write", "appointment.create", "prescription.dispense"]}
         userName="Dr. Cover"
       />
     );

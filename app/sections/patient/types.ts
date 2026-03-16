@@ -3,7 +3,11 @@ export type Gender = "Male" | "Female" | "Other";
 export type Patient = {
   patientId?: number;
   name: string;
+  patientCode: string;
   nic: string;
+  guardianName?: string;
+  guardianNic?: string;
+  guardianRelationship?: string;
   age: number;
   gender: Gender;
   mobile: string;

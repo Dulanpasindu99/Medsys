@@ -47,6 +47,32 @@ function toGender(value: unknown): "Male" | "Female" | "Other" {
   return "Male";
 }
 
+function toName(record: ApiRecord | null, fallback: string) {
+  const direct = toString(record?.name ?? record?.fullName).trim();
+  if (direct) return direct;
+  const firstName = toString(record?.firstName ?? record?.first_name).trim();
+  const lastName = toString(record?.lastName ?? record?.last_name).trim();
+  const combined = `${firstName} ${lastName}`.trim();
+  return combined || fallback;
+}
+
+function toAge(record: ApiRecord | null) {
+  const directAge = toNumber(record?.age);
+  if (directAge !== null) return directAge;
+  const dob = toString(record?.dateOfBirth ?? record?.date_of_birth ?? record?.dob);
+  if (!dob) return 0;
+  const parsed = new Date(`${dob}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return 0;
+  const today = new Date();
+  let years = today.getUTCFullYear() - parsed.getUTCFullYear();
+  const beforeBirthday =
+    today.getUTCMonth() < parsed.getUTCMonth() ||
+    (today.getUTCMonth() === parsed.getUTCMonth() &&
+      today.getUTCDate() < parsed.getUTCDate());
+  if (beforeBirthday) years -= 1;
+  return years;
+}
+
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -169,9 +195,44 @@ export function usePatientProfileData(profileId: string) {
 
     return {
       id: String(numericId),
-      name: toString(profileRecord?.name ?? patientRow?.name ?? patientRow?.fullName, `Patient ${numericId}`),
-      nic: toString(profileRecord?.nic ?? patientRow?.nic, "N/A"),
-      age: toNumber(profileRecord?.age ?? patientRow?.age) ?? 0,
+      name: toName((profileRecord as ApiRecord | null) ?? (patientRow as ApiRecord | null), `Patient ${numericId}`),
+      patientCode: toString(
+        profileRecord?.patientCode ??
+          profileRecord?.patient_code ??
+          patientRow?.patientCode ??
+          patientRow?.patient_code,
+        ""
+      ),
+      nic: toString(profileRecord?.nic ?? patientRow?.nic, "No NIC"),
+      guardianName: toString(
+        profileRecord?.guardianName ??
+          profileRecord?.guardian_name ??
+          patientRow?.guardianName ??
+          patientRow?.guardian_name,
+        ""
+      ) || undefined,
+      guardianNic: toString(
+        profileRecord?.guardianNic ??
+          profileRecord?.guardian_nic ??
+          patientRow?.guardianNic ??
+          patientRow?.guardian_nic,
+        ""
+      ) || undefined,
+      guardianPhone: toString(
+        profileRecord?.guardianPhone ??
+          profileRecord?.guardian_phone ??
+          patientRow?.guardianPhone ??
+          patientRow?.guardian_phone,
+        ""
+      ) || undefined,
+      guardianRelationship: toString(
+        profileRecord?.guardianRelationship ??
+          profileRecord?.guardian_relationship ??
+          patientRow?.guardianRelationship ??
+          patientRow?.guardian_relationship,
+        ""
+      ) || undefined,
+      age: toAge((profileRecord as ApiRecord | null) ?? (patientRow as ApiRecord | null)),
       gender: toGender(profileRecord?.gender ?? patientRow?.gender),
       mobile: toString(
         profileRecord?.mobile ?? patientRow?.mobile ?? patientRow?.phone,

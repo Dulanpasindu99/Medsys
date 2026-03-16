@@ -75,24 +75,24 @@ describe("api client backend compatibility", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await createPatient({
-      name: "Jane Doe",
-      nic: "991234567V",
-      age: 27,
+      firstName: "Jane",
+      lastName: "Doe",
+      dob: "1999-01-01",
       gender: "female",
-      mobile: "555-2222",
-      priority: "high",
+      nic: "991234567V",
+      phone: "555-2222",
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/patients");
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
       JSON.stringify({
-        name: "Jane Doe",
-        nic: "991234567V",
-        age: 27,
+        firstName: "Jane",
+        lastName: "Doe",
+        dob: "1999-01-01",
         gender: "female",
-        mobile: "555-2222",
-        priority: "high",
+        nic: "991234567V",
+        phone: "555-2222",
       })
     );
   });

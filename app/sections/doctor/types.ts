@@ -12,7 +12,11 @@ export type Patient = {
   doctorId?: number;
   appointmentStatus?: AppointmentLifecycleStatus;
   name: string;
+  patientCode: string;
   nic: string;
+  guardianName?: string;
+  guardianNic?: string;
+  guardianRelationship?: string;
   time: string;
   reason: string;
   age: number;

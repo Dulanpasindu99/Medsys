@@ -12,11 +12,13 @@ export function PatientRecordCard({ patient, onViewProfile }: PatientRecordCardP
         <div className="flex flex-1 flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(71,85,105,0.3)]">
-              #{patient.patientId ?? "--"}
+              {patient.patientCode || `#${patient.patientId ?? "--"}`}
               <span className="text-slate-300">|</span>
               {patient.name}
             </div>
-            <span className="text-sm font-semibold text-slate-700">NIC {patient.nic}</span>
+            <span className="text-sm font-semibold text-slate-700">
+              {patient.nic !== "No NIC" ? `NIC ${patient.nic}` : "NIC not provided"}
+            </span>
             <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
               {patient.gender}
             </span>
@@ -35,6 +37,16 @@ export function PatientRecordCard({ patient, onViewProfile }: PatientRecordCardP
             <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 font-semibold text-slate-800 ring-1 ring-slate-100">
               Last visit: {patient.lastVisit}
             </span>
+            {patient.guardianNic ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-800 ring-1 ring-amber-100">
+                Guardian NIC: {patient.guardianNic}
+              </span>
+            ) : null}
+            {patient.guardianRelationship ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-800 ring-1 ring-amber-100">
+                Guardian: {patient.guardianRelationship}
+              </span>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

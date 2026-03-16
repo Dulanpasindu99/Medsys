@@ -40,12 +40,19 @@ function buildPatientFixture(input: {
   age: number;
   gender: string;
 }) {
+  const [firstName, ...lastNameParts] = input.name.split(" ");
   return {
     id: input.id,
     name: input.name,
     fullName: input.name,
-    dateOfBirth: null,
-    date_of_birth: null,
+    firstName,
+    first_name: firstName,
+    lastName: lastNameParts.join(" "),
+    last_name: lastNameParts.join(" "),
+    patientCode: `P-${String(input.id).padStart(4, "0")}`,
+    patient_code: `P-${String(input.id).padStart(4, "0")}`,
+    dateOfBirth: "1995-01-01",
+    date_of_birth: "1995-01-01",
     phone: null,
     mobile: null,
     address: null,
@@ -69,11 +76,15 @@ describe("useAssistantWorkflow", () => {
       role: "assistant",
       email: "assistant@medsys.test",
       name: "Assistant",
+      permissions: ["patient.write", "appointment.create", "prescription.dispense"],
     });
     mockedCreatePatient.mockResolvedValue({
       id: 99,
       name: "Created Patient",
       fullName: "Created Patient",
+      firstName: "Created",
+      lastName: "Patient",
+      patientCode: "P-0099",
       dateOfBirth: null,
       date_of_birth: null,
       phone: null,
@@ -154,6 +165,7 @@ describe("useAssistantWorkflow", () => {
     expect(result.current.filteredCompleted[0]).toEqual(
       expect.objectContaining({
         name: "Jane Doe",
+        patientCode: "P-0007",
         age: 31,
         nic: "990011223V",
         profileId: "7",
@@ -286,7 +298,7 @@ describe("useAssistantWorkflow", () => {
 
     expect(result.current.canManageAssistantWorkflow).toBe(false);
     expect(mockedCreatePatient).not.toHaveBeenCalled();
-    expect(result.current.createPatientState.error).toMatch(/assistant workflow access/i);
+    expect(result.current.createPatientState.error).toMatch(/patient registration access/i);
   });
 
   it("unlocks assistant workflow actions for doctors with explicit assistant coverage permissions", async () => {
@@ -295,7 +307,7 @@ describe("useAssistantWorkflow", () => {
       role: "doctor",
       email: "doctor@medsys.test",
       name: "Doctor",
-      permissions: ["appointment.create", "prescription.dispense"],
+      permissions: ["patient.write", "appointment.create", "prescription.dispense"],
     });
 
     const { result } = renderHook(() => useAssistantWorkflow(), {
@@ -307,6 +319,7 @@ describe("useAssistantWorkflow", () => {
     });
 
     expect(result.current.canManageAssistantWorkflow).toBe(true);
+    expect(result.current.canCreatePatientsInWorkflow).toBe(true);
     expect(result.current.canCreateAppointmentsInWorkflow).toBe(true);
   });
 

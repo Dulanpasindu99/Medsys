@@ -16,7 +16,12 @@ export interface FamilyProfile {
 export interface PatientProfileRecord {
   id: string;
   name: string;
+  patientCode: string;
   nic: string;
+  guardianName?: string;
+  guardianNic?: string;
+  guardianPhone?: string;
+  guardianRelationship?: string;
   age: number;
   gender: "Male" | "Female" | "Other";
   mobile: string;

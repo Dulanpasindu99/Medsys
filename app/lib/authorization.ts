@@ -147,7 +147,6 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "inventory.view",
     "ai.workspace.view",
     "patient.read",
-    "patient.write",
     "patient.history.read",
     "patient.history.write",
     "appointment.update",
@@ -175,6 +174,15 @@ const DEFAULT_ROUTE_BY_ROLE: Record<AppRole, AppRouteId> = {
   doctor: "doctorHome",
   assistant: "assistantWorkspace",
 };
+
+const ASSISTANT_SUPPORT_ROUTE_PERMISSIONS: readonly AppPermission[] = [
+  "assistant.workspace.view",
+  "patient.write",
+  "appointment.create",
+  "prescription.dispense",
+  "inventory.write",
+  "family.write",
+];
 
 function isPermissionSubject(value: PermissionSubject): value is Exclude<PermissionSubject, AppRole> {
   return typeof value === "object" && value !== null;
@@ -233,7 +241,15 @@ export function canUpdateAppointments(subject: PermissionSubject) {
   return hasPermission(subject, "appointment.update");
 }
 
+function canAccessAssistantWorkspace(subject: PermissionSubject) {
+  return hasAnyPermission(subject, ASSISTANT_SUPPORT_ROUTE_PERMISSIONS);
+}
+
 export function canAccessRoute(subject: PermissionSubject, routeId: AppRouteId) {
+  if (routeId === "assistantWorkspace") {
+    return canAccessAssistantWorkspace(subject);
+  }
+
   const route = getRoutePolicy(routeId);
   return route ? hasPermission(subject, route.permission) : false;
 }
@@ -264,14 +280,16 @@ export function getNavigationItemsForRole(role: AppRole) {
 }
 
 export function getNavigationItemsForSubject(subject: PermissionSubject) {
-  return ROUTE_POLICIES.filter((route) => hasPermission(subject, route.permission)).map(
-    ({ navId, href, label, routeId }) => ({
-      id: navId,
-      href,
-      label,
-      routeId,
-    })
-  );
+  return ROUTE_POLICIES.filter((route) =>
+    route.routeId === "assistantWorkspace"
+      ? canAccessAssistantWorkspace(subject)
+      : hasPermission(subject, route.permission)
+  ).map(({ navId, href, label, routeId }) => ({
+    id: navId,
+    href,
+    label,
+    routeId,
+  }));
 }
 
 export function getNavigationIndexForPath(pathname: string) {

@@ -75,6 +75,32 @@ function toUiGender(value: unknown): "Male" | "Female" {
   return toString(value).toLowerCase() === "female" ? "Female" : "Male";
 }
 
+function toName(row: AnyRecord, fallback: string) {
+  const direct = toString(row.name ?? row.fullName).trim();
+  if (direct) return direct;
+  const firstName = toString(row.firstName ?? row.first_name).trim();
+  const lastName = toString(row.lastName ?? row.last_name).trim();
+  const combined = `${firstName} ${lastName}`.trim();
+  return combined || fallback;
+}
+
+function toAge(value: unknown, fallback = 0) {
+  const direct = toNumber(value);
+  if (direct !== null) return direct;
+  const text = toString(value);
+  if (!text) return fallback;
+  const dob = new Date(`${text}T00:00:00.000Z`);
+  if (Number.isNaN(dob.getTime())) return fallback;
+  const today = new Date();
+  let years = today.getUTCFullYear() - dob.getUTCFullYear();
+  const beforeBirthday =
+    today.getUTCMonth() < dob.getUTCMonth() ||
+    (today.getUTCMonth() === dob.getUTCMonth() &&
+      today.getUTCDate() < dob.getUTCDate());
+  if (beforeBirthday) years -= 1;
+  return years;
+}
+
 function toDisplayTime(value: unknown) {
   const raw = toString(value);
   if (!raw) return "-";
@@ -114,14 +140,24 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
     const patientRow = patientId ? patientById.get(patientId) : null;
     const nestedPatient = asRecord(row.patient) ?? null;
 
-    const patient = toString(
-      row.patientName ??
-      row.patient_name ??
-      nestedPatient?.name ??
-      nestedPatient?.fullName ??
-      patientRow?.name ??
-      patientRow?.fullName,
+    const patient = toName(
+      {
+        ...(patientRow ?? {}),
+        ...(nestedPatient ?? {}),
+        name: row.patientName ?? row.patient_name ?? nestedPatient?.name ?? patientRow?.name,
+        fullName: nestedPatient?.fullName ?? patientRow?.fullName,
+      },
       `Patient ${patientId ?? index + 1}`
+    );
+
+    const patientCode = toString(
+      row.patientCode ??
+        row.patient_code ??
+        nestedPatient?.patientCode ??
+        nestedPatient?.patient_code ??
+        patientRow?.patientCode ??
+        patientRow?.patient_code,
+      ""
     );
 
     const nic = toString(
@@ -130,15 +166,21 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
       row.patient_nic ??
       nestedPatient?.nic ??
       patientRow?.nic,
-      "N/A"
+      "No NIC"
     );
 
     const age =
-      toNumber(
+      toAge(
         row.age ??
         row.patientAge ??
         row.patient_age ??
+        row.dateOfBirth ??
+        row.date_of_birth ??
+        nestedPatient?.dateOfBirth ??
+        nestedPatient?.date_of_birth ??
         nestedPatient?.age ??
+        patientRow?.dateOfBirth ??
+        patientRow?.date_of_birth ??
         patientRow?.age
       ) ?? 0;
 
@@ -148,6 +190,43 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
       row.patient_gender ??
       nestedPatient?.gender ??
       patientRow?.gender
+    );
+
+    const guardianName = toString(
+      row.guardianName ??
+        row.guardian_name ??
+        nestedPatient?.guardianName ??
+        nestedPatient?.guardian_name ??
+        patientRow?.guardianName ??
+        patientRow?.guardian_name,
+      ""
+    );
+    const guardianNic = toString(
+      row.guardianNic ??
+        row.guardian_nic ??
+        nestedPatient?.guardianNic ??
+        nestedPatient?.guardian_nic ??
+        patientRow?.guardianNic ??
+        patientRow?.guardian_nic,
+      ""
+    );
+    const guardianPhone = toString(
+      row.guardianPhone ??
+        row.guardian_phone ??
+        nestedPatient?.guardianPhone ??
+        nestedPatient?.guardian_phone ??
+        patientRow?.guardianPhone ??
+        patientRow?.guardian_phone,
+      ""
+    );
+    const guardianRelationship = toString(
+      row.guardianRelationship ??
+        row.guardian_relationship ??
+        nestedPatient?.guardianRelationship ??
+        nestedPatient?.guardian_relationship ??
+        patientRow?.guardianRelationship ??
+        patientRow?.guardian_relationship,
+      ""
     );
 
     const diagnosis = toString(row.diagnosis ?? row.reason ?? asRecord(row.encounter)?.notes, "Awaiting dispense");
@@ -186,7 +265,12 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
       appointmentId,
       patientId,
       patient,
+      patientCode,
       nic,
+      guardianName: guardianName || undefined,
+      guardianNic: guardianNic || undefined,
+      guardianPhone: guardianPhone || undefined,
+      guardianRelationship: guardianRelationship || undefined,
       age,
       gender,
       diagnosis,
@@ -203,14 +287,23 @@ function normalizeCompletedPatients(rawCompletedAppointments: unknown, patientBy
     const patientId = toNumber(row.patientId ?? row.patient_id ?? asRecord(row.patient)?.id);
     const nestedPatient = asRecord(row.patient) ?? null;
     const patientRow = patientId !== null ? patientById.get(patientId) : null;
-    const name = toString(
-      row.patientName ??
-      row.patient_name ??
-      nestedPatient?.name ??
-      nestedPatient?.fullName ??
-      patientRow?.name ??
-      patientRow?.fullName,
+    const name = toName(
+      {
+        ...(patientRow ?? {}),
+        ...(nestedPatient ?? {}),
+        name: row.patientName ?? row.patient_name ?? nestedPatient?.name ?? patientRow?.name,
+        fullName: nestedPatient?.fullName ?? patientRow?.fullName,
+      },
       `Patient ${index + 1}`
+    );
+    const patientCode = toString(
+      row.patientCode ??
+        row.patient_code ??
+        nestedPatient?.patientCode ??
+        nestedPatient?.patient_code ??
+        patientRow?.patientCode ??
+        patientRow?.patient_code,
+      ""
     );
     const nic = toString(
       row.nic ??
@@ -218,22 +311,49 @@ function normalizeCompletedPatients(rawCompletedAppointments: unknown, patientBy
       row.patient_nic ??
       nestedPatient?.nic ??
       patientRow?.nic,
-      "N/A"
+      "No NIC"
     );
     const age =
-      toNumber(
+      toAge(
         row.age ??
         row.patientAge ??
         row.patient_age ??
+        row.dateOfBirth ??
+        row.date_of_birth ??
+        nestedPatient?.dateOfBirth ??
+        nestedPatient?.date_of_birth ??
         nestedPatient?.age ??
+        patientRow?.dateOfBirth ??
+        patientRow?.date_of_birth ??
         patientRow?.age
       ) ?? 0;
+    const guardianNic = toString(
+      row.guardianNic ??
+        row.guardian_nic ??
+        nestedPatient?.guardianNic ??
+        nestedPatient?.guardian_nic ??
+        patientRow?.guardianNic ??
+        patientRow?.guardian_nic,
+      ""
+    );
+    const guardianRelationship = toString(
+      row.guardianRelationship ??
+        row.guardian_relationship ??
+        nestedPatient?.guardianRelationship ??
+        nestedPatient?.guardian_relationship ??
+        patientRow?.guardianRelationship ??
+        patientRow?.guardian_relationship,
+      ""
+    );
     const resolvedProfileId = patientId !== null ? String(patientId) : undefined;
     const time = toDisplayTime(row.completedAt ?? row.updatedAt ?? row.scheduledAt ?? row.checkedAt);
     return {
       name,
+      patientCode,
       age,
       nic,
+      guardianNic: guardianNic || undefined,
+      guardianRelationship: guardianRelationship || undefined,
       time,
       profileId: resolvedProfileId,
     } satisfies CompletedPatient;
@@ -267,20 +387,23 @@ function normalizeDoctorAvailability(rawAppointments: unknown): AssistantDoctorA
 }
 
 function normalizePatientOptions(rawPatients: unknown): AssistantPatientOption[] {
-  return asArray(rawPatients)
-    .map((row, index) => {
-      const id = toNumber(row.id ?? row.patientId ?? row.patient_id);
-      if (id === null) {
-        return null;
-      }
+  const normalized: AssistantPatientOption[] = [];
+  asArray(rawPatients).forEach((row, index) => {
+    const id = toNumber(row.id ?? row.patientId ?? row.patient_id);
+    if (id === null) {
+      return;
+    }
 
-      return {
-        id,
-        name: toString(row.name ?? row.fullName, `Patient ${index + 1}`),
-        nic: toString(row.nic, "N/A"),
-      } satisfies AssistantPatientOption;
-    })
-    .filter((patient): patient is AssistantPatientOption => !!patient);
+    normalized.push({
+      id,
+      name: toName(row, `Patient ${index + 1}`),
+      patientCode: toString(row.patientCode ?? row.patient_code, ""),
+      nic: toString(row.nic, "No NIC"),
+      guardianName: toString(row.guardianName ?? row.guardian_name, "") || undefined,
+      guardianNic: toString(row.guardianNic ?? row.guardian_nic, "") || undefined,
+    });
+  });
+  return normalized;
 }
 
 function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
@@ -307,15 +430,25 @@ export function useAssistantWorkflow() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const [formState, setFormStateState] = useState<AssistantFormState>({
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    gender: "Male",
     nic: "",
-    name: "",
     mobile: "",
-    age: "",
     allergyInput: "",
     allergies: ["No allergies"],
     bloodGroup: "O+",
     priority: "Normal",
     regularDrug: "",
+    guardian: {
+      guardianPatientId: "",
+      guardianName: "",
+      guardianNic: "",
+      guardianPhone: "",
+      guardianRelationship: "",
+      familyId: "",
+    },
   });
 
   const [completedSearch, setCompletedSearch] = useState("");
@@ -374,13 +507,21 @@ export function useAssistantWorkflow() {
     [analyticsOverviewQuery.data, rawPatients]
   );
   const currentUserId = currentUserQuery.data?.id ?? null;
+  const canCreatePatientsInWorkflow =
+    !!currentUserQuery.data && hasPermission(currentUserQuery.data, "patient.write");
+  const patientActionDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? "Checking patient registration access."
+      : currentUserQuery.data && !hasPermission(currentUserQuery.data, "patient.write")
+        ? "Patient-write permission is required before registering patients."
+        : null;
   const canManageAssistantWorkflow =
     !!currentUserQuery.data && hasPermission(currentUserQuery.data, "prescription.dispense");
   const workflowActionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
-      ? "Checking assistant workflow access."
+      ? "Checking dispense access."
       : currentUserQuery.data && !canManageAssistantWorkflow
-        ? "Assistant workflow permission is required before completing intake and dispense actions."
+        ? "Prescription-dispense permission is required before completing pickup actions."
         : null;
   const canCreateAppointmentsInWorkflow =
     !!currentUserQuery.data &&
@@ -463,41 +604,79 @@ export function useAssistantWorkflow() {
   ]);
 
   const filteredCompleted = useMemo(
-    () => completed.filter((entry) => `${entry.name} ${entry.nic}`.toLowerCase().includes(completedSearch.toLowerCase())),
+    () =>
+      completed.filter((entry) =>
+        `${entry.name} ${entry.patientCode} ${entry.nic} ${entry.guardianNic ?? ""} ${entry.guardianRelationship ?? ""}`
+          .toLowerCase()
+          .includes(completedSearch.toLowerCase())
+      ),
     [completed, completedSearch]
   );
 
   const addPatient = async () => {
-    if (!canManageAssistantWorkflow) {
+    if (!canCreatePatientsInWorkflow) {
       setCreatePatientState(
         errorMutationState(
-          workflowActionDisabledReason ??
-            "Assistant workflow access is required before adding patients."
+          patientActionDisabledReason ??
+            "Patient registration access is required before adding patients."
         )
       );
       return;
     }
 
-    if (!formState.nic || !formState.name || !formState.age) {
+    const isMinor = (() => {
+      if (!formState.dateOfBirth) return false;
+      return toAge(formState.dateOfBirth, 0) < 18;
+    })();
+    const hasGuardianLink = Boolean(formState.guardian.guardianPatientId);
+    const hasGuardianName = Boolean(formState.guardian.guardianName.trim());
+    const hasGuardianContact = Boolean(
+      formState.guardian.guardianNic.trim() || formState.guardian.guardianPhone.trim()
+    );
+
+    if (!formState.firstName.trim() || !formState.lastName.trim() || !formState.dateOfBirth) {
       setCreatePatientState(
-        errorMutationState("NIC, patient name, and age are required before adding a patient.")
+        errorMutationState("First name, last name, and date of birth are required before adding a patient.")
+      );
+      return;
+    }
+    if (isMinor && !hasGuardianLink && !hasGuardianName) {
+      setCreatePatientState(
+        errorMutationState("Child registration needs an existing guardian link or guardian name.")
+      );
+      return;
+    }
+    if (isMinor && !hasGuardianLink && !hasGuardianContact) {
+      setCreatePatientState(
+        errorMutationState("Child registration needs guardian NIC or guardian phone.")
       );
       return;
     }
     try {
       setCreatePatientState(pendingMutationState());
       const createdPatient = await createPatient({
-        name: formState.name,
-        nic: formState.nic,
-        age: Number(formState.age),
-        gender: "male",
-        mobile: formState.mobile || undefined,
-        priority:
-          formState.priority === "Critical"
-            ? "critical"
-            : formState.priority === "Urgent"
-            ? "high"
-            : "normal",
+        firstName: formState.firstName.trim(),
+        lastName: formState.lastName.trim(),
+        dob: formState.dateOfBirth,
+        gender: formState.gender.toLowerCase() as "male" | "female",
+        nic: formState.nic.trim() || null,
+        phone: formState.mobile.trim() || null,
+        ...(formState.guardian.familyId ? { familyId: Number(formState.guardian.familyId) } : {}),
+        ...(formState.guardian.guardianPatientId
+          ? { guardianPatientId: Number(formState.guardian.guardianPatientId) }
+          : {}),
+        ...(formState.guardian.guardianName.trim()
+          ? { guardianName: formState.guardian.guardianName.trim() }
+          : {}),
+        ...(formState.guardian.guardianNic.trim()
+          ? { guardianNic: formState.guardian.guardianNic.trim() }
+          : {}),
+        ...(formState.guardian.guardianPhone.trim()
+          ? { guardianPhone: formState.guardian.guardianPhone.trim() }
+          : {}),
+        ...(formState.guardian.guardianRelationship.trim()
+          ? { guardianRelationship: formState.guardian.guardianRelationship.trim() }
+          : {}),
       });
       const createdPatientRecord = asRecord(createdPatient);
       const createdPatientId = toNumber(
@@ -509,13 +688,23 @@ export function useAssistantWorkflow() {
       setFormState((prev) => ({
         ...prev,
         nic: "",
-        name: "",
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        gender: "Male",
         mobile: "",
-        age: "",
         allergyInput: "",
         allergies: ["No allergies"],
         regularDrug: "",
         priority: "Normal",
+        guardian: {
+          guardianPatientId: "",
+          guardianName: "",
+          guardianNic: "",
+          guardianPhone: "",
+          guardianRelationship: "",
+          familyId: "",
+        },
       }));
       if (createdPatientId !== null) {
         setScheduleForm((prev) => ({
@@ -703,6 +892,8 @@ export function useAssistantWorkflow() {
     dispenseState,
     dispenseFeedback,
     canManageAssistantWorkflow,
+    canCreatePatientsInWorkflow,
+    patientActionDisabledReason,
     workflowActionDisabledReason,
     canCreateAppointmentsInWorkflow,
     appointmentActionDisabledReason,

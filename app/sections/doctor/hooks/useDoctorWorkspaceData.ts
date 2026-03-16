@@ -86,6 +86,35 @@ function normalizeGender(value: unknown): PatientGender {
   return text === "female" ? "Female" : "Male";
 }
 
+function toName(row: AnyRecord, fallback: string) {
+  const direct = getString(row.name ?? row.fullName).trim();
+  if (direct) return direct;
+  const firstName = getString(row.firstName ?? row.first_name).trim();
+  const lastName = getString(row.lastName ?? row.last_name).trim();
+  const combined = `${firstName} ${lastName}`.trim();
+  return combined || fallback;
+}
+
+function toAge(...values: unknown[]) {
+  for (const value of values) {
+    const numeric = getNumber(value);
+    if (numeric !== null) return numeric;
+    const text = getString(value);
+    if (!text) continue;
+    const dob = new Date(`${text}T00:00:00.000Z`);
+    if (Number.isNaN(dob.getTime())) continue;
+    const today = new Date();
+    let years = today.getUTCFullYear() - dob.getUTCFullYear();
+    const beforeBirthday =
+      today.getUTCMonth() < dob.getUTCMonth() ||
+      (today.getUTCMonth() === dob.getUTCMonth() &&
+        today.getUTCDate() < dob.getUTCDate());
+    if (beforeBirthday) years -= 1;
+    return years;
+  }
+  return 0;
+}
+
 function toEncounterDate(value: string) {
   const parsed = new Date(value);
   if (!Number.isNaN(parsed.getTime())) {
@@ -111,25 +140,43 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
     const doctorId = getNumber(row.doctorId ?? row.doctor_id ?? asRecord(row.doctor)?.id) ?? undefined;
     const patientRow = patientId ? patientById.get(patientId) : null;
 
-    const name = getString(
-      nestedPatient?.name ??
-        nestedPatient?.fullName ??
-        row.patientName ??
-        row.patient_name ??
-        patientRow?.name ??
-        patientRow?.fullName,
+    const name = toName(
+      {
+        ...(patientRow ?? {}),
+        ...(nestedPatient ?? {}),
+        name: row.patientName ?? row.patient_name ?? nestedPatient?.name ?? patientRow?.name,
+        fullName: nestedPatient?.fullName ?? patientRow?.fullName,
+      },
       `Patient ${patientId ?? index + 1}`
+    );
+    const patientCode = getString(
+      nestedPatient?.patientCode ??
+        nestedPatient?.patient_code ??
+        row.patientCode ??
+        row.patient_code ??
+        patientRow?.patientCode ??
+        patientRow?.patient_code,
+      ""
     );
 
     const nic = getString(
       nestedPatient?.nic ?? row.nic ?? row.patientNic ?? row.patient_nic ?? patientRow?.nic,
-      "N/A"
+      "No NIC"
     );
 
-    const age =
-      getNumber(
-        nestedPatient?.age ?? row.age ?? row.patientAge ?? row.patient_age ?? patientRow?.age
-      ) ?? 0;
+    const age = toAge(
+      nestedPatient?.age,
+      row.age,
+      row.patientAge,
+      row.patient_age,
+      nestedPatient?.dateOfBirth,
+      nestedPatient?.date_of_birth,
+      row.dateOfBirth,
+      row.date_of_birth,
+      patientRow?.age,
+      patientRow?.dateOfBirth,
+      patientRow?.date_of_birth
+    );
 
     const gender = normalizeGender(
       nestedPatient?.gender ??
@@ -142,6 +189,33 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
     const reason = getString(row.reason ?? row.chiefComplaint ?? row.notes, "Consultation");
     const time = getDateLabel(row.scheduledAt ?? row.scheduled_at ?? row.createdAt ?? row.created_at);
     const appointmentStatus = getString(row.status).toLowerCase();
+    const guardianName = getString(
+      nestedPatient?.guardianName ??
+        nestedPatient?.guardian_name ??
+        row.guardianName ??
+        row.guardian_name ??
+        patientRow?.guardianName ??
+        patientRow?.guardian_name,
+      ""
+    );
+    const guardianNic = getString(
+      nestedPatient?.guardianNic ??
+        nestedPatient?.guardian_nic ??
+        row.guardianNic ??
+        row.guardian_nic ??
+        patientRow?.guardianNic ??
+        patientRow?.guardian_nic,
+      ""
+    );
+    const guardianRelationship = getString(
+      nestedPatient?.guardianRelationship ??
+        nestedPatient?.guardian_relationship ??
+        row.guardianRelationship ??
+        row.guardian_relationship ??
+        patientRow?.guardianRelationship ??
+        patientRow?.guardian_relationship,
+      ""
+    );
 
     return {
       patientId,
@@ -154,7 +228,11 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
           ? (appointmentStatus as AppointmentLifecycleStatus)
           : "waiting",
       name,
+      patientCode,
       nic,
+      guardianName: guardianName || undefined,
+      guardianNic: guardianNic || undefined,
+      guardianRelationship: guardianRelationship || undefined,
       time,
       reason,
       age,
@@ -169,11 +247,16 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
     const id = getNumber(row.id ?? row.patientId ?? row.patient_id);
     return {
       patientId: id ?? undefined,
-      name: getString(row.name ?? row.fullName, `Patient ${index + 1}`),
-      nic: getString(row.nic, "N/A"),
+      name: toName(row, `Patient ${index + 1}`),
+      patientCode: getString(row.patientCode ?? row.patient_code, ""),
+      nic: getString(row.nic, "No NIC"),
+      guardianName: getString(row.guardianName ?? row.guardian_name, "") || undefined,
+      guardianNic: getString(row.guardianNic ?? row.guardian_nic, "") || undefined,
+      guardianRelationship:
+        getString(row.guardianRelationship ?? row.guardian_relationship, "") || undefined,
       time: "-",
       reason: "General visit",
-      age: getNumber(row.age) ?? 0,
+      age: toAge(row.age, row.dateOfBirth, row.date_of_birth),
       gender: normalizeGender(row.gender),
       profileId: id ? String(id) : undefined,
     } satisfies Patient;
@@ -218,6 +301,10 @@ function normalizeAllergies(raw: unknown): AllergyAlert[] {
   });
 }
 
+function normalizeLookupValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export function useDoctorWorkspaceData(
   clinicalWorkflow: ClinicalWorkflow,
   visitPlanner: VisitPlannerState
@@ -229,6 +316,7 @@ export function useDoctorWorkspaceData(
   const [search, setSearchState] = useState("");
   const [patientName, setPatientNameState] = useState("");
   const [patientAge, setPatientAgeState] = useState("");
+  const [patientCode, setPatientCodeState] = useState("");
   const [nicNumber, setNicNumberState] = useState("");
   const [gender, setGenderState] = useState<PatientGender>("Male");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
@@ -236,6 +324,7 @@ export function useDoctorWorkspaceData(
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
     useState<AppointmentLifecycleStatus | null>(null);
+  const [patientLookupNotice, setPatientLookupNotice] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
   const [transitionState, setTransitionState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
@@ -258,7 +347,9 @@ export function useDoctorWorkspaceData(
     if (!query) return [];
     return patients.filter(
       (patient) =>
-        patient.name.toLowerCase().includes(query) || patient.nic.toLowerCase().includes(query)
+        `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
+          .toLowerCase()
+          .includes(query)
     );
   }, [patients, search]);
 
@@ -415,6 +506,10 @@ export function useDoctorWorkspaceData(
     setTransitionState((current) => (current.status === "idle" ? current : idleMutationState()));
   };
 
+  const clearPatientLookupNotice = () => {
+    setPatientLookupNotice(null);
+  };
+
   const setSearch = (value: string) => {
     clearSaveState();
     clearTransitionState();
@@ -424,39 +519,108 @@ export function useDoctorWorkspaceData(
   const setPatientName = (value: string) => {
     clearSaveState();
     clearTransitionState();
+    clearPatientLookupNotice();
     setPatientNameState(value);
   };
 
   const setPatientAge = (value: string) => {
     clearSaveState();
     clearTransitionState();
+    clearPatientLookupNotice();
     setPatientAgeState(value);
+  };
+
+  const setPatientCode = (value: string) => {
+    clearSaveState();
+    clearTransitionState();
+    clearPatientLookupNotice();
+    setPatientCodeState(value);
   };
 
   const setNicNumber = (value: string) => {
     clearSaveState();
     clearTransitionState();
+    clearPatientLookupNotice();
     setNicNumberState(value);
   };
 
   const setGender = (value: PatientGender) => {
     clearSaveState();
     clearTransitionState();
+    clearPatientLookupNotice();
     setGenderState(value);
+  };
+
+  const clearSelectedPatientContext = () => {
+    setPatientNameState("");
+    setPatientAgeState("");
+    setSelectedPatientId(null);
+    setSelectedAppointmentId(null);
+    setSelectedDoctorId(null);
+    setSelectedAppointmentStatus(null);
   };
 
   const handlePatientSelect = (patient: Patient) => {
     clearSaveState();
     clearTransitionState();
+    clearPatientLookupNotice();
     setPatientName(patient.name);
     setPatientAge(patient.age ? String(patient.age) : "");
-    setNicNumber(patient.nic);
+    setPatientCode(patient.patientCode);
+    setNicNumber(patient.nic !== "No NIC" ? patient.nic : patient.guardianNic ?? "");
     setGender(patient.gender === "Female" ? "Female" : "Male");
     setSelectedPatientId(patient.patientId ?? null);
     setSelectedAppointmentId(patient.appointmentId ?? null);
     setSelectedDoctorId(patient.doctorId ?? null);
     setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
     setSearch("");
+  };
+
+  const findPatientByIdentity = () => {
+    const normalizedCode = normalizeLookupValue(patientCode);
+    const normalizedNic = normalizeLookupValue(nicNumber);
+
+    if (normalizedCode) {
+      const codeMatch = patients.find(
+        (patient) => normalizeLookupValue(patient.patientCode) === normalizedCode
+      );
+      if (codeMatch) {
+        return codeMatch;
+      }
+    }
+
+    if (normalizedNic) {
+      const nicMatch = patients.find((patient) => {
+        const patientNic = normalizeLookupValue(patient.nic === "No NIC" ? "" : patient.nic);
+        const guardianNic = normalizeLookupValue(patient.guardianNic ?? "");
+        return patientNic === normalizedNic || guardianNic === normalizedNic;
+      });
+      if (nicMatch) {
+        return nicMatch;
+      }
+    }
+
+    return null;
+  };
+
+  const handleHeaderLookup = () => {
+    const matchedPatient = findPatientByIdentity();
+    if (matchedPatient) {
+      handlePatientSelect(matchedPatient);
+      return;
+    }
+
+    const query = patientCode.trim() || nicNumber.trim();
+    if (!query) {
+      clearPatientLookupNotice();
+      clearSelectedPatientContext();
+      return;
+    }
+
+    clearSelectedPatientContext();
+    setPatientLookupNotice(
+      `No patient was found for "${query}". Open the Assistant Panel to register the patient, then return here to continue.`
+    );
   };
 
   const refreshDoctorQueries = async () => {
@@ -590,10 +754,15 @@ export function useDoctorWorkspaceData(
     setPatientName,
     patientAge,
     setPatientAge,
+    patientCode,
+    setPatientCode,
+    patientLookupNotice,
     nicNumber,
     setNicNumber,
     gender,
     setGender,
+    handlePatientCodeCommit: handleHeaderLookup,
+    handleNicLookupCommit: handleHeaderLookup,
     searchMatches,
     patientVitals: selectedPatientId ? patientVitals : [],
     patientAllergies: selectedPatientId ? patientAllergies : [],

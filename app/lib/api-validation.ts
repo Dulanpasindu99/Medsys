@@ -207,25 +207,6 @@ export function parsePositiveInteger(value: string, field: string) {
   return success(parsed);
 }
 
-function normalizeOptionalNonNegativeInteger(
-  value: unknown,
-  field: string
-): ValidationResult<number | undefined> {
-  if (value === undefined) {
-    return success(undefined);
-  }
-
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    return failure([{ field, message: "Must be an integer." }]);
-  }
-
-  if (value < 0) {
-    return failure([{ field, message: "Must be zero or greater." }]);
-  }
-
-  return success(value);
-}
-
 function normalizePatientGender(value: unknown, field: string) {
   if (value === undefined) {
     return success<"male" | "female" | "other" | undefined>(undefined);
@@ -250,26 +231,37 @@ function normalizePatientPriority(value: unknown, field: string) {
   return success(value as "low" | "normal" | "high" | "critical");
 }
 
+function normalizePhone(value: unknown, field: string) {
+  return normalizeOptionalString(value, field, { maxLength: 30, allowEmpty: false });
+}
+
 export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
-    "name",
-    "dateOfBirth",
+    "firstName",
+    "lastName",
+    "dob",
     "phone",
     "address",
     "nic",
-    "age",
     "gender",
-    "mobile",
-    "priority",
+    "familyId",
+    "guardianPatientId",
+    "guardianName",
+    "guardianNic",
+    "guardianPhone",
+    "guardianRelationship",
   ]);
 
-  const name = normalizeRequiredString(payload.name, "name", { maxLength: 120 });
-  if (!name.ok) issues.push(...name.issues);
+  const firstName = normalizeRequiredString(payload.firstName, "firstName", { maxLength: 80 });
+  if (!firstName.ok) issues.push(...firstName.issues);
 
-  const dateOfBirth = normalizeOptionalIsoDate(payload.dateOfBirth, "dateOfBirth");
-  if (!dateOfBirth.ok) issues.push(...dateOfBirth.issues);
+  const lastName = normalizeRequiredString(payload.lastName, "lastName", { maxLength: 80 });
+  if (!lastName.ok) issues.push(...lastName.issues);
 
-  const phone = normalizeOptionalString(payload.phone, "phone", { maxLength: 30, allowEmpty: false });
+  const dob = normalizeOptionalIsoDate(payload.dob, "dob");
+  if (!dob.ok) issues.push(...dob.issues);
+
+  const phone = normalizePhone(payload.phone, "phone");
   if (!phone.ok) issues.push(...phone.issues);
 
   const address = normalizeOptionalString(payload.address, "address", { maxLength: 255, allowEmpty: false });
@@ -278,63 +270,149 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const nic = normalizeOptionalString(payload.nic, "nic", { maxLength: 32, allowEmpty: false });
   if (!nic.ok) issues.push(...nic.issues);
 
-  const age = normalizeOptionalNonNegativeInteger(payload.age, "age");
-  if (!age.ok) issues.push(...age.issues);
-
   const gender = normalizePatientGender(payload.gender, "gender");
   if (!gender.ok) issues.push(...gender.issues);
 
-  const mobile = normalizeOptionalString(payload.mobile, "mobile", {
-    maxLength: 30,
+  const familyId = normalizeRequiredPositiveInteger(payload.familyId, "familyId");
+  const familyIdOptional =
+    payload.familyId === undefined ? success<number | undefined>(undefined) : familyId;
+  if (!familyIdOptional.ok) issues.push(...familyIdOptional.issues);
+
+  const guardianPatientId = normalizeRequiredPositiveInteger(
+    payload.guardianPatientId,
+    "guardianPatientId"
+  );
+  const guardianPatientIdOptional =
+    payload.guardianPatientId === undefined
+      ? success<number | undefined>(undefined)
+      : guardianPatientId;
+  if (!guardianPatientIdOptional.ok) issues.push(...guardianPatientIdOptional.issues);
+
+  const guardianName = normalizeOptionalString(payload.guardianName, "guardianName", {
+    maxLength: 120,
     allowEmpty: false,
   });
-  if (!mobile.ok) issues.push(...mobile.issues);
+  if (!guardianName.ok) issues.push(...guardianName.issues);
 
-  const priority =
-    payload.priority === undefined
-      ? failure([{ field: "priority", message: "Is required." }])
-      : normalizePatientPriority(payload.priority, "priority");
-  if (!priority.ok) issues.push(...priority.issues);
+  const guardianNic = normalizeOptionalString(payload.guardianNic, "guardianNic", {
+    maxLength: 32,
+    allowEmpty: false,
+  });
+  if (!guardianNic.ok) issues.push(...guardianNic.issues);
+
+  const guardianPhone = normalizePhone(payload.guardianPhone, "guardianPhone");
+  if (!guardianPhone.ok) issues.push(...guardianPhone.issues);
+
+  const guardianRelationship = normalizeOptionalString(
+    payload.guardianRelationship,
+    "guardianRelationship",
+    { maxLength: 60, allowEmpty: false }
+  );
+  if (!guardianRelationship.ok) issues.push(...guardianRelationship.issues);
+
+  const dobDate =
+    dob.ok && dob.value ? new Date(`${dob.value}T00:00:00.000Z`) : null;
+  const age =
+    dobDate && !Number.isNaN(dobDate.getTime())
+      ? Math.max(
+          0,
+          new Date().getUTCFullYear() -
+            dobDate.getUTCFullYear() -
+            (new Date().getUTCMonth() < dobDate.getUTCMonth() ||
+            (new Date().getUTCMonth() === dobDate.getUTCMonth() &&
+              new Date().getUTCDate() < dobDate.getUTCDate())
+              ? 1
+              : 0)
+        )
+      : null;
+  const isMinor = age !== null && age < 18;
+
+  if (!payload.dob) {
+    issues.push({ field: "dob", message: "Is required." });
+  }
+
+  const guardianPatientIdPresent =
+    guardianPatientIdOptional.ok && guardianPatientIdOptional.value !== undefined;
+  const guardianNamePresent = guardianName.ok && Boolean(guardianName.value);
+  const guardianNicPresent = guardianNic.ok && Boolean(guardianNic.value);
+  const guardianPhonePresent = guardianPhone.ok && Boolean(guardianPhone.value);
+
+  if (isMinor && !guardianPatientIdPresent && !guardianNamePresent) {
+    issues.push({
+      field: "guardian",
+      message: "Children without their own NIC need an existing guardian link or guardian name.",
+    });
+  }
+
+  if (isMinor && !guardianPatientIdPresent && !guardianNicPresent && !guardianPhonePresent) {
+    issues.push({
+      field: "guardian",
+      message: "Guardian NIC or guardian phone is required for child registration.",
+    });
+  }
 
   if (
     issues.length > 0 ||
-    !name.ok ||
-    !dateOfBirth.ok ||
+    !firstName.ok ||
+    !lastName.ok ||
+    !dob.ok ||
     !phone.ok ||
     !address.ok ||
     !nic.ok ||
-    !age.ok ||
     !gender.ok ||
-    !mobile.ok ||
-    !priority.ok
+    !familyIdOptional.ok ||
+    !guardianPatientIdOptional.ok ||
+    !guardianName.ok ||
+    !guardianNic.ok ||
+    !guardianPhone.ok ||
+    !guardianRelationship.ok
   ) {
     return failure(issues);
   }
 
+  const guardianPatientIdValue = guardianPatientIdOptional.value;
+  const guardianNameValue = guardianName.value;
+  const guardianNicValue = guardianNic.value;
+  const guardianPhoneValue = guardianPhone.value;
+  const guardianRelationshipValue = guardianRelationship.value;
+  const familyIdValue = familyIdOptional.value;
+
   return success({
-    name: name.value,
-    dateOfBirth: dateOfBirth.value ?? null,
-    phone: phone.value ?? mobile.value ?? null,
+    firstName: firstName.value,
+    lastName: lastName.value,
+    dob: dob.value ?? null,
+    phone: phone.value ?? null,
     address: address.value ?? null,
     nic: nic.value ?? null,
-    age: age.value,
     gender: gender.value,
-    mobile: mobile.value ?? phone.value ?? null,
-    priority: priority.value,
+    ...(familyIdValue ? { familyId: familyIdValue } : {}),
+    ...(guardianPatientIdValue
+      ? { guardianPatientId: guardianPatientIdValue }
+      : {}),
+    ...(guardianNameValue ? { guardianName: guardianNameValue } : {}),
+    ...(guardianNicValue ? { guardianNic: guardianNicValue } : {}),
+    ...(guardianPhoneValue ? { guardianPhone: guardianPhoneValue } : {}),
+    ...(guardianRelationshipValue
+      ? { guardianRelationship: guardianRelationshipValue }
+      : {}),
   });
 }
 
 export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
   const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
-    "name",
-    "dateOfBirth",
+    "firstName",
+    "lastName",
+    "dob",
     "phone",
     "address",
     "nic",
-    "age",
     "gender",
-    "mobile",
-    "priority",
+    "familyId",
+    "guardianPatientId",
+    "guardianName",
+    "guardianNic",
+    "guardianPhone",
+    "guardianRelationship",
   ]);
 
   if (Object.keys(payload).length === 0) {
@@ -342,37 +420,50 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
   }
 
   const result: {
-    name?: string;
-    dateOfBirth?: string | null;
+    firstName?: string;
+    lastName?: string;
+    dob?: string | null;
     phone?: string | null;
     address?: string | null;
     nic?: string | null;
-    age?: number;
     gender?: "male" | "female" | "other";
-    mobile?: string | null;
-    priority?: "low" | "normal" | "high" | "critical";
+    familyId?: number | null;
+    guardianPatientId?: number | null;
+    guardianName?: string | null;
+    guardianNic?: string | null;
+    guardianPhone?: string | null;
+    guardianRelationship?: string | null;
   } = {};
 
-  if ("name" in payload) {
-    const name = normalizeRequiredString(payload.name, "name", { maxLength: 120 });
-    if (!name.ok) {
-      issues.push(...name.issues);
+  if ("firstName" in payload) {
+    const firstName = normalizeRequiredString(payload.firstName, "firstName", { maxLength: 80 });
+    if (!firstName.ok) {
+      issues.push(...firstName.issues);
     } else {
-      result.name = name.value;
+      result.firstName = firstName.value;
     }
   }
 
-  if ("dateOfBirth" in payload) {
-    const dateOfBirth = normalizeOptionalIsoDate(payload.dateOfBirth, "dateOfBirth");
-    if (!dateOfBirth.ok) {
-      issues.push(...dateOfBirth.issues);
+  if ("lastName" in payload) {
+    const lastName = normalizeRequiredString(payload.lastName, "lastName", { maxLength: 80 });
+    if (!lastName.ok) {
+      issues.push(...lastName.issues);
     } else {
-      result.dateOfBirth = dateOfBirth.value ?? null;
+      result.lastName = lastName.value;
+    }
+  }
+
+  if ("dob" in payload) {
+    const dob = normalizeOptionalIsoDate(payload.dob, "dob");
+    if (!dob.ok) {
+      issues.push(...dob.issues);
+    } else {
+      result.dob = dob.value ?? null;
     }
   }
 
   if ("phone" in payload) {
-    const phone = normalizeOptionalString(payload.phone, "phone", { maxLength: 30, allowEmpty: false });
+    const phone = normalizePhone(payload.phone, "phone");
     if (!phone.ok) {
       issues.push(...phone.issues);
     } else {
@@ -398,15 +489,6 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     }
   }
 
-  if ("age" in payload) {
-    const age = normalizeOptionalNonNegativeInteger(payload.age, "age");
-    if (!age.ok) {
-      issues.push(...age.issues);
-    } else if (age.value !== undefined) {
-      result.age = age.value;
-    }
-  }
-
   if ("gender" in payload) {
     const gender = normalizePatientGender(payload.gender, "gender");
     if (!gender.ok) {
@@ -416,27 +498,71 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     }
   }
 
-  if ("mobile" in payload) {
-    const mobile = normalizeOptionalString(payload.mobile, "mobile", {
-      maxLength: 30,
-      allowEmpty: false,
-    });
-    if (!mobile.ok) {
-      issues.push(...mobile.issues);
+  if ("familyId" in payload) {
+    const familyId = payload.familyId === null
+      ? success<number | null>(null)
+      : normalizeRequiredPositiveInteger(payload.familyId, "familyId");
+    if (!familyId.ok) {
+      issues.push(...familyId.issues);
     } else {
-      result.mobile = mobile.value ?? null;
-      if (!("phone" in payload)) {
-        result.phone = mobile.value ?? null;
-      }
+      result.familyId = familyId.value;
     }
   }
 
-  if ("priority" in payload) {
-    const priority = normalizePatientPriority(payload.priority, "priority");
-    if (!priority.ok) {
-      issues.push(...priority.issues);
-    } else if (priority.value !== undefined) {
-      result.priority = priority.value;
+  if ("guardianPatientId" in payload) {
+    const guardianPatientId = payload.guardianPatientId === null
+      ? success<number | null>(null)
+      : normalizeRequiredPositiveInteger(payload.guardianPatientId, "guardianPatientId");
+    if (!guardianPatientId.ok) {
+      issues.push(...guardianPatientId.issues);
+    } else {
+      result.guardianPatientId = guardianPatientId.value;
+    }
+  }
+
+  if ("guardianName" in payload) {
+    const guardianName = normalizeOptionalString(payload.guardianName, "guardianName", {
+      maxLength: 120,
+      allowEmpty: false,
+    });
+    if (!guardianName.ok) {
+      issues.push(...guardianName.issues);
+    } else {
+      result.guardianName = guardianName.value ?? null;
+    }
+  }
+
+  if ("guardianNic" in payload) {
+    const guardianNic = normalizeOptionalString(payload.guardianNic, "guardianNic", {
+      maxLength: 32,
+      allowEmpty: false,
+    });
+    if (!guardianNic.ok) {
+      issues.push(...guardianNic.issues);
+    } else {
+      result.guardianNic = guardianNic.value ?? null;
+    }
+  }
+
+  if ("guardianPhone" in payload) {
+    const guardianPhone = normalizePhone(payload.guardianPhone, "guardianPhone");
+    if (!guardianPhone.ok) {
+      issues.push(...guardianPhone.issues);
+    } else {
+      result.guardianPhone = guardianPhone.value ?? null;
+    }
+  }
+
+  if ("guardianRelationship" in payload) {
+    const guardianRelationship = normalizeOptionalString(
+      payload.guardianRelationship,
+      "guardianRelationship",
+      { maxLength: 60, allowEmpty: false }
+    );
+    if (!guardianRelationship.ok) {
+      issues.push(...guardianRelationship.issues);
+    } else {
+      result.guardianRelationship = guardianRelationship.value ?? null;
     }
   }
 

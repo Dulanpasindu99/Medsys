@@ -5,7 +5,12 @@ export interface Prescription {
   appointmentId?: number;
   patientId?: number;
   patient: string;
+  patientCode: string;
   nic: string;
+  guardianName?: string;
+  guardianNic?: string;
+  guardianPhone?: string;
+  guardianRelationship?: string;
   age: number;
   gender: "Male" | "Female";
   diagnosis: string;
@@ -17,28 +22,46 @@ export interface Prescription {
 
 export type CompletedPatient = {
   name: string;
+  patientCode: string;
   age: number;
   nic: string;
+  guardianNic?: string;
+  guardianRelationship?: string;
   time: string;
   profileId?: string;
 };
 
+export type AssistantGuardianFormState = {
+  guardianPatientId: string;
+  guardianName: string;
+  guardianNic: string;
+  guardianPhone: string;
+  guardianRelationship: string;
+  familyId: string;
+};
+
 export type AssistantFormState = {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: "Male" | "Female";
   nic: string;
-  name: string;
   mobile: string;
-  age: string;
   allergyInput: string;
   allergies: string[];
   bloodGroup: string;
   priority: AssistantPriority;
   regularDrug: string;
+  guardian: AssistantGuardianFormState;
 };
 
 export type AssistantPatientOption = {
   id: number;
   name: string;
+  patientCode: string;
   nic: string;
+  guardianName?: string;
+  guardianNic?: string;
 };
 
 export type AssistantDoctorAvailability = {

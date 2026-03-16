@@ -6,18 +6,26 @@ import { AssistantSidebar } from "../../assistant/components/AssistantSidebar";
 import type { useAssistantWorkflow } from "../../assistant/hooks/useAssistantWorkflow";
 
 type AssistantWorkflowState = ReturnType<typeof useAssistantWorkflow>;
+type AssistantSupportCapability = {
+  permission: string;
+  label: string;
+};
 
 type DoctorAssistantCoverageProps = {
   workflow: AssistantWorkflowState;
   onOpenProfile: (profileId?: string | null) => void;
+  activeSupportCapabilities: AssistantSupportCapability[];
 };
 
 export function DoctorAssistantCoverage({
   workflow,
   onOpenProfile,
+  activeSupportCapabilities,
 }: DoctorAssistantCoverageProps) {
   const hasAssistantCoverage =
-    workflow.canManageAssistantWorkflow || workflow.canCreateAppointmentsInWorkflow;
+    workflow.canCreatePatientsInWorkflow ||
+    workflow.canManageAssistantWorkflow ||
+    workflow.canCreateAppointmentsInWorkflow;
 
   if (!hasAssistantCoverage) {
     return null;
@@ -43,6 +51,23 @@ export function DoctorAssistantCoverage({
           Use these panels when the doctor is covering intake, scheduling, dispensing, or other
           assistant responsibilities from the same workspace.
         </p>
+        {activeSupportCapabilities.length ? (
+          <div className="mt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Active Support Access
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {activeSupportCapabilities.map((capability) => (
+                <span
+                  key={capability.permission}
+                  className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-200"
+                >
+                  {capability.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {workflow.loadState.error ? <AsyncNotice tone="error" message={workflow.loadState.error} /> : null}
@@ -71,10 +96,11 @@ export function DoctorAssistantCoverage({
           <AssistantIntakePanel
             formState={workflow.formState}
             setFormState={workflow.setFormState}
+            patientOptions={workflow.patientOptions}
             addAllergy={workflow.addAllergy}
             addPatient={workflow.addPatient}
-            canManageAssistantWorkflow={workflow.canManageAssistantWorkflow}
-            workflowActionDisabledReason={workflow.workflowActionDisabledReason}
+            canCreatePatients={workflow.canCreatePatientsInWorkflow}
+            patientActionDisabledReason={workflow.patientActionDisabledReason}
             isSubmitting={workflow.createPatientState.status === "pending"}
           />
         </AssistantPanelShell>

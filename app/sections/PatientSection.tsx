@@ -106,7 +106,7 @@ export default function PatientSection() {
                             />
                         ) : filteredPatients.map((patient) => (
                             <PatientRecordCard
-                                key={patient.patientId ?? `${patient.nic}-${patient.name}`}
+                                key={patient.patientId ?? patient.patientCode ?? `${patient.nic}-${patient.name}`}
                                 patient={patient}
                                 onViewProfile={popup.openProfile}
                             />

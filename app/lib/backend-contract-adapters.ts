@@ -112,12 +112,51 @@ function normalizePatientRecord(record: AnyRecord) {
   const age = toNumber(record.age);
   const gender = toString(record.gender, "");
   const priority = toString(record.priority, "");
+  const patientCode = toString(record.patientCode ?? record.patient_code, "");
+  const familyId = toNumber(record.familyId ?? record.family_id ?? asRecord(record.family)?.id);
+  const guardianPatientId = toNumber(
+    record.guardianPatientId ??
+      record.guardian_patient_id ??
+      asRecord(record.guardianPatient)?.id ??
+      asRecord(record.guardian_patient)?.id
+  );
+  const guardianName = toString(
+    record.guardianName ??
+      record.guardian_name ??
+      asRecord(record.guardianPatient)?.name ??
+      asRecord(record.guardian_patient)?.name,
+    ""
+  );
+  const guardianNic = toString(
+    record.guardianNic ??
+      record.guardian_nic ??
+      asRecord(record.guardianPatient)?.nic ??
+      asRecord(record.guardian_patient)?.nic,
+    ""
+  );
+  const guardianPhone = toString(
+    record.guardianPhone ??
+      record.guardian_phone ??
+      asRecord(record.guardianPatient)?.phone ??
+      asRecord(record.guardian_patient)?.phone,
+    ""
+  );
+  const guardianRelationship = toString(
+    record.guardianRelationship ?? record.guardian_relationship,
+    ""
+  );
+  const firstName = toString(record.firstName ?? record.first_name, "");
+  const lastName = toString(record.lastName ?? record.last_name, "");
 
   return {
     ...record,
     id,
     name,
     fullName: name,
+    firstName: firstName || null,
+    first_name: firstName || null,
+    lastName: lastName || null,
+    last_name: lastName || null,
     dateOfBirth: dateOfBirth || null,
     date_of_birth: dateOfBirth || null,
     phone: phone || null,
@@ -125,6 +164,20 @@ function normalizePatientRecord(record: AnyRecord) {
     address: address || null,
     createdAt: createdAt || null,
     created_at: createdAt || null,
+    patientCode: patientCode || null,
+    patient_code: patientCode || null,
+    familyId,
+    family_id: familyId,
+    guardianPatientId,
+    guardian_patient_id: guardianPatientId,
+    guardianName: guardianName || null,
+    guardian_name: guardianName || null,
+    guardianNic: guardianNic || null,
+    guardian_nic: guardianNic || null,
+    guardianPhone: guardianPhone || null,
+    guardian_phone: guardianPhone || null,
+    guardianRelationship: guardianRelationship || null,
+    guardian_relationship: guardianRelationship || null,
     nic: nic || null,
     age,
     gender: gender || null,

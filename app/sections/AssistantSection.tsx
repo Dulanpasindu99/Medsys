@@ -36,6 +36,8 @@ export default function AssistantSection() {
         dispenseState,
         dispenseFeedback,
         canManageAssistantWorkflow,
+        canCreatePatientsInWorkflow,
+        patientActionDisabledReason,
         workflowActionDisabledReason,
         canCreateAppointmentsInWorkflow,
         appointmentActionDisabledReason,
@@ -77,10 +79,11 @@ export default function AssistantSection() {
                                         <AssistantIntakePanel
                                             formState={formState}
                                             setFormState={setFormState}
+                                            patientOptions={patientOptions}
                                             addAllergy={addAllergy}
                                             addPatient={addPatient}
-                                            canManageAssistantWorkflow={canManageAssistantWorkflow}
-                                            workflowActionDisabledReason={workflowActionDisabledReason}
+                                            canCreatePatients={canCreatePatientsInWorkflow}
+                                            patientActionDisabledReason={patientActionDisabledReason}
                                             isSubmitting={createPatientState.status === 'pending'}
                                         />
                                     </AssistantPanelShell>
