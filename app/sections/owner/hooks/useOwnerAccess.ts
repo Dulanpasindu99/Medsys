@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueryClient } from "@tanstack/react-query";
-import { type SetStateAction, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   createUser,
   type ApiClientError,
@@ -55,6 +55,18 @@ function asArray(value: unknown): AnyRecord[] {
 
 function toString(value: unknown, fallback = '') {
   return typeof value === 'string' ? value : fallback;
+}
+
+function toIdentifier(value: unknown, fallback: string) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim();
+  }
+
+  return fallback;
 }
 
 function toNumber(value: unknown): number | null {
@@ -127,7 +139,7 @@ function normalizeAuditStaff(rawAuditLogs: unknown): StaffUser[] {
     );
     const email = toString(row.actorEmail ?? row.userEmail ?? actor?.email);
     const username = email || toString(row.username ?? actor?.username, name);
-    const id = toString(actorId ?? `${role.toLowerCase()}-${username}-${index}`);
+    const id = toIdentifier(actorId, `${role.toLowerCase()}-${username}-${index}`);
     const key = `${role}:${id}`;
 
     if (!unique.has(key)) {
@@ -201,7 +213,7 @@ function normalizeUsers(rawUsers: unknown): StaffUser[] {
       const role = toRole(row.role);
       if (!role) return null;
 
-      const id = toString(row.id ?? row.userId ?? `${role.toLowerCase()}-${index}`);
+      const id = toIdentifier(row.id ?? row.userId, `${role.toLowerCase()}-${index}`);
       const email = toString(row.email ?? row.username);
       const name = toString(row.name ?? row.fullName, `${role} ${index + 1}`);
 
@@ -234,11 +246,15 @@ export function useOwnerAccess() {
   const [name, setNameState] = useState('');
   const [username, setUsernameState] = useState('');
   const [password, setPasswordState] = useState('');
-  const [permissions, setPermissionsState] = useState<Record<PermissionKey, boolean>>(
-    defaultPermissions('Doctor')
-  );
-  const [staffOverrides, setStaffOverrides] = useState<StaffUser[]>([]);
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
+  const permissions = useMemo(() => defaultPermissions(role), [role]);
+  const canManageStaff = currentUserQuery.data?.role === 'owner';
+  const manageStaffDisabledReason =
+    currentUserQuery.isPending || currentUserQuery.isFetching
+      ? 'Checking owner access before managing staff.'
+      : currentUserQuery.data?.role && currentUserQuery.data.role !== 'owner'
+        ? 'Only owner accounts can create staff users.'
+        : null;
 
   const clearCreateState = () => {
     setCreateState((current) => (current.status === 'idle' ? current : idleMutationState()));
@@ -264,30 +280,6 @@ export function useOwnerAccess() {
     setPasswordState(value);
   };
 
-  const setPermissions = (value: SetStateAction<Record<PermissionKey, boolean>>) => {
-    clearCreateState();
-    setPermissionsState(value);
-  };
-
-  const presets = useMemo(
-    () => [
-      { label: 'Doctor defaults', set: () => setPermissions(defaultPermissions('Doctor')) },
-      { label: 'Assistant defaults', set: () => setPermissions(defaultPermissions('Assistant')) },
-      {
-        label: 'All access',
-        set: () =>
-          setPermissions({
-            staffLogin: true,
-            doctorScreen: true,
-            assistantScreen: true,
-            ownerTools: true,
-            sharedDashboards: true,
-          }),
-      },
-    ],
-    []
-  );
-
   const liveUsers = useMemo(() => normalizeUsers(usersQuery.data ?? []), [usersQuery.data]);
   const liveFromAudit = useMemo(
     () => normalizeAuditStaff(auditLogsQuery.data ?? []),
@@ -298,23 +290,9 @@ export function useOwnerAccess() {
     [appointmentsQuery.data]
   );
   const staffUsers = useMemo(
-    () =>
-      mergeStaff(
-        staffOverrides,
-        mergeStaff(liveUsers, mergeStaff(liveFromAudit, liveFromAppointments))
-      ),
-    [liveFromAppointments, liveFromAudit, liveUsers, staffOverrides]
+    () => mergeStaff(liveUsers, mergeStaff(liveFromAudit, liveFromAppointments)),
+    [liveFromAppointments, liveFromAudit, liveUsers]
   );
-
-  const setStaffUsers = (value: SetStateAction<StaffUser[]>) => {
-    setStaffOverrides((prev) => {
-      const current = mergeStaff(
-        prev,
-        mergeStaff(liveUsers, mergeStaff(liveFromAudit, liveFromAppointments))
-      );
-      return typeof value === 'function' ? value(current) : value;
-    });
-  };
 
   const loadState: LoadState = useMemo(() => {
     if (
@@ -365,11 +343,6 @@ export function useOwnerAccess() {
     usersQuery.isPending,
   ]);
 
-  const togglePermission = (key: PermissionKey) => {
-    clearCreateState();
-    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const refreshStaffQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.users.list() }),
@@ -382,6 +355,15 @@ export function useOwnerAccess() {
   };
 
   const handleCreate = async () => {
+    if (!canManageStaff) {
+      setCreateState(
+        errorMutationState(
+          manageStaffDisabledReason ?? 'Owner access is required before creating staff users.'
+        )
+      );
+      return;
+    }
+
     if (!name.trim() || !username.trim() || !password.trim()) {
       setCreateState(
         errorMutationState('Name, username, and password are required.')
@@ -400,7 +382,6 @@ export function useOwnerAccess() {
       setName('');
       setUsername('');
       setPassword('');
-      setPermissions(defaultPermissions(role));
       await refreshStaffQueries();
       setCreateState(successMutationState('Staff user created.'));
     } catch (error) {
@@ -428,11 +409,9 @@ export function useOwnerAccess() {
     password,
     setPassword,
     permissions,
-    setPermissions,
     staffUsers,
-    setStaffUsers,
-    presets,
-    togglePermission,
+    canManageStaff,
+    manageStaffDisabledReason,
     handleCreate,
     loadState,
     createState,

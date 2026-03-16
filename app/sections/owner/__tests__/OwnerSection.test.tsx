@@ -50,7 +50,7 @@ describe("useOwnerAccess", () => {
     });
 
     act(() => {
-      result.current.presets[1]?.set();
+      result.current.setRole("Assistant");
     });
 
     expect(result.current.permissions).toEqual(defaultPermissions("Assistant"));
@@ -150,5 +150,66 @@ describe("useOwnerAccess", () => {
 
     expect(result.current.staffUsers[0]?.name).toBe("Dr. House");
     expect(result.current.loadState.notice).toMatch(/partial access data/i);
+  });
+
+  it("keeps stable unique staff ids when backend users use numeric ids", async () => {
+    mockedListUsers.mockResolvedValue([
+      {
+        id: 8,
+        name: "Dr. House",
+        email: "house@medsys.local",
+        role: "doctor",
+      },
+      {
+        id: 11,
+        name: "Assistant Joy",
+        email: "joy@medsys.local",
+        role: "assistant",
+      },
+    ]);
+
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.staffUsers).toHaveLength(2);
+    });
+
+    expect(result.current.staffUsers.map((user) => user.id)).toEqual([
+      "user-8",
+      "user-11",
+    ]);
+  });
+
+  it("blocks staff creation for non-owner roles before the backend returns 403", async () => {
+    mockedGetCurrentUser.mockResolvedValue({
+      id: 5,
+      role: "doctor",
+      email: "doctor@example.com",
+      name: "Doctor",
+    });
+
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadState.status).toBe("error");
+    });
+
+    act(() => {
+      result.current.setName("Dr. Meredith Grey");
+      result.current.setUsername("meredith.grey@medsys.local");
+      result.current.setPassword("secret-123");
+    });
+
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.canManageStaff).toBe(false);
+    expect(mockedCreateUser).not.toHaveBeenCalled();
+    expect(result.current.createState.error).toMatch(/owner access is required|only owner accounts can create staff users/i);
   });
 });

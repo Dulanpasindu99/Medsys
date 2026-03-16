@@ -1,5 +1,5 @@
 import type { PermissionKey, Role } from "../types";
-import { defaultPermissions, permissionLabels } from "../hooks/useOwnerAccess";
+import { permissionLabels } from "../hooks/useOwnerAccess";
 import { OwnerBadge } from "./OwnerBadge";
 
 const INSET = "shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]";
@@ -14,11 +14,10 @@ type OwnerStaffFormCardProps = {
   password: string;
   setPassword: (password: string) => void;
   permissions: Record<PermissionKey, boolean>;
-  setPermissions: (permissions: Record<PermissionKey, boolean>) => void;
-  togglePermission: (key: PermissionKey) => void;
-  presets: { label: string; set: () => void }[];
   onCreate: () => void;
   isSubmitting?: boolean;
+  canManageStaff?: boolean;
+  manageStaffDisabledReason?: string | null;
 };
 
 export function OwnerStaffFormCard({
@@ -31,11 +30,10 @@ export function OwnerStaffFormCard({
   password,
   setPassword,
   permissions,
-  setPermissions,
-  togglePermission,
-  presets,
   onCreate,
   isSubmitting = false,
+  canManageStaff = true,
+  manageStaffDisabledReason = null,
 }: OwnerStaffFormCardProps) {
   return (
     <div className="ios-surface p-7 shadow-[0_22px_52px_rgba(15,23,42,0.12)]">
@@ -55,8 +53,8 @@ export function OwnerStaffFormCard({
             onChange={(e) => {
               const nextRole = e.target.value as Role;
               setRole(nextRole);
-              setPermissions(defaultPermissions(nextRole));
             }}
+            disabled={!canManageStaff}
             className={`rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 ${INSET}`}
           >
             <option value="Doctor">Doctor</option>
@@ -68,6 +66,7 @@ export function OwnerStaffFormCard({
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={!canManageStaff}
             className={`rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 ${INSET}`}
           />
         </label>
@@ -76,6 +75,7 @@ export function OwnerStaffFormCard({
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            disabled={!canManageStaff}
             className={`rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 ${INSET}`}
           />
         </label>
@@ -85,52 +85,52 @@ export function OwnerStaffFormCard({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={!canManageStaff}
             className={`rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 ${INSET}`}
           />
         </label>
       </div>
 
+      <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-100">
+        New staff accounts inherit backend role-based access. Custom per-user permission editing is not available in the live API yet, so this section is a preview of what the selected role receives.
+      </div>
+
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         {Object.entries(permissionLabels).map(([key, label]) => {
           const permissionKey = key as PermissionKey;
+          const enabled = permissions[permissionKey];
           return (
-            <label
+            <div
               key={permissionKey}
               className={`flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3 text-sm font-semibold text-slate-800 ring-1 ring-slate-100 ${INSET}`}
             >
               <span>{label}</span>
-              <input
-                type="checkbox"
-                checked={permissions[permissionKey]}
-                onChange={() => togglePermission(permissionKey)}
-                className="h-5 w-5 rounded-md border-slate-300 text-sky-600 focus:ring-sky-500"
-              />
-            </label>
+              <span
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                  enabled
+                    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                    : "bg-slate-100 text-slate-500 ring-1 ring-slate-200"
+                }`}
+              >
+                {enabled ? "Included" : "Not included"}
+              </span>
+            </div>
           );
         })}
-      </div>
-
-      <div className="mt-6 flex flex-wrap gap-3">
-        {presets.map((preset) => (
-          <button
-            key={preset.label}
-            onClick={preset.set}
-            className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-800 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            {preset.label}
-          </button>
-        ))}
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">
         <button
           onClick={onCreate}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !canManageStaff}
           className="rounded-full bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[0_14px_30px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSubmitting ? "Creating user..." : "Create user"}
         </button>
       </div>
+      {!canManageStaff && manageStaffDisabledReason ? (
+        <p className="mt-3 text-sm font-semibold text-amber-700">{manageStaffDisabledReason}</p>
+      ) : null}
     </div>
   );
 }

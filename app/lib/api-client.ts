@@ -1,12 +1,10 @@
 import type { AppRole } from "./roles";
-import {
-  type ApiContractError,
-} from "./backend-contract-adapters";
 
 export type ApiClientError = {
   message: string;
   status: number;
 };
+type ApiContractError = ApiClientError;
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
 export type ApiRecord = Record<string, unknown>;
 

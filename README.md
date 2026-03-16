@@ -38,5 +38,7 @@ npm test
 ```bash
 NEXT_PUBLIC_ORGANIZATION_ID=11111111-1111-1111-1111-111111111111
 BACKEND_URL=http://localhost:4000
-MEDSYS_SESSION_SECRET=change-me
+MEDSYS_SESSION_SECRET=replace-with-a-long-random-secret
 ```
+
+Use a strong random value for `MEDSYS_SESSION_SECRET` in any shared or production environment. The app now rejects placeholder secrets when `NODE_ENV=production`.

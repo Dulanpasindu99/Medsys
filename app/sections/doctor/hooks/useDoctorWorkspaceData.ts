@@ -356,20 +356,38 @@ export function useDoctorWorkspaceData(
     patientVitalsQuery.isPending,
     selectedPatientId,
   ]);
-  const canSaveRecord = currentUserQuery.data?.role === "doctor";
-  const canTransitionAppointments = currentUserQuery.data?.role === "doctor";
+  const canSaveRecord =
+    currentUserQuery.data?.role === "doctor" &&
+    selectedPatientId !== null &&
+    selectedAppointmentId !== null &&
+    selectedAppointmentStatus !== "completed" &&
+    selectedAppointmentStatus !== "cancelled";
+  const canTransitionAppointments =
+    currentUserQuery.data?.role === "doctor" &&
+    selectedAppointmentId !== null &&
+    selectedAppointmentStatus === "waiting";
   const saveDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking doctor access before encounter submission."
       : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
         ? "Only doctor accounts can submit encounters from this workspace."
-        : null;
+        : !selectedPatientId || !selectedAppointmentId
+          ? "Select a waiting appointment before saving encounter."
+          : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
+            ? "Completed or cancelled appointments cannot be updated from the doctor workspace."
+            : null;
   const transitionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking doctor access before updating appointment status."
       : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
         ? "Only doctor accounts can advance appointment status from this workspace."
-        : null;
+        : !selectedAppointmentId
+          ? "Select a waiting appointment before starting consultation."
+          : selectedAppointmentStatus === "in_consultation"
+            ? "Consultation already started for this appointment."
+            : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
+              ? "Only waiting appointments can be moved into consultation."
+              : null;
 
   const clearSaveState = () => {
     setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
@@ -517,18 +535,6 @@ export function useDoctorWorkspaceData(
     if (!selectedAppointmentId) {
       setTransitionState(
         errorMutationState("Select a waiting appointment before starting consultation.")
-      );
-      return;
-    }
-
-    if (selectedAppointmentStatus === "in_consultation") {
-      setTransitionState(successMutationState("Consultation already started for this appointment."));
-      return;
-    }
-
-    if (selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled") {
-      setTransitionState(
-        errorMutationState("Only waiting appointments can be moved into consultation.")
       );
       return;
     }

@@ -201,4 +201,20 @@ describe("useInventoryBoard", () => {
     expect(result.current.movementState.status).toBe("idle");
     expect(result.current.movementFeedback).toBeNull();
   });
+
+  it("disables stock movement actions when no inventory item is selected", async () => {
+    mockedUseInventoryQuery.mockReturnValue(buildQueryState({ data: [] }) as never);
+    mockedUseInventoryMovementsQuery.mockReturnValue(buildQueryState({ data: [] }) as never);
+
+    const { result } = renderHook(() => useInventoryBoard(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loadState.status).toBe("empty");
+    });
+
+    expect(result.current.canPostMovement).toBe(false);
+    expect(result.current.movementActionDisabledReason).toMatch(/select or create an inventory item/i);
+  });
 });

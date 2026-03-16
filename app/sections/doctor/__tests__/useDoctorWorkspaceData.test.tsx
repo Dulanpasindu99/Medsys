@@ -232,6 +232,28 @@ describe("useDoctorWorkspaceData", () => {
     expect(result.current.saveState.error).toMatch(/only doctor accounts/i);
   });
 
+  it("disables save and transition actions until a waiting appointment is selected", async () => {
+    const clinicalWorkflow = {
+      selectedDiseases: [],
+      selectedTests: [],
+      rxRows: [],
+    } as never;
+    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
+
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.queueState.status).toBe("ready");
+    });
+
+    expect(result.current.canSaveRecord).toBe(false);
+    expect(result.current.canTransitionAppointments).toBe(false);
+    expect(result.current.saveDisabledReason).toMatch(/select a waiting appointment/i);
+    expect(result.current.transitionDisabledReason).toMatch(/select a waiting appointment/i);
+  });
+
   it("starts consultation and refreshes appointment queries", async () => {
     const invalidateQueriesSpy = vi
       .spyOn(QueryClient.prototype, "invalidateQueries")

@@ -161,9 +161,9 @@ export function AssistantSidebar({
         />
       </div>
       <div className="mt-3 space-y-2">
-        {filteredCompleted.length ? filteredCompleted.map((entry) => (
+        {filteredCompleted.length ? filteredCompleted.map((entry, index) => (
           <button
-            key={entry.nic}
+            key={`${entry.profileId ?? "completed"}-${entry.nic}-${entry.time}-${index}`}
             type="button"
             onClick={() => onOpenProfile(entry.profileId)}
             className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-700 transition hover:-translate-y-0.5 hover:bg-sky-50 hover:ring-1 hover:ring-sky-200"

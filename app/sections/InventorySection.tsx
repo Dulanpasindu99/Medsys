@@ -19,6 +19,8 @@ export default function InventorySection() {
         movementLoadState,
         canWriteInventory,
         writeDisabledReason,
+        canPostMovement,
+        movementActionDisabledReason,
         newItemName,
         setNewItemName,
         newItemQty,
@@ -57,6 +59,7 @@ export default function InventorySection() {
                 {createFeedback ? <AsyncNotice tone={createFeedback.tone} message={createFeedback.message} /> : null}
                 {movementFeedback ? <AsyncNotice tone={movementFeedback.tone} message={movementFeedback.message} /> : null}
                 {!canWriteInventory && writeDisabledReason ? <AsyncNotice tone="warning" message={writeDisabledReason} /> : null}
+                {!canPostMovement && movementActionDisabledReason ? <AsyncNotice tone="warning" message={movementActionDisabledReason} /> : null}
                 {movementLoadState.error ? <AsyncNotice tone="warning" message={movementLoadState.error} /> : null}
                 {movementLoadState.notice ? <AsyncNotice tone="warning" message={movementLoadState.notice} /> : null}
 
@@ -153,21 +156,21 @@ export default function InventorySection() {
                                 {selectedItem ? `Selected: ${toString(selectedItem.name ?? selectedItem.itemName, 'Item')}` : 'Select an item'}
                             </p>
                             <div className="mt-3 flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => handleQuickMovement('in')}
-                                    disabled={movementState.status === 'pending' || !canWriteInventory}
-                                    className="rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-70"
-                                >
-                                    + Stock
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleQuickMovement('out')}
-                                    disabled={movementState.status === 'pending' || !canWriteInventory}
-                                    className="rounded-2xl bg-amber-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-70"
-                                >
-                                    - Stock
+                                    <button
+                                        type="button"
+                                        onClick={() => handleQuickMovement('in')}
+                                        disabled={movementState.status === 'pending' || !canPostMovement}
+                                        className="rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-70"
+                                    >
+                                        + Stock
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleQuickMovement('out')}
+                                        disabled={movementState.status === 'pending' || !canPostMovement}
+                                        className="rounded-2xl bg-amber-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:opacity-70"
+                                    >
+                                        - Stock
                                 </button>
                             </div>
                             <div className="mt-3 space-y-2">

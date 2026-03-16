@@ -18,11 +18,9 @@ export default function OwnerSection() {
         password,
         setPassword,
         permissions,
-        setPermissions,
         staffUsers,
-        setStaffUsers,
-        presets,
-        togglePermission,
+        canManageStaff,
+        manageStaffDisabledReason,
         handleCreate,
         loadState,
         createState,
@@ -83,11 +81,10 @@ export default function OwnerSection() {
                             password={password}
                             setPassword={setPassword}
                             permissions={permissions}
-                            setPermissions={setPermissions}
-                            togglePermission={togglePermission}
-                            presets={presets}
                             onCreate={handleCreate}
                             isSubmitting={createState.status === 'pending'}
+                            canManageStaff={canManageStaff}
+                            manageStaffDisabledReason={manageStaffDisabledReason}
                         />
 
                         {loadState.status === 'loading' ? (
@@ -107,7 +104,7 @@ export default function OwnerSection() {
                                 onAction={refresh}
                             />
                         ) : (
-                            <OwnerStaffListCard staffUsers={staffUsers} setStaffUsers={setStaffUsers} />
+                            <OwnerStaffListCard staffUsers={staffUsers} />
                         )}
                     </div>
                 </div>

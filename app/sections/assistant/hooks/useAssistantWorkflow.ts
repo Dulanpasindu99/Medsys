@@ -383,12 +383,16 @@ export function useAssistantWorkflow() {
         ? "Only assistant and owner accounts can complete intake and dispense actions."
         : null;
   const canCreateAppointmentsInWorkflow =
-    !!currentUserQuery.data?.role && hasPermission(currentUserQuery.data.role, "appointment.create");
+    !!currentUserQuery.data?.role &&
+    hasPermission(currentUserQuery.data.role, "appointment.create") &&
+    currentUserId !== null;
   const appointmentActionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking appointment scheduling access."
       : currentUserQuery.data?.role && !canCreateAppointmentsInWorkflow
-        ? "Only assistant and owner accounts can schedule appointments."
+        ? "Only assistant and owner accounts with an active session can schedule appointments."
+        : currentUserQuery.data?.role && currentUserId === null
+          ? "Assistant identity is missing for appointment scheduling."
         : null;
 
   const refreshAssistantQueries = async (includeCurrentUser = false) => {

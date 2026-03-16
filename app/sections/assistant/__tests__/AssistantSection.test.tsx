@@ -179,4 +179,33 @@ describe("AssistantSection", () => {
       screen.getAllByText(/only assistant and owner accounts can schedule appointments/i).length
     ).toBeGreaterThan(0);
   });
+
+  it("renders duplicate placeholder NIC entries without duplicate-key warnings", () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockedUseAssistantWorkflow.mockReturnValue(
+      buildWorkflowState({
+        filteredCompleted: [
+          { name: "Jane Doe", age: 31, nic: "N/A", time: "10:30" },
+          { name: "John Doe", age: 29, nic: "N/A", time: "11:00" },
+        ],
+      })
+    );
+
+    render(<AssistantSection />);
+
+    expect(screen.getAllByText("Jane Doe").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("John Doe").length).toBeGreaterThan(0);
+    expect(
+      consoleErrorSpy.mock.calls.some((call) =>
+        call.some(
+          (arg) =>
+            typeof arg === "string" &&
+            arg.includes("Encountered two children with the same key")
+        )
+      )
+    ).toBe(false);
+
+    consoleErrorSpy.mockRestore();
+  });
 });

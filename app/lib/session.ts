@@ -20,8 +20,37 @@ type SessionOptions = {
   expiresAt?: number;
 };
 
+const DEV_FALLBACK_SESSION_SECRET = "dev-insecure-session-secret-change-me";
+const DISALLOWED_SESSION_SECRETS = new Set([
+  "",
+  "change-me",
+  "changeme",
+  "dev-insecure-session-secret-change-me",
+  "replace-me",
+  "replace-with-a-long-random-secret",
+]);
+
 function getSessionSecret() {
-  return process.env.MEDSYS_SESSION_SECRET ?? "dev-insecure-session-secret-change-me";
+  const configuredSecret = process.env.MEDSYS_SESSION_SECRET?.trim() ?? "";
+  const isDevelopment = process.env.NODE_ENV !== "production";
+
+  if (!configuredSecret) {
+    if (isDevelopment) {
+      return DEV_FALLBACK_SESSION_SECRET;
+    }
+
+    throw new Error(
+      "MEDSYS_SESSION_SECRET must be set to a non-placeholder value before running in production."
+    );
+  }
+
+  if (!isDevelopment && DISALLOWED_SESSION_SECRETS.has(configuredSecret.toLowerCase())) {
+    throw new Error(
+      "MEDSYS_SESSION_SECRET must be replaced with a strong random secret before running in production."
+    );
+  }
+
+  return configuredSecret;
 }
 
 function toBase64Url(input: Buffer | string) {

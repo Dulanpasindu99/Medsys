@@ -134,6 +134,13 @@ export function useInventoryBoard() {
       : currentUserQuery.data?.role && !canWriteInventory
         ? "Only owner and assistant accounts can change inventory stock."
         : null;
+  const canPostMovement = canWriteInventory && resolvedSelectedItemId !== null;
+  const movementActionDisabledReason =
+    !canWriteInventory
+      ? writeDisabledReason
+      : resolvedSelectedItemId === null
+        ? "Select or create an inventory item before posting stock movements."
+        : null;
 
   const loadState: LoadState = useMemo(() => {
     if ((inventoryQuery.isPending || inventoryQuery.isFetching) && !items.length) {
@@ -305,6 +312,8 @@ export function useInventoryBoard() {
     movementLoadState,
     canWriteInventory,
     writeDisabledReason,
+    canPostMovement,
+    movementActionDisabledReason,
     newItemName,
     setNewItemName,
     newItemQty,
