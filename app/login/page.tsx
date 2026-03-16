@@ -4,7 +4,7 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loginUser, type ApiClientError } from "../lib/api-client";
-import { canAccessRoute, getDefaultRouteForRole } from "../lib/authorization";
+import { canAccessRoute, getDefaultRouteForSubject } from "../lib/authorization";
 import { useCurrentUserQuery } from "../lib/query-hooks";
 import { validateDoctorLoginInput } from "../utils/schema-validation/doctor-section.schema";
 
@@ -360,7 +360,7 @@ export default function Login() {
       return;
     }
     
-      router.replace(getDefaultRouteForRole(user.role));
+      router.replace(getDefaultRouteForSubject(user));
       router.refresh();
   }, [currentUserQuery.data, router]);
 
@@ -380,7 +380,7 @@ export default function Login() {
       setActiveSubmission(role);
       const user = await loginUser(parsed.value.email, parsed.value.password, role);
       const requestedRoute = WORKSPACE_ROUTE_BY_PANEL[role];
-      if (!canAccessRoute(user.role, requestedRoute)) {
+      if (!canAccessRoute(user, requestedRoute)) {
         setRoleError(
           role,
           `This account does not have access to the ${role} workspace.`,
@@ -390,7 +390,7 @@ export default function Login() {
 
       setActiveModal(null);
       await currentUserQuery.refetch();
-      router.push(getDefaultRouteForRole(user.role));
+      router.push(getDefaultRouteForSubject(user));
       router.refresh();
     } catch (error) {
       const message =

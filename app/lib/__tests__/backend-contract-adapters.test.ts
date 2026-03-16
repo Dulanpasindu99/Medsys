@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adaptAuthenticatedUserResponse,
   adaptAuthStatusResponse,
   adaptCreatedUserResponse,
   adaptPatientCollectionResponse,
@@ -126,6 +127,28 @@ describe("backend contract adapters", () => {
         email: "doctor@example.com",
         role: "doctor",
         created_at: "2026-03-09T00:00:00.000Z",
+      })
+    );
+  });
+
+  it("preserves effective and extra permissions on normalized user records", () => {
+    expect(
+      adaptAuthenticatedUserResponse({
+        user: {
+          id: 10,
+          firstName: "Jane",
+          lastName: "Doe",
+          email: "doctor@example.com",
+          role: "doctor",
+          permissions: ["patient.write", "appointment.create"],
+          extra_permissions: ["appointment.create"],
+        },
+      })
+    ).toEqual(
+      expect.objectContaining({
+        id: 10,
+        permissions: ["patient.write", "appointment.create"],
+        extraPermissions: ["appointment.create"],
       })
     );
   });

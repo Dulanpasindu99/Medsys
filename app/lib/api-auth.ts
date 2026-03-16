@@ -30,7 +30,7 @@ export function requirePermission(
     return auth;
   }
 
-  if (!hasPermission(auth.session.role, permission)) {
+  if (!hasPermission(auth.session, permission)) {
     return { session: null, error: forbidden() };
   }
 
@@ -46,7 +46,7 @@ export function requireAnyPermission(
     return auth;
   }
 
-  if (!hasAnyPermission(auth.session.role, permissions)) {
+  if (!hasAnyPermission(auth.session, permissions)) {
     return { session: null, error: forbidden() };
   }
 

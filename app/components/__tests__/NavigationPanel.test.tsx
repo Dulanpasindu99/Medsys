@@ -66,4 +66,19 @@ describe("NavigationPanel", () => {
     expect(screen.getByLabelText("Assistant Panel")).toBeInTheDocument();
     expect(screen.getByLabelText("Manage Staff Access")).toHaveAttribute("aria-current", "page");
   });
+
+  it("shows assistant navigation for doctors with explicit assistant coverage permissions", () => {
+    mockedUsePathname.mockReturnValue("/assistant");
+
+    render(
+      <NavigationPanel
+        sessionRole="doctor"
+        sessionPermissions={["assistant.workspace.view", "appointment.create", "prescription.dispense"]}
+        userName="Dr. Cover"
+      />
+    );
+
+    expect(screen.getByLabelText("Doctor Page")).toBeInTheDocument();
+    expect(screen.getByLabelText("Assistant Panel")).toHaveAttribute("aria-current", "page");
+  });
 });

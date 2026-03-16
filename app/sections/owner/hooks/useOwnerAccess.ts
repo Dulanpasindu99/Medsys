@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   createUser,
   type ApiClientError,
+  updateUserExtraPermissions,
 } from '../../../lib/api-client';
 import {
   emptyLoadState,
@@ -26,7 +27,13 @@ import {
   useUsersQuery,
 } from '../../../lib/query-hooks';
 import { queryKeys } from "../../../lib/query-keys";
-import type { PermissionKey, Role, StaffUser } from '../types';
+import {
+  getRolePermissions,
+  hasAnyPermission,
+  hasPermission,
+  type AppPermission,
+} from "../../../lib/authorization";
+import type { DoctorSupportPermission, PermissionKey, Role, StaffUser } from '../types';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -92,6 +99,18 @@ export const permissionLabels: Record<PermissionKey, string> = {
   sharedDashboards: 'Shared dashboards',
 };
 
+export const doctorSupportPermissionLabels: Record<DoctorSupportPermission, string> = {
+  "patient.write": "Patient intake",
+  "appointment.create": "Appointment scheduling",
+  "inventory.write": "Inventory write",
+  "prescription.dispense": "Prescription dispense",
+  "family.write": "Family records",
+};
+
+export const DOCTOR_SUPPORT_PERMISSION_OPTIONS = Object.keys(
+  doctorSupportPermissionLabels
+) as DoctorSupportPermission[];
+
 const doctorPreset: Record<PermissionKey, boolean> = {
   staffLogin: true,
   doctorScreen: true,
@@ -110,6 +129,48 @@ const assistantPreset: Record<PermissionKey, boolean> = {
 
 export function defaultPermissions(role: Role): Record<PermissionKey, boolean> {
   return { ...(role === 'Doctor' ? doctorPreset : assistantPreset) };
+}
+
+function toPermissionList(value: unknown): AppPermission[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim() as AppPermission)
+        .filter(Boolean)
+    )
+  );
+}
+
+function toDoctorSupportPermissions(value: unknown): DoctorSupportPermission[] {
+  return toPermissionList(value).filter((permission): permission is DoctorSupportPermission =>
+    DOCTOR_SUPPORT_PERMISSION_OPTIONS.includes(permission as DoctorSupportPermission)
+  );
+}
+
+function summarizePermissions(
+  role: Role,
+  permissions: readonly AppPermission[]
+): Record<PermissionKey, boolean> {
+  const subject = {
+    role: role === "Doctor" ? "doctor" : "assistant",
+    permissions,
+  } as const;
+
+  return {
+    staffLogin: true,
+    doctorScreen: hasPermission(subject, "doctor.workspace.view"),
+    assistantScreen:
+      hasPermission(subject, "assistant.workspace.view") ||
+      hasAnyPermission(subject, DOCTOR_SUPPORT_PERMISSION_OPTIONS),
+    ownerTools: hasPermission(subject, "owner.workspace.view"),
+    sharedDashboards:
+      hasPermission(subject, "analytics.view") || hasPermission(subject, "analytics.read"),
+  };
 }
 
 function normalizeAuditStaff(rawAuditLogs: unknown): StaffUser[] {
@@ -143,12 +204,17 @@ function normalizeAuditStaff(rawAuditLogs: unknown): StaffUser[] {
     const key = `${role}:${id}`;
 
     if (!unique.has(key)) {
+      const effectivePermissions =
+        role === "Doctor" ? [...getRolePermissions("doctor")] : [...getRolePermissions("assistant")];
       unique.set(key, {
         id: `live-${role.toLowerCase()}-${id}`,
+        backendUserId: actorId,
         role,
         name,
         username,
-        permissions: defaultPermissions(role),
+        permissions: summarizePermissions(role, effectivePermissions),
+        effectivePermissions,
+        extraPermissions: [],
       });
     }
   });
@@ -170,12 +236,17 @@ function normalizeStaffFromAppointments(rawAppointments: unknown): StaffUser[] {
     const rawId = id !== null ? String(id) : `${role.toLowerCase()}-${username}-${fallbackIndex}`;
     const key = `${role}:${rawId}`;
     if (unique.has(key)) return;
+    const effectivePermissions =
+      role === "Doctor" ? [...getRolePermissions("doctor")] : [...getRolePermissions("assistant")];
     unique.set(key, {
       id: `live-${role.toLowerCase()}-${rawId}`,
+      backendUserId: id,
       role,
       name,
       username,
-      permissions: defaultPermissions(role),
+      permissions: summarizePermissions(role, effectivePermissions),
+      effectivePermissions,
+      extraPermissions: [],
     });
   };
 
@@ -216,14 +287,27 @@ function normalizeUsers(rawUsers: unknown): StaffUser[] {
       const id = toIdentifier(row.id ?? row.userId, `${role.toLowerCase()}-${index}`);
       const email = toString(row.email ?? row.username);
       const name = toString(row.name ?? row.fullName, `${role} ${index + 1}`);
+      const extraPermissions = toDoctorSupportPermissions(
+        row.extraPermissions ?? row.extra_permissions
+      );
+      const effectivePermissions = toPermissionList(row.permissions);
+      const resolvedPermissions =
+        effectivePermissions.length > 0
+          ? effectivePermissions
+          : role === "Doctor"
+            ? [...getRolePermissions("doctor")]
+            : [...getRolePermissions("assistant")];
 
       return {
         id: `user-${id}`,
+        backendUserId: toNumber(row.id ?? row.userId),
         role,
         name,
         username: email || name,
-        permissions: defaultPermissions(role),
-      } satisfies StaffUser;
+        permissions: summarizePermissions(role, resolvedPermissions),
+        effectivePermissions: resolvedPermissions,
+        extraPermissions,
+      } as StaffUser;
     })
     .filter((user): user is StaffUser => !!user);
 }
@@ -231,7 +315,10 @@ function normalizeUsers(rawUsers: unknown): StaffUser[] {
 function mergeStaff(primary: StaffUser[], secondary: StaffUser[]) {
   const merged = new Map<string, StaffUser>();
   [...primary, ...secondary].forEach((user) => {
-    merged.set(`${user.role}:${user.username.toLowerCase()}`, user);
+    const key = `${user.role}:${user.username.toLowerCase()}`;
+    if (!merged.has(key)) {
+      merged.set(key, user);
+    }
   });
   return Array.from(merged.values());
 }
@@ -246,14 +333,31 @@ export function useOwnerAccess() {
   const [name, setNameState] = useState('');
   const [username, setUsernameState] = useState('');
   const [password, setPasswordState] = useState('');
+  const [extraPermissions, setExtraPermissionsState] = useState<DoctorSupportPermission[]>([]);
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
-  const permissions = useMemo(() => defaultPermissions(role), [role]);
-  const canManageStaff = currentUserQuery.data?.role === 'owner';
+  const [updateStates, setUpdateStates] = useState<Record<string, MutationState>>({});
+  const [editedExtraPermissions, setEditedExtraPermissions] = useState<
+    Record<string, DoctorSupportPermission[]>
+  >({});
+  const permissions = useMemo(
+    () =>
+      summarizePermissions(
+        role,
+        role === "Doctor"
+          ? [...getRolePermissions("doctor"), ...extraPermissions]
+          : [...getRolePermissions("assistant")]
+      ),
+    [extraPermissions, role]
+  );
+  const canManageStaff =
+    !!currentUserQuery.data &&
+    hasPermission(currentUserQuery.data, 'owner.workspace.view') &&
+    hasPermission(currentUserQuery.data, 'user.write');
   const manageStaffDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? 'Checking owner access before managing staff.'
-      : currentUserQuery.data?.role && currentUserQuery.data.role !== 'owner'
-        ? 'Only owner accounts can create staff users.'
+      : currentUserQuery.data && !canManageStaff
+        ? 'Staff-management permission is required before creating staff users.'
         : null;
 
   const clearCreateState = () => {
@@ -263,6 +367,7 @@ export function useOwnerAccess() {
   const setRole = (value: Role) => {
     clearCreateState();
     setRoleState(value);
+    setExtraPermissionsState(value === "Doctor" ? [] : []);
   };
 
   const setName = (value: string) => {
@@ -280,6 +385,15 @@ export function useOwnerAccess() {
     setPasswordState(value);
   };
 
+  const toggleCreateExtraPermission = (permission: DoctorSupportPermission) => {
+    clearCreateState();
+    setExtraPermissionsState((current) =>
+      current.includes(permission)
+        ? current.filter((entry) => entry !== permission)
+        : [...current, permission]
+    );
+  };
+
   const liveUsers = useMemo(() => normalizeUsers(usersQuery.data ?? []), [usersQuery.data]);
   const liveFromAudit = useMemo(
     () => normalizeAuditStaff(auditLogsQuery.data ?? []),
@@ -293,6 +407,9 @@ export function useOwnerAccess() {
     () => mergeStaff(liveUsers, mergeStaff(liveFromAudit, liveFromAppointments)),
     [liveFromAppointments, liveFromAudit, liveUsers]
   );
+
+  const getEditableExtraPermissions = (user: StaffUser) =>
+    editedExtraPermissions[user.id] ?? user.extraPermissions;
 
   const loadState: LoadState = useMemo(() => {
     if (
@@ -309,7 +426,7 @@ export function useOwnerAccess() {
     }
 
     const currentUser = currentUserQuery.data;
-    if (currentUser?.role && currentUser.role !== 'owner') {
+    if (currentUser && !hasPermission(currentUser, 'owner.workspace.view')) {
       return errorLoadState('Owner role is required to manage staff.');
     }
 
@@ -346,12 +463,77 @@ export function useOwnerAccess() {
   const refreshStaffQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.users.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.currentUser }),
       queryClient.invalidateQueries({ queryKey: queryKeys.audit.logs() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
       usersQuery.refetch(),
+      currentUserQuery.refetch(),
       auditLogsQuery.refetch(),
       appointmentsQuery.refetch(),
     ]);
+  };
+
+  const toggleUserExtraPermission = (userId: string, permission: DoctorSupportPermission) => {
+    setEditedExtraPermissions((current) => {
+      const existingUser = staffUsers.find((entry) => entry.id === userId);
+      const base = current[userId] ?? existingUser?.extraPermissions ?? [];
+      const next = base.includes(permission)
+        ? base.filter((entry) => entry !== permission)
+        : [...base, permission];
+      return {
+        ...current,
+        [userId]: next,
+      };
+    });
+  };
+
+  const saveUserExtraPermissions = async (user: StaffUser) => {
+    if (!canManageStaff) {
+      setUpdateStates((current) => ({
+        ...current,
+        [user.id]: errorMutationState(
+          manageStaffDisabledReason ?? "Owner access is required before updating staff permissions."
+        ),
+      }));
+      return;
+    }
+
+    if (user.role !== "Doctor" || user.backendUserId === null) {
+      setUpdateStates((current) => ({
+        ...current,
+        [user.id]: errorMutationState("Only synced doctor accounts can receive extra permissions."),
+      }));
+      return;
+    }
+
+    const nextExtraPermissions = getEditableExtraPermissions(user);
+
+    try {
+      setUpdateStates((current) => ({
+        ...current,
+        [user.id]: pendingMutationState(),
+      }));
+      await updateUserExtraPermissions(user.backendUserId, {
+        extraPermissions: nextExtraPermissions,
+      });
+      await refreshStaffQueries();
+      setEditedExtraPermissions((current) => ({
+        ...current,
+        [user.id]: nextExtraPermissions,
+      }));
+      setUpdateStates((current) => ({
+        ...current,
+        [user.id]: successMutationState("Doctor support permissions updated."),
+      }));
+    } catch (error) {
+      setUpdateStates((current) => ({
+        ...current,
+        [user.id]: errorMutationState(
+          ((error as ApiClientError | undefined)?.message ??
+            "Unable to update doctor support permissions.")
+        ),
+      }));
+    }
   };
 
   const handleCreate = async () => {
@@ -378,10 +560,14 @@ export function useOwnerAccess() {
         email: username.trim(),
         password: password.trim(),
         role: role === 'Doctor' ? 'doctor' : 'assistant',
+        ...(role === "Doctor" && extraPermissions.length
+          ? { extraPermissions }
+          : {}),
       });
       setName('');
       setUsername('');
       setPassword('');
+      setExtraPermissionsState([]);
       await refreshStaffQueries();
       setCreateState(successMutationState('Staff user created.'));
     } catch (error) {
@@ -409,10 +595,21 @@ export function useOwnerAccess() {
     password,
     setPassword,
     permissions,
+    extraPermissions,
+    toggleCreateExtraPermission,
     staffUsers,
     canManageStaff,
     manageStaffDisabledReason,
     handleCreate,
+    getEditableExtraPermissions,
+    toggleUserExtraPermission,
+    saveUserExtraPermissions,
+    getUserUpdateFeedback: (userId: string) =>
+      getMutationFeedback(updateStates[userId] ?? idleMutationState(), {
+        pendingMessage: "Saving doctor support permissions...",
+        errorMessage: "Unable to update doctor support permissions.",
+      }),
+    isUpdatingUser: (userId: string) => (updateStates[userId]?.status ?? "idle") === "pending",
     loadState,
     createState,
     createFeedback,

@@ -20,7 +20,11 @@ export default async function ShellLayout({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F4F9]">
-      <NavigationPanel sessionRole={session.role} userName={session.name} />
+      <NavigationPanel
+        sessionRole={session.role}
+        sessionPermissions={session.permissions}
+        userName={session.name}
+      />
       <main className="flex-1 overflow-y-auto pl-[96px] lg:pl-[130px]">
         <div className="page-width">
           <PageTransition>{children}</PageTransition>

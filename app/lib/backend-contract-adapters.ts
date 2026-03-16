@@ -1,3 +1,4 @@
+import type { AppPermission } from "./authorization";
 import type { AppRole } from "./roles";
 
 export type ApiContractError = {
@@ -58,6 +59,21 @@ function toNumber(value: unknown): number | null {
     return Number(value);
   }
   return null;
+}
+
+function normalizePermissionArray(value: unknown): AppPermission[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim() as AppPermission)
+        .filter(Boolean)
+    )
+  );
 }
 
 function joinName(record: AnyRecord) {
@@ -233,6 +249,13 @@ function normalizeUserRecord(record: AnyRecord) {
     role: role as AppRole,
     createdAt: toString(record.createdAt ?? record.created_at) || null,
     created_at: toString(record.created_at ?? record.createdAt) || null,
+    permissions: normalizePermissionArray(record.permissions),
+    extraPermissions: normalizePermissionArray(
+      record.extraPermissions ?? record.extra_permissions
+    ),
+    extra_permissions: normalizePermissionArray(
+      record.extra_permissions ?? record.extraPermissions
+    ),
   };
 }
 
@@ -268,6 +291,23 @@ export function adaptUserCollectionResponse(raw: unknown) {
     "users",
     "user collection response does not contain a users array."
   ).map(normalizeUserRecord);
+}
+
+export function adaptAuthenticatedUserResponse(raw: unknown) {
+  const record = asRecord(raw);
+  if (!record) {
+    throw contractMismatch("authenticated user response is not an object.");
+  }
+
+  if ("user" in record) {
+    const user = asRecord(record.user);
+    if (!user) {
+      throw contractMismatch("authenticated user response is missing user object.");
+    }
+    return normalizeUserRecord(user);
+  }
+
+  return normalizeUserRecord(record);
 }
 
 export function adaptPatientHistoryResponse(raw: unknown) {

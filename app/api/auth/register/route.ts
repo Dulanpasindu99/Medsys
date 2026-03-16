@@ -73,7 +73,8 @@ async function loginAfterBootstrap(email: string, password: string, organization
     };
   }
 
-  const tokenPair = validateBackendTokenPairPayload(await backendResponse.json());
+  const rawPayload = await backendResponse.json();
+  const tokenPair = validateBackendTokenPairPayload(rawPayload);
   if (!tokenPair.ok) {
     return {
       ok: false as const,
@@ -87,7 +88,15 @@ async function loginAfterBootstrap(email: string, password: string, organization
     };
   }
 
-  return { ok: true as const, value: tokenPair.value };
+  const authenticatedUser = (() => {
+    try {
+      return adaptCreatedUserResponse(rawPayload);
+    } catch {
+      return null;
+    }
+  })();
+
+  return { ok: true as const, value: { ...tokenPair.value, authenticatedUser } };
 }
 
 export async function POST(request: NextRequest) {
@@ -168,9 +177,13 @@ export async function POST(request: NextRequest) {
 
       const accessClaims = readTokenClaims(loginResult.value.accessToken);
       const refreshClaims = readTokenClaims(loginResult.value.refreshToken);
-      const role = accessClaims.role ?? created.role;
-      const email = accessClaims.email ?? created.email;
-      const name = accessClaims.name ?? created.name;
+      const role = accessClaims.role ?? loginResult.value.authenticatedUser?.role ?? created.role;
+      const email = accessClaims.email ?? loginResult.value.authenticatedUser?.email ?? created.email;
+      const name = accessClaims.name ?? loginResult.value.authenticatedUser?.name ?? created.name;
+      const permissions =
+        accessClaims.permissions.length > 0
+          ? accessClaims.permissions
+          : loginResult.value.authenticatedUser?.permissions ?? [];
 
       attachBackendAuthCookies(
         response,
@@ -190,6 +203,7 @@ export async function POST(request: NextRequest) {
           role,
           email,
           name,
+          permissions,
         },
         {
           expiresAt: refreshClaims.exp ?? accessClaims.exp ?? undefined,

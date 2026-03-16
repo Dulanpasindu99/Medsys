@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { canAccessRoute, getDefaultRouteForRole, type AppRouteId } from "@/app/lib/authorization";
+import { canAccessRoute, getDefaultRouteForSubject, type AppRouteId } from "@/app/lib/authorization";
 import { SESSION_COOKIE_NAME, verifySessionToken, type SessionPayload } from "@/app/lib/session";
 
 export async function getPageSession(): Promise<SessionPayload | null> {
@@ -24,8 +24,8 @@ export async function requirePageSession(): Promise<SessionPayload> {
 
 export async function requirePageRoute(routeId: AppRouteId): Promise<SessionPayload> {
   const session = await requirePageSession();
-  if (!canAccessRoute(session.role, routeId)) {
-    redirect(getDefaultRouteForRole(session.role));
+  if (!canAccessRoute(session, routeId)) {
+    redirect(getDefaultRouteForSubject(session));
   }
 
   return session;
@@ -37,5 +37,5 @@ export async function redirectAuthenticated() {
     return;
   }
 
-  redirect(getDefaultRouteForRole(session.role));
+  redirect(getDefaultRouteForSubject(session));
 }

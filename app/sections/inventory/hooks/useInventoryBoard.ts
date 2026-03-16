@@ -127,12 +127,12 @@ export function useInventoryBoard() {
     [items, resolvedSelectedItemId]
   );
   const canWriteInventory =
-    !!currentUserQuery.data?.role && hasPermission(currentUserQuery.data.role, "inventory.write");
+    !!currentUserQuery.data && hasPermission(currentUserQuery.data, "inventory.write");
   const writeDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking inventory write access."
-      : currentUserQuery.data?.role && !canWriteInventory
-        ? "Only owner and assistant accounts can change inventory stock."
+      : currentUserQuery.data && !canWriteInventory
+        ? "Inventory write permission is required before changing stock."
         : null;
   const canPostMovement = canWriteInventory && resolvedSelectedItemId !== null;
   const movementActionDisabledReason =

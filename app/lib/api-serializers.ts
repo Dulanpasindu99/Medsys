@@ -1,4 +1,5 @@
 import type { AppRole } from "@/app/lib/roles";
+import type { AppPermission } from "@/app/lib/authorization";
 
 type PatientRecord = {
   id: number;
@@ -21,6 +22,8 @@ type UserRecord = {
   email: string;
   role: AppRole;
   createdAt: string | null;
+  permissions?: AppPermission[];
+  extraPermissions?: AppPermission[];
 };
 
 type HistoryEntry = {
@@ -41,6 +44,7 @@ type SessionIdentity = {
   name: string;
   email: string;
   role: AppRole;
+  permissions?: AppPermission[];
 };
 
 export function serializePatient(patient: PatientRecord) {
@@ -71,6 +75,8 @@ export function serializeUser(user: UserRecord) {
     email: user.email,
     role: user.role,
     created_at: user.createdAt ?? null,
+    ...(user.permissions?.length ? { permissions: user.permissions } : {}),
+    ...(user.extraPermissions?.length ? { extraPermissions: user.extraPermissions } : {}),
   };
 }
 
@@ -91,5 +97,6 @@ export function serializeSessionIdentity(identity: SessionIdentity) {
     name: identity.name,
     email: identity.email,
     role: identity.role,
+    ...(identity.permissions?.length ? { permissions: identity.permissions } : {}),
   };
 }

@@ -10,6 +10,7 @@ import {
 } from "../../../lib/async-state";
 import DoctorSection from "../../DoctorSection";
 import { usePatientProfilePopup } from "../../../hooks/usePatientProfilePopup";
+import { useAssistantWorkflow } from "../../assistant/hooks/useAssistantWorkflow";
 import { useDoctorClinicalWorkflow } from "../hooks/useDoctorClinicalWorkflow";
 import { useDoctorWorkspaceData } from "../hooks/useDoctorWorkspaceData";
 import { useVisitPlanner } from "../hooks/useVisitPlanner";
@@ -28,6 +29,10 @@ vi.mock("../hooks/useDoctorWorkspaceData", () => ({
 
 vi.mock("../../../hooks/usePatientProfilePopup", () => ({
   usePatientProfilePopup: vi.fn(),
+}));
+
+vi.mock("../../assistant/hooks/useAssistantWorkflow", () => ({
+  useAssistantWorkflow: vi.fn(),
 }));
 
 vi.mock("../components/DoctorSidebar", () => ({
@@ -111,7 +116,9 @@ const mockedUseDoctorClinicalWorkflow = vi.mocked(useDoctorClinicalWorkflow);
 const mockedUseVisitPlanner = vi.mocked(useVisitPlanner);
 const mockedUseDoctorWorkspaceData = vi.mocked(useDoctorWorkspaceData);
 const mockedUsePatientProfilePopup = vi.mocked(usePatientProfilePopup);
+const mockedUseAssistantWorkflow = vi.mocked(useAssistantWorkflow);
 type MockDoctorWorkspaceData = ReturnType<typeof useDoctorWorkspaceData>;
+type MockAssistantWorkflowData = ReturnType<typeof useAssistantWorkflow>;
 
 function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): MockDoctorWorkspaceData {
   return {
@@ -147,6 +154,72 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
   };
 }
 
+function buildAssistantWorkflowState(
+  overrides?: Partial<MockAssistantWorkflowData>
+): MockAssistantWorkflowData {
+  return {
+    pendingPatients: [],
+    activePrescription: {
+      prescriptionId: 101,
+      patientId: 7,
+      patient: "Jane Doe",
+      nic: "990011223V",
+      age: 31,
+      gender: "Female",
+      diagnosis: "Fever",
+      clinical: [],
+      outside: [],
+      allergies: [],
+      dispenseItems: [],
+    },
+    formState: {
+      nic: "",
+      name: "",
+      mobile: "",
+      age: "",
+      allergyInput: "",
+      allergies: ["No allergies"],
+      bloodGroup: "O+",
+      priority: "Normal",
+      regularDrug: "",
+    },
+    setFormState: vi.fn(),
+    completedSearch: "",
+    setCompletedSearch: vi.fn(),
+    stats: { total: 0, male: 0, female: 0, existing: 0, new: 0 },
+    availableDoctors: [],
+    patientOptions: [],
+    filteredCompleted: [],
+    addPatient: vi.fn(),
+    addAllergy: vi.fn(),
+    scheduleForm: {
+      patientId: "",
+      doctorId: "",
+      scheduledAt: "",
+      reason: "",
+      priority: "Normal",
+    },
+    setScheduleForm: vi.fn(),
+    scheduleAppointment: vi.fn(),
+    markDoneAndNext: vi.fn(),
+    loadState: readyLoadState(),
+    createPatientState: idleMutationState(),
+    createPatientFeedback: null,
+    scheduleAppointmentState: idleMutationState(),
+    scheduleAppointmentFeedback: null,
+    dispenseState: idleMutationState(),
+    dispenseFeedback: null,
+    canManageAssistantWorkflow: false,
+    workflowActionDisabledReason: null,
+    canCreateAppointmentsInWorkflow: false,
+    appointmentActionDisabledReason: null,
+    reload: vi.fn(),
+    isSyncing: false,
+    syncError: null,
+    ...overrides,
+  };
+}
+
 describe("DoctorSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -159,6 +232,7 @@ describe("DoctorSection", () => {
       nextVisitDate: "2026-03-07",
     } as unknown as ReturnType<typeof useVisitPlanner>);
     mockedUseDoctorWorkspaceData.mockReturnValue(buildWorkspaceState());
+    mockedUseAssistantWorkflow.mockReturnValue(buildAssistantWorkflowState());
     mockedUsePatientProfilePopup.mockReturnValue({
       selectedProfileId: null,
       openProfile: vi.fn(),
@@ -238,8 +312,8 @@ describe("DoctorSection", () => {
       buildWorkspaceState({
         canSaveRecord: false,
         canTransitionAppointments: false,
-        saveDisabledReason: "Only doctor accounts can submit encounters from this workspace.",
-        transitionDisabledReason: "Only doctor accounts can advance appointment status from this workspace.",
+        saveDisabledReason: "Doctor workspace access is required before submitting encounters.",
+        transitionDisabledReason: "Doctor workspace access is required before updating appointment status.",
       })
     );
 
@@ -247,7 +321,20 @@ describe("DoctorSection", () => {
 
     expect(screen.getByRole("button", { name: /start consultation/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /save & print record/i })).toBeDisabled();
-    expect(screen.getByText(/only doctor accounts can advance appointment status/i)).toBeInTheDocument();
-    expect(screen.getByText(/only doctor accounts can submit encounters/i)).toBeInTheDocument();
+    expect(screen.getByText(/doctor workspace access is required before updating appointment status/i)).toBeInTheDocument();
+    expect(screen.getByText(/doctor workspace access is required before submitting encounters/i)).toBeInTheDocument();
+  });
+
+  it("shows embedded assistant coverage tools when the doctor has assistant permissions", () => {
+    mockedUseAssistantWorkflow.mockReturnValue(
+      buildAssistantWorkflowState({
+        canManageAssistantWorkflow: true,
+        canCreateAppointmentsInWorkflow: true,
+      })
+    );
+
+    render(<DoctorSection />);
+
+    expect(screen.getByText(/assistant tasks are enabled for this doctor account/i)).toBeInTheDocument();
   });
 });

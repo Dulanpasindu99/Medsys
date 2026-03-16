@@ -158,7 +158,7 @@ describe("useInventoryBoard", () => {
 
     expect(result.current.canWriteInventory).toBe(false);
     expect(mockedCreateInventoryItem).not.toHaveBeenCalled();
-    expect(result.current.createState.error).toMatch(/owner and assistant accounts/i);
+    expect(result.current.createState.error).toMatch(/inventory write permission/i);
   });
 
   it("clears settled mutation feedback when inputs or selection change", async () => {

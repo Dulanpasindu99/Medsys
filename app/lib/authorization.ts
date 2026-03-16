@@ -1,25 +1,43 @@
 import type { AppRole } from "@/app/lib/roles";
 
-export type AppPermission =
+export type KnownAppPermission =
   | "doctor.workspace.view"
   | "assistant.workspace.view"
   | "patient.directory.view"
   | "analytics.view"
+  | "analytics.read"
   | "inventory.view"
   | "inventory.write"
   | "ai.workspace.view"
   | "owner.workspace.view"
   | "appointment.create"
   | "appointment.update"
+  | "encounter.read"
+  | "encounter.write"
+  | "family.read"
+  | "family.write"
   | "prescription.dispense"
+  | "prescription.read"
   | "patient.read"
   | "patient.write"
   | "patient.delete"
+  | "patient.profile.read"
+  | "patient.family.read"
   | "patient.history.read"
   | "patient.history.write"
+  | "patient.allergy.read"
+  | "patient.allergy.write"
+  | "patient.condition.read"
+  | "patient.condition.write"
+  | "patient.timeline.read"
+  | "patient.timeline.write"
+  | "patient.vital.read"
+  | "patient.vital.write"
   | "user.read"
   | "user.write"
   | "clinical.icd10.read";
+
+export type AppPermission = KnownAppPermission | (string & {});
 
 export type AppRouteId =
   | "doctorHome"
@@ -38,6 +56,13 @@ export type NavigationItemId =
   | "ai"
   | "assistant"
   | "owner";
+
+export type PermissionSubject =
+  | AppRole
+  | {
+      role: AppRole;
+      permissions?: readonly AppPermission[] | null;
+    };
 
 type RoutePolicy = {
   routeId: AppRouteId;
@@ -151,6 +176,35 @@ const DEFAULT_ROUTE_BY_ROLE: Record<AppRole, AppRouteId> = {
   assistant: "assistantWorkspace",
 };
 
+function isPermissionSubject(value: PermissionSubject): value is Exclude<PermissionSubject, AppRole> {
+  return typeof value === "object" && value !== null;
+}
+
+function getSubjectRole(subject: PermissionSubject): AppRole {
+  return typeof subject === "string" ? subject : subject.role;
+}
+
+function normalizePermissions(value: readonly AppPermission[] | null | undefined) {
+  if (!value?.length) {
+    return [];
+  }
+
+  return Array.from(new Set(value));
+}
+
+export function getRolePermissions(role: AppRole) {
+  return ROLE_PERMISSION_MATRIX[role];
+}
+
+export function getEffectivePermissions(subject: PermissionSubject) {
+  const rolePermissions = getRolePermissions(getSubjectRole(subject));
+  if (!isPermissionSubject(subject)) {
+    return [...rolePermissions];
+  }
+
+  return Array.from(new Set([...rolePermissions, ...normalizePermissions(subject.permissions)]));
+}
+
 function isPathMatch(pathname: string, href: string) {
   if (href === "/") {
     return pathname === "/";
@@ -163,34 +217,54 @@ export function getRoutePolicy(routeId: AppRouteId) {
   return ROUTE_POLICIES.find((route) => route.routeId === routeId) ?? null;
 }
 
-export function hasPermission(role: AppRole, permission: AppPermission) {
-  return ROLE_PERMISSION_MATRIX[role].includes(permission);
+export function hasPermission(subject: PermissionSubject, permission: AppPermission) {
+  return getEffectivePermissions(subject).includes(permission);
 }
 
-export function hasAnyPermission(role: AppRole, permissions: readonly AppPermission[]) {
-  return permissions.some((permission) => hasPermission(role, permission));
+export function hasAnyPermission(subject: PermissionSubject, permissions: readonly AppPermission[]) {
+  return permissions.some((permission) => hasPermission(subject, permission));
 }
 
-export function canCreateAppointments(role: AppRole) {
-  return hasPermission(role, "appointment.create");
+export function canCreateAppointments(subject: PermissionSubject) {
+  return hasPermission(subject, "appointment.create");
 }
 
-export function canUpdateAppointments(role: AppRole) {
-  return hasPermission(role, "appointment.update");
+export function canUpdateAppointments(subject: PermissionSubject) {
+  return hasPermission(subject, "appointment.update");
 }
 
-export function canAccessRoute(role: AppRole, routeId: AppRouteId) {
+export function canAccessRoute(subject: PermissionSubject, routeId: AppRouteId) {
   const route = getRoutePolicy(routeId);
-  return route ? hasPermission(role, route.permission) : false;
+  return route ? hasPermission(subject, route.permission) : false;
 }
 
 export function getDefaultRouteForRole(role: AppRole) {
+  return getDefaultRouteForSubject(role);
+}
+
+export function getDefaultRouteForSubject(subject: PermissionSubject) {
+  const role = getSubjectRole(subject);
   const route = getRoutePolicy(DEFAULT_ROUTE_BY_ROLE[role]);
+  if (route && hasPermission(subject, route.permission)) {
+    return route.href;
+  }
+
+  const firstAccessibleRoute = ROUTE_POLICIES.find((entry) =>
+    hasPermission(subject, entry.permission)
+  );
+  if (firstAccessibleRoute) {
+    return firstAccessibleRoute.href;
+  }
+
   return route?.href ?? "/";
 }
 
 export function getNavigationItemsForRole(role: AppRole) {
-  return ROUTE_POLICIES.filter((route) => hasPermission(role, route.permission)).map(
+  return getNavigationItemsForSubject(role);
+}
+
+export function getNavigationItemsForSubject(subject: PermissionSubject) {
+  return ROUTE_POLICIES.filter((route) => hasPermission(subject, route.permission)).map(
     ({ navId, href, label, routeId }) => ({
       id: navId,
       href,

@@ -58,6 +58,10 @@ describe("GET /api/backend/[...path]", () => {
             accessToken: newAccessToken,
             refreshToken: newRefreshToken,
             expiresIn: 900,
+            access_token: newAccessToken,
+            refresh_token: newRefreshToken,
+            expires_in: 900,
+            tokenType: "Bearer",
           }),
           {
             status: 200,

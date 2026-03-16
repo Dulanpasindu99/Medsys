@@ -4,6 +4,7 @@ import {
   clearBackendAuthCookies,
   readBackendAuthCookies,
 } from "@/app/lib/backend-auth-cookies";
+import { adaptCreatedUserResponse } from "@/app/lib/backend-contract-adapters";
 import { validateBackendTokenPairPayload, type ValidationIssue } from "@/app/lib/api-validation";
 import {
   attachSessionCookie,
@@ -33,6 +34,11 @@ type BackendResponseSideEffects = {
   refreshedTokens?: {
     accessToken: string;
     refreshToken: string;
+    permissions?: string[];
+    userId?: number | null;
+    email?: string | null;
+    name?: string | null;
+    role?: string | null;
   };
 };
 
@@ -138,12 +144,24 @@ async function refreshBackendTokens(refreshToken: string) {
     throw new Error(await parseRefreshError(response));
   }
 
-  const payload = validateBackendTokenPairPayload(await response.json());
+  const rawPayload = await response.json();
+  const payload = validateBackendTokenPairPayload(rawPayload);
   if (!payload.ok) {
     throw new Error("Backend refresh response was invalid.");
   }
 
-  return payload.value;
+  const authenticatedUser = (() => {
+    try {
+      return adaptCreatedUserResponse(rawPayload);
+    } catch {
+      return null;
+    }
+  })();
+
+  return {
+    ...payload.value,
+    authenticatedUser,
+  };
 }
 
 async function executeBackendRequest(
@@ -175,24 +193,37 @@ function applySessionCookieFromRefreshedTokens(
   request: NextRequest,
   response: NextResponse,
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
+  refreshedIdentity?: {
+    permissions?: string[];
+    userId?: number | null;
+    email?: string | null;
+    name?: string | null;
+    role?: string | null;
+  }
 ) {
   const accessClaims = readTokenClaims(accessToken);
   const refreshClaims = readTokenClaims(refreshToken);
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const existingSession = sessionToken ? verifySessionToken(sessionToken) : null;
 
-  if (!existingSession || !accessClaims.role) {
+  if (!existingSession || (!accessClaims.role && !refreshedIdentity?.role)) {
     return;
   }
 
   attachSessionCookie(
     response,
     {
-      userId: accessClaims.userId,
-      role: accessClaims.role,
-      email: accessClaims.email ?? existingSession.email,
-      name: accessClaims.name ?? existingSession.name,
+      userId: accessClaims.userId ?? refreshedIdentity?.userId ?? existingSession.userId,
+      role: (accessClaims.role ?? refreshedIdentity?.role ?? existingSession.role) as typeof existingSession.role,
+      email: accessClaims.email ?? refreshedIdentity?.email ?? existingSession.email,
+      name: accessClaims.name ?? refreshedIdentity?.name ?? existingSession.name,
+      permissions:
+        accessClaims.permissions.length > 0
+          ? accessClaims.permissions
+          : refreshedIdentity?.permissions?.length
+            ? refreshedIdentity.permissions
+            : existingSession.permissions,
     },
     {
       expiresAt: refreshClaims.exp ?? accessClaims.exp ?? undefined,
@@ -227,7 +258,8 @@ function applyBackendSideEffects(
     request,
     response,
     sideEffects.refreshedTokens.accessToken,
-    sideEffects.refreshedTokens.refreshToken
+    sideEffects.refreshedTokens.refreshToken,
+    sideEffects.refreshedTokens
   );
 }
 
@@ -275,6 +307,11 @@ export async function callBackendRoute(
       sideEffects.refreshedTokens = {
         accessToken: refreshed.accessToken,
         refreshToken: refreshed.refreshToken,
+        permissions: refreshed.authenticatedUser?.permissions,
+        userId: refreshed.authenticatedUser?.id ?? null,
+        email: refreshed.authenticatedUser?.email ?? null,
+        name: refreshed.authenticatedUser?.name ?? null,
+        role: refreshed.authenticatedUser?.role ?? null,
       };
     } catch {
       return { ok: false, response: unauthorizedResponse() };

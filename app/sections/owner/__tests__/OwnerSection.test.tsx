@@ -4,7 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryWrapper } from "../../../lib/test-query-client";
 import { queryKeys } from "../../../lib/query-keys";
 import { useOwnerAccess, defaultPermissions } from "../hooks/useOwnerAccess";
-import { createUser, getCurrentUser, listAppointments, listAuditLogs, listUsers } from "../../../lib/api-client";
+import {
+  createUser,
+  getCurrentUser,
+  listAppointments,
+  listAuditLogs,
+  listUsers,
+  updateUserExtraPermissions,
+} from "../../../lib/api-client";
 
 vi.mock("../../../lib/api-client", () => ({
   createUser: vi.fn(),
@@ -12,6 +19,7 @@ vi.mock("../../../lib/api-client", () => ({
   listAuditLogs: vi.fn(),
   listAppointments: vi.fn(),
   listUsers: vi.fn(),
+  updateUserExtraPermissions: vi.fn(),
 }));
 
 const mockedCreateUser = vi.mocked(createUser);
@@ -19,6 +27,7 @@ const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedListAuditLogs = vi.mocked(listAuditLogs);
 const mockedListAppointments = vi.mocked(listAppointments);
 const mockedListUsers = vi.mocked(listUsers);
+const mockedUpdateUserExtraPermissions = vi.mocked(updateUserExtraPermissions);
 
 describe("useOwnerAccess", () => {
   beforeEach(() => {
@@ -34,6 +43,13 @@ describe("useOwnerAccess", () => {
       name: "Dr. Meredith Grey",
       email: "meredith.grey@medsys.local",
       role: "doctor",
+    });
+    mockedUpdateUserExtraPermissions.mockResolvedValue({
+      id: 8,
+      name: "Dr. House",
+      email: "house@medsys.local",
+      role: "doctor",
+      extraPermissions: ["appointment.create", "prescription.dispense"],
     });
     mockedListAuditLogs.mockResolvedValue([]);
     mockedListAppointments.mockResolvedValue([]);
@@ -69,6 +85,7 @@ describe("useOwnerAccess", () => {
     });
 
     act(() => {
+      result.current.toggleCreateExtraPermission("appointment.create");
       result.current.setName("Dr. Meredith Grey");
       result.current.setUsername("meredith.grey@medsys.local");
       result.current.setPassword("secret-123");
@@ -83,6 +100,7 @@ describe("useOwnerAccess", () => {
       email: "meredith.grey@medsys.local",
       password: "secret-123",
       role: "doctor",
+      extraPermissions: ["appointment.create"],
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: queryKeys.users.list(),
@@ -182,6 +200,43 @@ describe("useOwnerAccess", () => {
     ]);
   });
 
+  it("updates doctor support overrides through the backend-backed user detail route", async () => {
+    mockedListUsers.mockResolvedValue([
+      {
+        id: 8,
+        name: "Dr. House",
+        email: "house@medsys.local",
+        role: "doctor",
+        permissions: ["patient.write", "appointment.create"],
+        extraPermissions: ["appointment.create"],
+      },
+    ]);
+
+    const { result } = renderHook(() => useOwnerAccess(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.staffUsers).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.toggleUserExtraPermission("user-8", "prescription.dispense");
+    });
+
+    await act(async () => {
+      await result.current.saveUserExtraPermissions(result.current.staffUsers[0]!);
+    });
+
+    expect(mockedUpdateUserExtraPermissions).toHaveBeenCalledWith(8, {
+      extraPermissions: ["appointment.create", "prescription.dispense"],
+    });
+    expect(result.current.getUserUpdateFeedback("user-8")).toEqual({
+      tone: "success",
+      message: "Doctor support permissions updated.",
+    });
+  });
+
   it("blocks staff creation for non-owner roles before the backend returns 403", async () => {
     mockedGetCurrentUser.mockResolvedValue({
       id: 5,
@@ -210,6 +265,6 @@ describe("useOwnerAccess", () => {
 
     expect(result.current.canManageStaff).toBe(false);
     expect(mockedCreateUser).not.toHaveBeenCalled();
-    expect(result.current.createState.error).toMatch(/owner access is required|only owner accounts can create staff users/i);
+    expect(result.current.createState.error).toMatch(/staff-management permission is required|owner access is required|only owner accounts can create staff users/i);
   });
 });

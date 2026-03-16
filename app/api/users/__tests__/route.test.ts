@@ -162,6 +162,8 @@ describe("/api/users BFF routes", () => {
             email: "doctor@example.com",
             role: "doctor",
             created_at: "2026-03-09T00:00:00.000Z",
+            permissions: ["patient.write", "appointment.create"],
+            extra_permissions: ["appointment.create"],
           },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -177,6 +179,7 @@ describe("/api/users BFF routes", () => {
           email: "Doctor@Example.com",
           password: "strong-pass-123",
           role: "doctor",
+          extraPermissions: ["appointment.create"],
         },
       })
     );
@@ -189,6 +192,7 @@ describe("/api/users BFF routes", () => {
         email: "doctor@example.com",
         password: "strong-pass-123",
         role: "doctor",
+        extraPermissions: ["appointment.create"],
       })
     );
     expect(body).toEqual({
@@ -198,7 +202,55 @@ describe("/api/users BFF routes", () => {
         email: "doctor@example.com",
         role: "doctor",
         created_at: "2026-03-09T00:00:00.000Z",
+        permissions: ["patient.write", "appointment.create"],
+        extraPermissions: ["appointment.create"],
       },
+    });
+  });
+
+  it("serializes backend user permissions when listing users", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          users: [
+            {
+              id: 4,
+              firstName: "Owner",
+              lastName: "User",
+              email: "owner@example.com",
+              role: "owner",
+              createdAt: "2026-03-09T00:00:00.000Z",
+              permissions: ["user.read", "user.write"],
+            },
+            {
+              id: 9,
+              firstName: "Jane",
+              lastName: "Doe",
+              email: "doctor@example.com",
+              role: "doctor",
+              createdAt: "2026-03-09T00:00:00.000Z",
+              permissions: ["patient.write", "appointment.create"],
+              extra_permissions: ["appointment.create"],
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(buildRequest("owner"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.users[1]).toEqual({
+      id: 9,
+      name: "Jane Doe",
+      email: "doctor@example.com",
+      role: "doctor",
+      created_at: "2026-03-09T00:00:00.000Z",
+      permissions: ["patient.write", "appointment.create"],
+      extraPermissions: ["appointment.create"],
     });
   });
 

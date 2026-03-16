@@ -289,6 +289,27 @@ describe("useAssistantWorkflow", () => {
     expect(result.current.createPatientState.error).toMatch(/assistant workflow access/i);
   });
 
+  it("unlocks assistant workflow actions for doctors with explicit assistant coverage permissions", async () => {
+    mockedGetCurrentUser.mockResolvedValue({
+      id: 5,
+      role: "doctor",
+      email: "doctor@medsys.test",
+      name: "Doctor",
+      permissions: ["appointment.create", "prescription.dispense"],
+    });
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.canManageAssistantWorkflow).toBe(true);
+    });
+
+    expect(result.current.canManageAssistantWorkflow).toBe(true);
+    expect(result.current.canCreateAppointmentsInWorkflow).toBe(true);
+  });
+
   it("schedules appointments through the backend-backed appointments API", async () => {
     mockedListPatients.mockResolvedValue([
       buildPatientFixture({

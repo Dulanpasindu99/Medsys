@@ -96,6 +96,176 @@ describe("POST /api/auth/login", () => {
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBeTruthy();
   });
 
+  it("returns explicit permissions when the backend token carries them", async () => {
+    const accessToken = createJwt({
+      userId: 42,
+      role: "doctor",
+      email: "doctor@example.com",
+      name: "Dr. Jane Doe",
+      permissions: ["assistant.workspace.view", "appointment.create", "prescription.dispense"],
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const refreshToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accessToken,
+            refreshToken,
+            expiresIn: 900,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    );
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "doctor@example.com",
+        password: "secret-123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(body).toEqual({
+      id: 42,
+      name: "Dr. Jane Doe",
+      email: "doctor@example.com",
+      role: "doctor",
+      permissions: ["assistant.workspace.view", "appointment.create", "prescription.dispense"],
+    });
+  });
+
+  it("falls back to backend user permissions when tokens omit them", async () => {
+    const accessToken = createJwt({
+      userId: 42,
+      role: "doctor",
+      email: "doctor@example.com",
+      name: "Dr. Jane Doe",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const refreshToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accessToken,
+            refreshToken,
+            expiresIn: 900,
+            user: {
+              id: 42,
+              name: "Dr. Jane Doe",
+              email: "doctor@example.com",
+              role: "doctor",
+              permissions: ["patient.write", "appointment.create", "prescription.dispense"],
+              extra_permissions: ["appointment.create", "prescription.dispense"],
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    );
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "doctor@example.com",
+        password: "secret-123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      id: 42,
+      name: "Dr. Jane Doe",
+      email: "doctor@example.com",
+      role: "doctor",
+      permissions: ["patient.write", "appointment.create", "prescription.dispense"],
+    });
+  });
+
+  it("accepts backend auth payloads with extra metadata and snake_case duplicates", async () => {
+    const accessToken = createJwt({
+      userId: 42,
+      role: "doctor",
+      email: "doctor@example.com",
+      name: "Dr. Jane Doe",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const refreshToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accessToken,
+            refreshToken,
+            expiresIn: 900,
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_in: 900,
+            tokenType: "Bearer",
+            user: {
+              id: 42,
+              name: "Dr. Jane Doe",
+              email: "doctor@example.com",
+              role: "doctor",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    );
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "doctor@example.com",
+        password: "secret-123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      id: 42,
+      name: "Dr. Jane Doe",
+      email: "doctor@example.com",
+      role: "doctor",
+    });
+  });
+
   it("returns 502 when the backend login payload is malformed", async () => {
     vi.stubGlobal(
       "fetch",

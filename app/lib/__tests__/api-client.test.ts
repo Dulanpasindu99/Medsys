@@ -31,6 +31,7 @@ import {
   registerUser,
   updateAppointment,
   updateInventoryItem,
+  updateUserExtraPermissions,
 } from "../api-client";
 
 describe("api client backend compatibility", () => {
@@ -517,6 +518,7 @@ describe("api client backend compatibility", () => {
             role: "doctor",
             email: "doctor@example.com",
             name: "Dr. Jane Doe",
+            permissions: ["patient.write", "appointment.create"],
           }),
           {
             status: 200,
@@ -531,6 +533,7 @@ describe("api client backend compatibility", () => {
       role: "doctor",
       email: "doctor@example.com",
       name: "Dr. Jane Doe",
+      permissions: ["patient.write", "appointment.create"],
     });
   });
 
@@ -681,6 +684,91 @@ describe("api client backend compatibility", () => {
         password: "secret-123",
         role: "assistant",
       })
+    );
+  });
+
+  it("creates doctor users with explicit support permissions", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: 9,
+            name: "Dr. Jane Doe",
+            email: "doctor@example.com",
+            role: "doctor",
+            extraPermissions: ["appointment.create", "prescription.dispense"],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      createUser({
+        name: "Dr. Jane Doe",
+        email: "doctor@example.com",
+        password: "secret-123",
+        role: "doctor",
+        extraPermissions: ["appointment.create", "prescription.dispense"],
+      })
+    ).resolves.toEqual({
+      id: 9,
+      name: "Dr. Jane Doe",
+      email: "doctor@example.com",
+      role: "doctor",
+      extraPermissions: ["appointment.create", "prescription.dispense"],
+    });
+
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({
+        name: "Dr. Jane Doe",
+        email: "doctor@example.com",
+        password: "secret-123",
+        role: "doctor",
+        extraPermissions: ["appointment.create", "prescription.dispense"],
+      })
+    );
+  });
+
+  it("updates doctor support permissions through the dedicated user-detail BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: 9,
+            name: "Dr. Jane Doe",
+            email: "doctor@example.com",
+            role: "doctor",
+            extraPermissions: ["appointment.create"],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      updateUserExtraPermissions(9, {
+        extraPermissions: ["appointment.create"],
+      })
+    ).resolves.toEqual({
+      id: 9,
+      name: "Dr. Jane Doe",
+      email: "doctor@example.com",
+      role: "doctor",
+      extraPermissions: ["appointment.create"],
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/users/9");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ extraPermissions: ["appointment.create"] })
     );
   });
 });

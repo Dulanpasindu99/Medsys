@@ -1,4 +1,5 @@
 import type { AppRole } from "./roles";
+import type { AppPermission } from "./authorization";
 
 export type ApiClientError = {
   message: string;
@@ -112,6 +113,17 @@ export type LoginResponse = {
   role: AppRole;
   email: string;
   name: string;
+  permissions?: AppPermission[];
+};
+
+export type FrontendUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: AppRole;
+  created_at?: string | null;
+  permissions?: AppPermission[];
+  extraPermissions?: AppPermission[];
 };
 
 export async function loginUser(email: string, password: string, roleHint?: AppRole) {
@@ -182,6 +194,7 @@ export async function registerUser(input: {
   email: string;
   password: string;
   role: AppRole;
+  extraPermissions?: AppPermission[];
 }) {
   const response = await fetch("/api/auth/register", {
     method: "POST",
@@ -195,14 +208,7 @@ export async function registerUser(input: {
   }
 
   const payload = (await response.json()) as {
-    user: {
-      id: number;
-      name: string;
-      email: string;
-      role: AppRole;
-      created_at?: string | null;
-      createdAt?: string | null;
-    };
+    user: FrontendUser;
   };
 
   return payload.user;
@@ -221,18 +227,23 @@ export async function createUser(input: {
   email: string;
   password: string;
   role: Extract<AppRole, "doctor" | "assistant">;
+  extraPermissions?: AppPermission[];
 }) {
   const response = await apiFetch<{
-    user: {
-      id: number;
-      name: string;
-      email: string;
-      role: AppRole;
-      created_at?: string | null;
-      createdAt?: string | null;
-    };
+    user: FrontendUser;
   }>("/api/users", {
     method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.user;
+}
+
+export async function updateUserExtraPermissions(
+  userId: number | string,
+  input: { extraPermissions: AppPermission[] }
+) {
+  const response = await apiFetch<{ user: FrontendUser }>(`/api/users/${userId}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
   });
   return response.user;

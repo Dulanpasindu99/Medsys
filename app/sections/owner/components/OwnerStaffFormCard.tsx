@@ -1,5 +1,9 @@
-import type { PermissionKey, Role } from "../types";
-import { permissionLabels } from "../hooks/useOwnerAccess";
+import type { DoctorSupportPermission, PermissionKey, Role } from "../types";
+import {
+  doctorSupportPermissionLabels,
+  DOCTOR_SUPPORT_PERMISSION_OPTIONS,
+  permissionLabels,
+} from "../hooks/useOwnerAccess";
 import { OwnerBadge } from "./OwnerBadge";
 
 const INSET = "shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]";
@@ -14,6 +18,8 @@ type OwnerStaffFormCardProps = {
   password: string;
   setPassword: (password: string) => void;
   permissions: Record<PermissionKey, boolean>;
+  extraPermissions: DoctorSupportPermission[];
+  onToggleExtraPermission: (permission: DoctorSupportPermission) => void;
   onCreate: () => void;
   isSubmitting?: boolean;
   canManageStaff?: boolean;
@@ -30,6 +36,8 @@ export function OwnerStaffFormCard({
   password,
   setPassword,
   permissions,
+  extraPermissions,
+  onToggleExtraPermission,
   onCreate,
   isSubmitting = false,
   canManageStaff = true,
@@ -92,7 +100,7 @@ export function OwnerStaffFormCard({
       </div>
 
       <div className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-100">
-        New staff accounts inherit backend role-based access. Custom per-user permission editing is not available in the live API yet, so this section is a preview of what the selected role receives.
+        New staff accounts inherit backend role-based access. Doctors can also receive a small assistant-support override set when they need to cover intake, scheduling, dispensing, or inventory duties.
       </div>
 
       <div className="mt-6 grid gap-3 md:grid-cols-2">
@@ -117,6 +125,54 @@ export function OwnerStaffFormCard({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-sm text-emerald-950 ring-1 ring-emerald-100">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              Doctor support overrides
+            </p>
+            <p className="mt-1 text-sm text-emerald-900/80">
+              Extra permissions are only assignable to doctor accounts. Assistant accounts keep their standard role access.
+            </p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-200">
+            {role === "Doctor" ? `${extraPermissions.length} selected` : "Doctor only"}
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {DOCTOR_SUPPORT_PERMISSION_OPTIONS.map((permission) => {
+            const enabled = extraPermissions.includes(permission);
+            const disabled = role !== "Doctor" || !canManageStaff;
+
+            return (
+              <button
+                key={permission}
+                type="button"
+                disabled={disabled}
+                onClick={() => onToggleExtraPermission(permission)}
+                className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                  enabled
+                    ? "border-emerald-200 bg-white text-emerald-900 ring-1 ring-emerald-100"
+                    : "border-emerald-100 bg-emerald-50/60 text-emerald-900/80 ring-1 ring-emerald-100"
+                } ${disabled ? "cursor-not-allowed opacity-70" : "hover:-translate-y-0.5"}`}
+              >
+                <span>{doctorSupportPermissionLabels[permission]}</span>
+                <span
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                    enabled
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-white text-emerald-700"
+                  }`}
+                >
+                  {enabled ? "Included" : "Optional"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { AppPermission } from "@/app/lib/authorization";
 import type { AppRole } from "@/app/lib/roles";
 
 export type ValidationIssue = {
@@ -71,6 +72,37 @@ function normalizeOptionalString(
   }
 
   return success(normalized);
+}
+
+function normalizePermissionList(
+  value: unknown,
+  field: string
+): ValidationResult<AppPermission[] | undefined> {
+  if (value === undefined) {
+    return success(undefined);
+  }
+
+  if (!Array.isArray(value)) {
+    return failure([{ field, message: "Must be an array of permission strings." }]);
+  }
+
+  const issues: ValidationIssue[] = [];
+  const normalized = value.flatMap((entry, index) => {
+    if (typeof entry !== "string") {
+      issues.push({ field: `${field}[${index}]`, message: "Must be a string." });
+      return [];
+    }
+
+    const permission = entry.trim() as AppPermission;
+    if (!permission) {
+      issues.push({ field: `${field}[${index}]`, message: "Is required." });
+      return [];
+    }
+
+    return [permission];
+  });
+
+  return issues.length > 0 ? failure(issues) : success(Array.from(new Set(normalized)));
 }
 
 function normalizeRequiredString(
@@ -427,6 +459,7 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
     "email",
     "password",
     "role",
+    "extraPermissions",
   ]);
 
   const name = normalizeRequiredString(payload.name, "name", { maxLength: 120 });
@@ -444,7 +477,24 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
   const role = normalizeRole(payload.role, "role");
   if (!role.ok) issues.push(...role.issues);
 
-  if (issues.length > 0 || !name.ok || !email.ok || !password.ok || !role.ok) {
+  const extraPermissions = normalizePermissionList(payload.extraPermissions, "extraPermissions");
+  if (!extraPermissions.ok) issues.push(...extraPermissions.issues);
+
+  if (role.ok && extraPermissions.ok && role.value !== "doctor" && extraPermissions.value?.length) {
+    issues.push({
+      field: "extraPermissions",
+      message: "Only doctor users can receive extra permissions.",
+    });
+  }
+
+  if (
+    issues.length > 0 ||
+    !name.ok ||
+    !email.ok ||
+    !password.ok ||
+    !role.ok ||
+    !extraPermissions.ok
+  ) {
     return failure(issues);
   }
 
@@ -453,6 +503,23 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
     email: email.value,
     password: password.value,
     role: role.value,
+    ...(extraPermissions.value?.length ? { extraPermissions: extraPermissions.value } : {}),
+  });
+}
+
+export function validateUserPermissionUpdatePayload(payload: Record<string, unknown>) {
+  const issues: ValidationIssue[] = ensureAllowedKeys(payload, ["extraPermissions"]);
+  const extraPermissions = normalizePermissionList(payload.extraPermissions, "extraPermissions");
+  if (!extraPermissions.ok) {
+    issues.push(...extraPermissions.issues);
+  }
+
+  if (issues.length > 0 || !extraPermissions.ok) {
+    return failure(issues);
+  }
+
+  return success({
+    extraPermissions: extraPermissions.value ?? [],
   });
 }
 
@@ -666,20 +733,29 @@ export function validateBackendTokenPairPayload(payload: unknown) {
     return failure([{ field: "body", message: "Must be a JSON object." }]);
   }
 
-  const issues = ensureAllowedKeys(payload, ["accessToken", "refreshToken", "expiresIn"]);
-  const accessToken = normalizeRequiredString(payload.accessToken, "accessToken", {
-    maxLength: 4096,
-  });
+  const issues: ValidationIssue[] = [];
+  const accessToken = normalizeRequiredString(
+    payload.accessToken ?? payload.access_token,
+    "accessToken",
+    {
+      maxLength: 4096,
+    }
+  );
   if (!accessToken.ok) issues.push(...accessToken.issues);
 
-  const refreshToken = normalizeRequiredString(payload.refreshToken, "refreshToken", {
-    maxLength: 4096,
-  });
+  const refreshToken = normalizeRequiredString(
+    payload.refreshToken ?? payload.refresh_token,
+    "refreshToken",
+    {
+      maxLength: 4096,
+    }
+  );
   if (!refreshToken.ok) issues.push(...refreshToken.issues);
 
   let expiresIn: number | undefined;
-  if ("expiresIn" in payload && payload.expiresIn !== undefined) {
-    const normalizedExpiresIn = normalizePositiveNumber(payload.expiresIn, "expiresIn");
+  const expiresInValue = payload.expiresIn ?? payload.expires_in;
+  if (expiresInValue !== undefined) {
+    const normalizedExpiresIn = normalizePositiveNumber(expiresInValue, "expiresIn");
     if (!normalizedExpiresIn.ok) {
       issues.push(...normalizedExpiresIn.issues);
     } else {

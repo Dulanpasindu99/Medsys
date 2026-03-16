@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachBackendAuthCookies } from "@/app/lib/backend-auth-cookies";
+import { adaptCreatedUserResponse } from "@/app/lib/backend-contract-adapters";
 import { serializeSessionIdentity } from "@/app/lib/api-serializers";
 import {
   parseJsonBody,
@@ -61,7 +62,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: backendResponse.status });
   }
 
-  const payload = validateBackendTokenPairPayload(await backendResponse.json());
+  const rawPayload = await backendResponse.json();
+  const payload = validateBackendTokenPairPayload(rawPayload);
   if (!payload.ok) {
     return NextResponse.json(
       {
@@ -73,11 +75,20 @@ export async function POST(request: NextRequest) {
   }
 
   const tokenPair = payload.value;
+  const backendUser = (() => {
+    try {
+      return adaptCreatedUserResponse(rawPayload);
+    } catch {
+      return null;
+    }
+  })();
   const claims = readTokenClaims(tokenPair.accessToken);
   const refreshClaims = readTokenClaims(tokenPair.refreshToken);
-  const role = claims.role ?? roleHint ?? null;
-  const name = claims.name ?? email.split("@")[0] ?? "User";
-  const resolvedEmail = claims.email ?? email;
+  const role = claims.role ?? backendUser?.role ?? roleHint ?? null;
+  const name = claims.name ?? backendUser?.name ?? email.split("@")[0] ?? "User";
+  const resolvedEmail = claims.email ?? backendUser?.email ?? email;
+  const resolvedPermissions =
+    claims.permissions.length > 0 ? claims.permissions : backendUser?.permissions ?? [];
 
   if (!role) {
     return NextResponse.json(
@@ -88,10 +99,11 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json(
     serializeSessionIdentity({
-      id: claims.userId,
+      id: claims.userId ?? backendUser?.id ?? null,
       name,
       email: resolvedEmail,
       role,
+      permissions: resolvedPermissions,
     })
   );
 
@@ -108,10 +120,11 @@ export async function POST(request: NextRequest) {
   );
 
   attachSessionCookie(response, {
-    userId: claims.userId,
+    userId: claims.userId ?? backendUser?.id ?? null,
     role,
     email: resolvedEmail,
     name,
+    permissions: resolvedPermissions,
   }, {
     expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,
   });

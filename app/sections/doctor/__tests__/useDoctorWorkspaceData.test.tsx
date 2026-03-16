@@ -229,7 +229,7 @@ describe("useDoctorWorkspaceData", () => {
     expect(result.current.canSaveRecord).toBe(false);
     expect(mockedCreateEncounter).not.toHaveBeenCalled();
     expect(result.current.saveState.status).toBe("error");
-    expect(result.current.saveState.error).toMatch(/only doctor accounts/i);
+    expect(result.current.saveState.error).toMatch(/doctor role|doctor workspace access|appointment update permission/i);
   });
 
   it("disables save and transition actions until a waiting appointment is selected", async () => {

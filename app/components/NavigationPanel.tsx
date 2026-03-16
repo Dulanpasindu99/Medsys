@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logoutUser } from '../lib/api-client';
-import { getNavigationItemsForRole, type NavigationItemId } from '../lib/authorization';
+import { getNavigationItemsForSubject, type AppPermission, type NavigationItemId } from '../lib/authorization';
 import type { AppRole } from '../lib/roles';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
@@ -117,10 +117,12 @@ function useIsHydrated() {
 export default function NavigationPanel({
   className = '',
   sessionRole,
+  sessionPermissions,
   userName,
 }: {
   className?: string;
   sessionRole: AppRole;
+  sessionPermissions?: readonly AppPermission[];
   userName: string;
 }) {
   const pathname = usePathname();
@@ -128,7 +130,10 @@ export default function NavigationPanel({
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
   const mounted = useIsHydrated();
-  const navigationItems: NavigationItem[] = getNavigationItemsForRole(sessionRole).map((item) => ({
+  const navigationItems: NavigationItem[] = getNavigationItemsForSubject({
+    role: sessionRole,
+    permissions: sessionPermissions,
+  }).map((item) => ({
     id: item.id,
     label: item.label,
     href: item.href,

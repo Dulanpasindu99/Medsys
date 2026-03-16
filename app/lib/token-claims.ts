@@ -1,4 +1,5 @@
 import type { AppRole } from "@/app/lib/roles";
+import type { AppPermission } from "@/app/lib/authorization";
 
 export type TokenRole = AppRole;
 
@@ -8,6 +9,7 @@ export type TokenClaims = {
   name: string | null;
   userId: number | null;
   exp: number | null;
+  permissions: AppPermission[];
 };
 
 function decodeBase64Url(input: string) {
@@ -40,6 +42,43 @@ export function normalizeTokenRole(value: unknown): TokenRole | null {
   return null;
 }
 
+function normalizePermission(value: unknown): AppPermission | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim() as AppPermission;
+  return normalized ? normalized : null;
+}
+
+function readPermissionClaims(payload: Record<string, unknown>) {
+  const candidates = [
+    payload.permissions,
+    payload.permission,
+    payload.authorities,
+    payload.scopes,
+    payload.scope,
+    payload["https://medsys.app/permissions"],
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate
+        .map((entry) => normalizePermission(entry))
+        .filter((entry): entry is AppPermission => !!entry);
+    }
+
+    if (typeof candidate === "string") {
+      return candidate
+        .split(/[,\s]+/)
+        .map((entry) => normalizePermission(entry))
+        .filter((entry): entry is AppPermission => !!entry);
+    }
+  }
+
+  return [];
+}
+
 function getNumericClaim(payload: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = payload[key];
@@ -62,6 +101,7 @@ export function readTokenClaims(token: string): TokenClaims {
       name: null,
       userId: null,
       exp: null,
+      permissions: [],
     };
   }
 
@@ -88,5 +128,6 @@ export function readTokenClaims(token: string): TokenClaims {
     name,
     userId: getNumericClaim(payload, ["userId", "user_id", "id", "sub"]),
     exp: getNumericClaim(payload, ["exp"]),
+    permissions: readPermissionClaims(payload),
   };
 }

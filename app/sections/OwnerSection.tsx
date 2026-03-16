@@ -18,10 +18,17 @@ export default function OwnerSection() {
         password,
         setPassword,
         permissions,
+        extraPermissions,
+        toggleCreateExtraPermission,
         staffUsers,
         canManageStaff,
         manageStaffDisabledReason,
         handleCreate,
+        getEditableExtraPermissions,
+        toggleUserExtraPermission,
+        saveUserExtraPermissions,
+        getUserUpdateFeedback,
+        isUpdatingUser,
         loadState,
         createState,
         createFeedback,
@@ -81,6 +88,8 @@ export default function OwnerSection() {
                             password={password}
                             setPassword={setPassword}
                             permissions={permissions}
+                            extraPermissions={extraPermissions}
+                            onToggleExtraPermission={toggleCreateExtraPermission}
                             onCreate={handleCreate}
                             isSubmitting={createState.status === 'pending'}
                             canManageStaff={canManageStaff}
@@ -104,7 +113,15 @@ export default function OwnerSection() {
                                 onAction={refresh}
                             />
                         ) : (
-                            <OwnerStaffListCard staffUsers={staffUsers} />
+                            <OwnerStaffListCard
+                                staffUsers={staffUsers}
+                                canManageStaff={canManageStaff}
+                                getEditableExtraPermissions={getEditableExtraPermissions}
+                                onToggleExtraPermission={toggleUserExtraPermission}
+                                onSaveUser={saveUserExtraPermissions}
+                                getUserFeedback={getUserUpdateFeedback}
+                                isUpdatingUser={isUpdatingUser}
+                            />
                         )}
                     </div>
                 </div>

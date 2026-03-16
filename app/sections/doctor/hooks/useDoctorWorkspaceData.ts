@@ -5,6 +5,7 @@ import {
   updateAppointment,
   type ApiClientError,
 } from "../../../lib/api-client";
+import { hasPermission } from "../../../lib/authorization";
 import {
   emptyLoadState,
   errorLoadState,
@@ -356,21 +357,34 @@ export function useDoctorWorkspaceData(
     patientVitalsQuery.isPending,
     selectedPatientId,
   ]);
+  const isDoctorRole = currentUserQuery.data?.role === "doctor";
+  const hasDoctorWorkspaceAccess =
+    !!currentUserQuery.data &&
+    isDoctorRole &&
+    hasPermission(currentUserQuery.data, "doctor.workspace.view");
   const canSaveRecord =
-    currentUserQuery.data?.role === "doctor" &&
+    hasDoctorWorkspaceAccess &&
+    !!currentUserQuery.data &&
+    hasPermission(currentUserQuery.data, "appointment.update") &&
     selectedPatientId !== null &&
     selectedAppointmentId !== null &&
     selectedAppointmentStatus !== "completed" &&
     selectedAppointmentStatus !== "cancelled";
   const canTransitionAppointments =
-    currentUserQuery.data?.role === "doctor" &&
+    hasDoctorWorkspaceAccess &&
+    !!currentUserQuery.data &&
+    hasPermission(currentUserQuery.data, "appointment.update") &&
     selectedAppointmentId !== null &&
     selectedAppointmentStatus === "waiting";
   const saveDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking doctor access before encounter submission."
-      : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
-        ? "Only doctor accounts can submit encounters from this workspace."
+      : currentUserQuery.data && !isDoctorRole
+        ? "Doctor role is required before submitting encounters."
+        : currentUserQuery.data && !hasDoctorWorkspaceAccess
+          ? "Doctor workspace access is required before submitting encounters."
+        : currentUserQuery.data && !hasPermission(currentUserQuery.data, "appointment.update")
+          ? "Appointment update permission is required before saving encounters."
         : !selectedPatientId || !selectedAppointmentId
           ? "Select a waiting appointment before saving encounter."
           : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
@@ -379,8 +393,12 @@ export function useDoctorWorkspaceData(
   const transitionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking doctor access before updating appointment status."
-      : currentUserQuery.data?.role && currentUserQuery.data.role !== "doctor"
-        ? "Only doctor accounts can advance appointment status from this workspace."
+      : currentUserQuery.data && !isDoctorRole
+        ? "Doctor role is required before updating appointment status."
+        : currentUserQuery.data && !hasDoctorWorkspaceAccess
+          ? "Doctor workspace access is required before updating appointment status."
+        : currentUserQuery.data && !hasPermission(currentUserQuery.data, "appointment.update")
+          ? "Appointment update permission is required before starting consultation."
         : !selectedAppointmentId
           ? "Select a waiting appointment before starting consultation."
           : selectedAppointmentStatus === "in_consultation"

@@ -375,24 +375,24 @@ export function useAssistantWorkflow() {
   );
   const currentUserId = currentUserQuery.data?.id ?? null;
   const canManageAssistantWorkflow =
-    !!currentUserQuery.data?.role && hasPermission(currentUserQuery.data.role, "prescription.dispense");
+    !!currentUserQuery.data && hasPermission(currentUserQuery.data, "prescription.dispense");
   const workflowActionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking assistant workflow access."
-      : currentUserQuery.data?.role && !canManageAssistantWorkflow
-        ? "Only assistant and owner accounts can complete intake and dispense actions."
+      : currentUserQuery.data && !canManageAssistantWorkflow
+        ? "Assistant workflow permission is required before completing intake and dispense actions."
         : null;
   const canCreateAppointmentsInWorkflow =
-    !!currentUserQuery.data?.role &&
-    hasPermission(currentUserQuery.data.role, "appointment.create") &&
+    !!currentUserQuery.data &&
+    hasPermission(currentUserQuery.data, "appointment.create") &&
     currentUserId !== null;
   const appointmentActionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking appointment scheduling access."
-      : currentUserQuery.data?.role && !canCreateAppointmentsInWorkflow
-        ? "Only assistant and owner accounts with an active session can schedule appointments."
-        : currentUserQuery.data?.role && currentUserId === null
-          ? "Assistant identity is missing for appointment scheduling."
+      : currentUserQuery.data && !canCreateAppointmentsInWorkflow
+        ? "Appointment-create permission with an active session is required before scheduling."
+        : currentUserQuery.data && currentUserId === null
+          ? "Session identity is missing for appointment scheduling."
         : null;
 
   const refreshAssistantQueries = async (includeCurrentUser = false) => {
@@ -584,7 +584,7 @@ export function useAssistantWorkflow() {
 
     if (!currentUserId) {
       setScheduleAppointmentState(
-        errorMutationState("Assistant identity is missing for appointment scheduling.")
+        errorMutationState("Session identity is missing for appointment scheduling.")
       );
       return;
     }
@@ -639,7 +639,7 @@ export function useAssistantWorkflow() {
     if (!activePrescription) return;
     if (!activePrescription.prescriptionId || !currentUserId) {
       setDispenseState(
-        errorMutationState("Prescription or assistant identity is missing for this queue item.")
+        errorMutationState("Prescription or session identity is missing for this queue item.")
       );
       setActiveIndex((prev) => (pendingPatients.length ? (prev + 1) % pendingPatients.length : 0));
       return;

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  type AppPermission,
   canAccessRoute,
   canCreateAppointments,
   canUpdateAppointments,
   getDefaultRouteForRole,
+  getDefaultRouteForSubject,
   getNavigationIndexForPath,
   getNavigationItemsForRole,
+  getNavigationItemsForSubject,
   hasPermission,
 } from "../authorization";
 
@@ -39,6 +42,28 @@ describe("authorization policy", () => {
     expect(hasPermission("owner", "inventory.write")).toBe(true);
     expect(hasPermission("owner", "prescription.dispense")).toBe(true);
     expect(hasPermission("owner", "appointment.update")).toBe(true);
+  });
+
+  it("allows explicit permission overrides on top of the role matrix", () => {
+    const permissions: AppPermission[] = [
+      "assistant.workspace.view",
+      "appointment.create",
+      "prescription.dispense",
+    ];
+    const doctorWithAssistantCoverage = {
+      role: "doctor" as const,
+      permissions,
+    };
+
+    expect(hasPermission(doctorWithAssistantCoverage, "doctor.workspace.view")).toBe(true);
+    expect(hasPermission(doctorWithAssistantCoverage, "assistant.workspace.view")).toBe(true);
+    expect(hasPermission(doctorWithAssistantCoverage, "appointment.create")).toBe(true);
+    expect(hasPermission(doctorWithAssistantCoverage, "prescription.dispense")).toBe(true);
+    expect(canAccessRoute(doctorWithAssistantCoverage, "assistantWorkspace")).toBe(true);
+    expect(getNavigationItemsForSubject(doctorWithAssistantCoverage).map((item) => item.id)).toContain(
+      "assistant"
+    );
+    expect(getDefaultRouteForSubject(doctorWithAssistantCoverage)).toBe("/");
   });
 
   it("matches appointment creation to the live backend policy", () => {

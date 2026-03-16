@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { NextRequest, NextResponse } from "next/server";
 import type { AppRole } from "@/app/lib/roles";
+import type { AppPermission } from "@/app/lib/authorization";
 
 export const SESSION_COOKIE_NAME = "medsys_session";
 
@@ -12,6 +13,7 @@ export type SessionPayload = {
   role: AppRole;
   email: string;
   name: string;
+  permissions?: AppPermission[];
   iat: number;
   exp: number;
 };

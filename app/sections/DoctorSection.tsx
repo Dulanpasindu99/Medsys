@@ -2,8 +2,10 @@
 
 import { AsyncNotice } from '../components/ui/AsyncStatePanel';
 import { usePatientProfilePopup } from '../hooks/usePatientProfilePopup';
+import { DoctorAssistantCoverage } from './doctor/components/DoctorAssistantCoverage';
 import { DoctorSidebar } from './doctor/components/DoctorSidebar';
 import { DoctorWorkspace } from './doctor/components/DoctorWorkspace';
+import { useAssistantWorkflow } from './assistant/hooks/useAssistantWorkflow';
 import { useDoctorClinicalWorkflow } from './doctor/hooks/useDoctorClinicalWorkflow';
 import { useDoctorWorkspaceData } from './doctor/hooks/useDoctorWorkspaceData';
 import { useVisitPlanner } from './doctor/hooks/useVisitPlanner';
@@ -11,6 +13,7 @@ import { useVisitPlanner } from './doctor/hooks/useVisitPlanner';
 export default function DoctorSection() {
     const clinicalWorkflow = useDoctorClinicalWorkflow();
     const visitPlanner = useVisitPlanner();
+    const assistantWorkflow = useAssistantWorkflow();
     const {
         search,
         setSearch,
@@ -41,6 +44,9 @@ export default function DoctorSection() {
         handleSaveRecord,
     } = useDoctorWorkspaceData(clinicalWorkflow, visitPlanner);
     const popup = usePatientProfilePopup();
+    const hasAssistantCoverage =
+        assistantWorkflow.canManageAssistantWorkflow ||
+        assistantWorkflow.canCreateAppointmentsInWorkflow;
 
     return (
         <section id="doctor" className="flex min-h-screen items-start justify-center px-4 py-8 text-slate-900">
@@ -99,6 +105,12 @@ export default function DoctorSection() {
                                 clinicalWorkflow={clinicalWorkflow}
                                 visitPlanner={visitPlanner}
                             />
+                            {hasAssistantCoverage ? (
+                                <DoctorAssistantCoverage
+                                    workflow={assistantWorkflow}
+                                    onOpenProfile={popup.openProfile}
+                                />
+                            ) : null}
                         </div>
                     </div>
                 </div>
