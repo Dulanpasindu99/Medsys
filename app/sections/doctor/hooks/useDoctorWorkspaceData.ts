@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createEncounter,
   updateAppointment,
@@ -23,6 +23,7 @@ import {
   useAppointmentsQuery,
   useCurrentUserQuery,
   usePatientAllergiesQuery,
+  usePatientProfileQuery,
   usePatientsQuery,
   usePatientVitalsQuery,
 } from "../../../lib/query-hooks";
@@ -46,6 +47,38 @@ function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
 }
 
+function unwrapProfileRecord(value: unknown): AnyRecord | null {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const directPatient = asRecord(record.patient);
+  if (directPatient) {
+    return directPatient;
+  }
+
+  const dataRecord = asRecord(record.data);
+  if (dataRecord) {
+    const nestedPatient = asRecord(dataRecord.patient);
+    if (nestedPatient) {
+      return nestedPatient;
+    }
+
+    if (
+      dataRecord.nic !== undefined ||
+      dataRecord.guardian_nic !== undefined ||
+      dataRecord.guardianNic !== undefined ||
+      dataRecord.patient_code !== undefined ||
+      dataRecord.patientCode !== undefined
+    ) {
+      return dataRecord;
+    }
+  }
+
+  return record;
+}
+
 function asArray(value: unknown): AnyRecord[] {
   if (Array.isArray(value)) {
     return value.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
@@ -62,7 +95,9 @@ function asArray(value: unknown): AnyRecord[] {
 }
 
 function getString(value: unknown, fallback = "") {
-  return typeof value === "string" ? value : fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return fallback;
 }
 
 function getNumber(value: unknown): number | null {
@@ -128,17 +163,34 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
   const appointmentRows = asArray(rawAppointments);
 
   const patientById = new Map<number, AnyRecord>();
+  const patientByCode = new Map<string, AnyRecord>();
   patientRows.forEach((row) => {
     const id = getNumber(row.id ?? row.patientId ?? row.patient_id);
     if (id !== null) patientById.set(id, row);
+    const code = normalizeLookupValue(getString(row.patientCode ?? row.patient_code));
+    if (code) patientByCode.set(code, row);
   });
 
   const fromAppointments = appointmentRows.map((row, index) => {
     const nestedPatient = asRecord(row.patient) ?? asRecord(row.patientDetails) ?? null;
     const appointmentId = getNumber(row.id ?? row.appointmentId ?? row.appointment_id) ?? undefined;
-    const patientId = getNumber(row.patientId ?? row.patient_id ?? nestedPatient?.id) ?? undefined;
+    const patientIdFromRow = getNumber(row.patientId ?? row.patient_id ?? nestedPatient?.id) ?? undefined;
     const doctorId = getNumber(row.doctorId ?? row.doctor_id ?? asRecord(row.doctor)?.id) ?? undefined;
-    const patientRow = patientId ? patientById.get(patientId) : null;
+    const appointmentPatientCode = normalizeLookupValue(
+      getString(
+        nestedPatient?.patientCode ??
+          nestedPatient?.patient_code ??
+          row.patientCode ??
+          row.patient_code
+      )
+    );
+    const patientRow =
+      (patientIdFromRow ? patientById.get(patientIdFromRow) : null) ??
+      (appointmentPatientCode ? patientByCode.get(appointmentPatientCode) : null) ??
+      null;
+    const patientId =
+      patientIdFromRow ??
+      (patientRow ? getNumber(patientRow.id ?? patientRow.patientId ?? patientRow.patient_id) ?? undefined : undefined);
 
     const name = toName(
       {
@@ -305,6 +357,85 @@ function normalizeLookupValue(value: string) {
   return value.trim().toLowerCase();
 }
 
+function normalizeProfileGender(value: unknown): PatientGender {
+  const raw = getString(value).toLowerCase();
+  if (raw === "female") return "Female";
+  if (raw === "other") return "Male";
+  return "Male";
+}
+
+function toProfileName(profile: AnyRecord | null, fallback: string) {
+  if (!profile) {
+    return fallback;
+  }
+
+  return toName(profile, fallback);
+}
+
+function resolveIdentityFromProfile(profile: AnyRecord | null) {
+  if (!profile) {
+    return { value: "", label: null as "Patient NIC" | "Guardian NIC" | null };
+  }
+
+  const nic = getString(profile.nic);
+  if (nic) {
+    return {
+      value: nic,
+      label: "Patient NIC" as const,
+    };
+  }
+
+  const guardianNic = getString(profile.guardianNic ?? profile.guardian_nic);
+  if (guardianNic) {
+    return {
+      value: guardianNic,
+      label: "Guardian NIC" as const,
+    };
+  }
+
+  return { value: "", label: null as "Patient NIC" | "Guardian NIC" | null };
+}
+
+function resolveIdentityField(patient: Patient) {
+  if (patient.nic && patient.nic !== "No NIC") {
+    return {
+      value: patient.nic,
+      label: "Patient NIC" as const,
+    };
+  }
+
+  if (patient.guardianNic) {
+    return {
+      value: patient.guardianNic,
+      label: "Guardian NIC" as const,
+    };
+  }
+
+  return {
+    value: "",
+    label: null,
+  };
+}
+
+function canAutoSelectFromQuery(query: string, patient: Patient) {
+  const normalizedQuery = normalizeLookupValue(query);
+  if (!normalizedQuery) {
+    return false;
+  }
+
+  const patientNic = normalizeLookupValue(patient.nic === "No NIC" ? "" : patient.nic);
+  const guardianNic = normalizeLookupValue(patient.guardianNic ?? "");
+  const patientCode = normalizeLookupValue(patient.patientCode);
+  const patientName = normalizeLookupValue(patient.name);
+
+  return (
+    normalizedQuery === patientCode ||
+    normalizedQuery === patientNic ||
+    normalizedQuery === guardianNic ||
+    normalizedQuery === patientName
+  );
+}
+
 export function useDoctorWorkspaceData(
   clinicalWorkflow: ClinicalWorkflow,
   visitPlanner: VisitPlannerState
@@ -318,6 +449,9 @@ export function useDoctorWorkspaceData(
   const [patientAge, setPatientAgeState] = useState("");
   const [patientCode, setPatientCodeState] = useState("");
   const [nicNumber, setNicNumberState] = useState("");
+  const [nicIdentityLabel, setNicIdentityLabel] = useState<"Patient NIC" | "Guardian NIC" | null>(
+    null
+  );
   const [gender, setGenderState] = useState<PatientGender>("Male");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
@@ -331,6 +465,10 @@ export function useDoctorWorkspaceData(
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
   const currentUserId = currentUserQuery.data?.id ?? null;
   const patientDetailsEnabled = selectedPatientId !== null;
+  const patientProfileQuery = usePatientProfileQuery(
+    selectedPatientId ?? "none",
+    patientDetailsEnabled
+  );
   const patientVitalsQuery = usePatientVitalsQuery(selectedPatientId ?? "none", patientDetailsEnabled);
   const patientAllergiesQuery = usePatientAllergiesQuery(
     selectedPatientId ?? "none",
@@ -350,7 +488,7 @@ export function useDoctorWorkspaceData(
         `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
           .toLowerCase()
           .includes(query)
-    );
+    ).slice(0, 8);
   }, [patients, search]);
 
   const queueState: LoadState = useMemo(() => {
@@ -405,6 +543,10 @@ export function useDoctorWorkspaceData(
     () => normalizeVitals(patientVitalsQuery.data),
     [patientVitalsQuery.data]
   );
+  const selectedPatientProfile = useMemo(
+    () => unwrapProfileRecord(patientProfileQuery.data),
+    [patientProfileQuery.data]
+  );
   const patientAllergies = useMemo<AllergyAlert[]>(
     () => normalizeAllergies(patientAllergiesQuery.data),
     [patientAllergiesQuery.data]
@@ -414,30 +556,37 @@ export function useDoctorWorkspaceData(
       return emptyLoadState();
     }
 
+    const profileError = patientProfileQuery.isError;
     const vitalsError = patientVitalsQuery.isError;
     const allergiesError = patientAllergiesQuery.isError;
     const hasDetailData = patientVitals.length > 0 || patientAllergies.length > 0;
 
     if (
-      (patientVitalsQuery.isPending ||
+      (patientProfileQuery.isPending ||
+        patientProfileQuery.isFetching ||
+        patientVitalsQuery.isPending ||
         patientAllergiesQuery.isPending ||
         patientVitalsQuery.isFetching ||
         patientAllergiesQuery.isFetching) &&
-      !hasDetailData
+      !hasDetailData &&
+      !selectedPatientProfile
     ) {
       return loadingLoadState();
     }
 
-    if (vitalsError && allergiesError) {
-      return errorLoadState("Patient vitals and allergy details could not be loaded.");
+    if (profileError && vitalsError && allergiesError) {
+      return errorLoadState("Patient profile, vitals, and allergy details could not be loaded.");
     }
 
     return readyLoadState(
-      vitalsError || allergiesError
+      profileError || vitalsError || allergiesError
         ? "Some patient clinical details could not be loaded and partial data is being shown."
         : null
     );
   }, [
+    patientProfileQuery.isError,
+    patientProfileQuery.isFetching,
+    patientProfileQuery.isPending,
     patientAllergies.length,
     patientAllergiesQuery.isError,
     patientAllergiesQuery.isFetching,
@@ -446,6 +595,7 @@ export function useDoctorWorkspaceData(
     patientVitalsQuery.isError,
     patientVitalsQuery.isFetching,
     patientVitalsQuery.isPending,
+    selectedPatientProfile,
     selectedPatientId,
   ]);
   const isDoctorRole = currentUserQuery.data?.role === "doctor";
@@ -513,6 +663,7 @@ export function useDoctorWorkspaceData(
   const setSearch = (value: string) => {
     clearSaveState();
     clearTransitionState();
+    clearPatientLookupNotice();
     setSearchState(value);
   };
 
@@ -541,6 +692,7 @@ export function useDoctorWorkspaceData(
     clearSaveState();
     clearTransitionState();
     clearPatientLookupNotice();
+    setNicIdentityLabel(null);
     setNicNumberState(value);
   };
 
@@ -554,6 +706,10 @@ export function useDoctorWorkspaceData(
   const clearSelectedPatientContext = () => {
     setPatientNameState("");
     setPatientAgeState("");
+    setPatientCodeState("");
+    setNicNumberState("");
+    setNicIdentityLabel(null);
+    setGenderState("Male");
     setSelectedPatientId(null);
     setSelectedAppointmentId(null);
     setSelectedDoctorId(null);
@@ -561,65 +717,119 @@ export function useDoctorWorkspaceData(
   };
 
   const handlePatientSelect = (patient: Patient) => {
+    const identityField = resolveIdentityField(patient);
     clearSaveState();
     clearTransitionState();
     clearPatientLookupNotice();
     setPatientName(patient.name);
     setPatientAge(patient.age ? String(patient.age) : "");
     setPatientCode(patient.patientCode);
-    setNicNumber(patient.nic !== "No NIC" ? patient.nic : patient.guardianNic ?? "");
+    setNicNumberState(identityField.value);
+    setNicIdentityLabel(identityField.label);
     setGender(patient.gender === "Female" ? "Female" : "Male");
     setSelectedPatientId(patient.patientId ?? null);
     setSelectedAppointmentId(patient.appointmentId ?? null);
     setSelectedDoctorId(patient.doctorId ?? null);
     setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
-    setSearch("");
+    setSearchState("");
   };
 
-  const findPatientByIdentity = () => {
-    const normalizedCode = normalizeLookupValue(patientCode);
-    const normalizedNic = normalizeLookupValue(nicNumber);
-
-    if (normalizedCode) {
-      const codeMatch = patients.find(
-        (patient) => normalizeLookupValue(patient.patientCode) === normalizedCode
-      );
-      if (codeMatch) {
-        return codeMatch;
-      }
+  useEffect(() => {
+    if (!selectedPatientId || !selectedPatientProfile) {
+      return;
     }
 
-    if (normalizedNic) {
-      const nicMatch = patients.find((patient) => {
-        const patientNic = normalizeLookupValue(patient.nic === "No NIC" ? "" : patient.nic);
-        const guardianNic = normalizeLookupValue(patient.guardianNic ?? "");
-        return patientNic === normalizedNic || guardianNic === normalizedNic;
-      });
-      if (nicMatch) {
-        return nicMatch;
-      }
+    const resolvedName = toProfileName(selectedPatientProfile, patientName || `Patient ${selectedPatientId}`);
+    const resolvedPatientCode = getString(
+      selectedPatientProfile.patientCode ?? selectedPatientProfile.patient_code,
+      patientCode
+    );
+    const resolvedAge = toAge(
+      selectedPatientProfile.age,
+      selectedPatientProfile.dateOfBirth,
+      selectedPatientProfile.date_of_birth,
+      selectedPatientProfile.dob
+    );
+    const resolvedIdentity = resolveIdentityFromProfile(selectedPatientProfile);
+
+    setPatientNameState(resolvedName);
+    setPatientCodeState(resolvedPatientCode);
+    setPatientAgeState(resolvedAge ? String(resolvedAge) : "");
+    setNicNumberState(resolvedIdentity.value);
+    setNicIdentityLabel(resolvedIdentity.label);
+    setGenderState(normalizeProfileGender(selectedPatientProfile.gender));
+  }, [patientCode, patientName, selectedPatientId, selectedPatientProfile]);
+
+  useEffect(() => {
+    const query = search.trim();
+    if (!query || searchMatches.length !== 1) {
+      return;
+    }
+
+    const matchedPatient = searchMatches[0];
+    if (!matchedPatient || !canAutoSelectFromQuery(query, matchedPatient)) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      handlePatientSelect(matchedPatient);
+    }, 180);
+
+    return () => window.clearTimeout(timer);
+  }, [handlePatientSelect, search, searchMatches]);
+
+  const findPatientByQuery = (query: string) => {
+    const normalizedQuery = normalizeLookupValue(query);
+    if (!normalizedQuery) {
+      return null;
+    }
+
+    const codeMatch = patients.find(
+      (patient) => normalizeLookupValue(patient.patientCode) === normalizedQuery
+    );
+    if (codeMatch) {
+      return codeMatch;
+    }
+
+    const nicMatch = patients.find((patient) => {
+      const patientNic = normalizeLookupValue(patient.nic === "No NIC" ? "" : patient.nic);
+      const guardianNic = normalizeLookupValue(patient.guardianNic ?? "");
+      return patientNic === normalizedQuery || guardianNic === normalizedQuery;
+    });
+    if (nicMatch) {
+      return nicMatch;
+    }
+
+    const nameMatch = patients.find(
+      (patient) => normalizeLookupValue(patient.name) === normalizedQuery
+    );
+    if (nameMatch) {
+      return nameMatch;
+    }
+
+    if (searchMatches.length === 1) {
+      return searchMatches[0] ?? null;
     }
 
     return null;
   };
 
   const handleHeaderLookup = () => {
-    const matchedPatient = findPatientByIdentity();
+    const query = search.trim();
+    const matchedPatient = findPatientByQuery(query);
     if (matchedPatient) {
       handlePatientSelect(matchedPatient);
       return;
     }
 
-    const query = patientCode.trim() || nicNumber.trim();
     if (!query) {
       clearPatientLookupNotice();
-      clearSelectedPatientContext();
       return;
     }
 
     clearSelectedPatientContext();
     setPatientLookupNotice(
-      `No patient was found for "${query}". Open the Assistant Panel to register the patient, then return here to continue.`
+      `No patient records were found for "${query}". Create a new patient in the Assistant page, then return here to continue treatment.`
     );
   };
 
@@ -758,12 +968,14 @@ export function useDoctorWorkspaceData(
     setPatientCode,
     patientLookupNotice,
     nicNumber,
+    nicIdentityLabel,
     setNicNumber,
     gender,
     setGender,
-    handlePatientCodeCommit: handleHeaderLookup,
-    handleNicLookupCommit: handleHeaderLookup,
+    handleSearchCommit: handleHeaderLookup,
     searchMatches,
+    selectedPatientProfileId: selectedPatientId ? String(selectedPatientId) : null,
+    selectedPatientLabel: patientName || null,
     patientVitals: selectedPatientId ? patientVitals : [],
     patientAllergies: selectedPatientId ? patientAllergies : [],
     queueState,
@@ -785,7 +997,7 @@ export function useDoctorWorkspaceData(
         refreshDoctorQueries(),
         currentUserQuery.refetch(),
         ...(selectedPatientId
-          ? [patientVitalsQuery.refetch(), patientAllergiesQuery.refetch()]
+          ? [patientProfileQuery.refetch(), patientVitalsQuery.refetch(), patientAllergiesQuery.refetch()]
           : []),
       ]);
     },

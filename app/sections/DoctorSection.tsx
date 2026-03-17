@@ -23,15 +23,15 @@ export default function DoctorSection() {
     patientAge,
     setPatientAge,
     patientCode,
-    setPatientCode,
     patientLookupNotice,
     nicNumber,
-    setNicNumber,
+    nicIdentityLabel,
     gender,
     setGender,
-    handlePatientCodeCommit,
-    handleNicLookupCommit,
+    handleSearchCommit,
     searchMatches,
+    selectedPatientProfileId,
+    selectedPatientLabel,
     patientVitals,
     patientAllergies,
     queueState,
@@ -66,13 +66,13 @@ export default function DoctorSection() {
   return (
     <section
       id="doctor"
-      className="flex min-h-screen items-start justify-center px-4 py-8 text-slate-900"
+      className="flex min-h-screen items-start justify-center px-4 py-4 text-slate-900"
     >
-      <div className="w-full flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
+      <div className="w-full flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.96)_42%,rgba(219,234,254,0.94)_100%)] shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
         <div className="relative flex flex-1 flex-col p-8">
           <div className="mx-auto flex w-full flex-1">
-            <div className="grid w-full grid-cols-12 items-stretch gap-6">
-              <div className="col-span-12 space-y-3">
+            <div className="grid w-full grid-cols-12 items-stretch gap-4">
+              <div className="col-span-12 space-y-4">
                 {queueState.error ? (
                   <AsyncNotice tone="error" message={queueState.error} />
                 ) : null}
@@ -99,16 +99,13 @@ export default function DoctorSection() {
                 ) : null}
               </div>
               <DoctorSidebar
-                search={search}
-                onSearchChange={setSearch}
-                searchMatches={searchMatches}
+                selectedPatientLabel={selectedPatientLabel}
+                selectedPatientProfileId={selectedPatientProfileId}
+                patientLookupNotice={patientLookupNotice}
                 assistantRegistrationHref={assistantRegistrationHref}
-                onSearchSelect={(patient) => {
-                  handlePatientSelect(patient);
-                  if (patient.profileId) {
-                    popup.openProfile(patient.profileId);
-                  }
-                }}
+                onOpenPatientHistory={() =>
+                  popup.openProfile(selectedPatientProfileId)
+                }
                 patientVitals={patientVitals}
                 patientAllergies={patientAllergies}
                 onStartConsultation={handleStartConsultation}
@@ -128,20 +125,20 @@ export default function DoctorSection() {
               <DoctorWorkspace
                 profileId={popup.selectedProfileId || ""}
                 onCloseProfile={popup.closeProfile}
+                search={search}
+                onSearchChange={setSearch}
+                onSearchCommit={handleSearchCommit}
+                searchMatches={searchMatches}
+                onSearchSelect={handlePatientSelect}
                 patientCode={patientCode}
-                onPatientCodeChange={setPatientCode}
-                onPatientCodeCommit={handlePatientCodeCommit}
                 nicNumber={nicNumber}
-                onNicNumberChange={setNicNumber}
-                onNicLookupCommit={handleNicLookupCommit}
                 gender={gender}
                 onGenderChange={setGender}
                 patientName={patientName}
                 onPatientNameChange={setPatientName}
                 patientAge={patientAge}
                 onPatientAgeChange={setPatientAge}
-                patientLookupNotice={patientLookupNotice}
-                patientLookupActionHref={assistantRegistrationHref}
+                nicIdentityLabel={nicIdentityLabel}
                 clinicalWorkflow={clinicalWorkflow}
                 visitPlanner={visitPlanner}
               />

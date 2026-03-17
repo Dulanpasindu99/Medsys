@@ -37,7 +37,7 @@ vi.mock("../../../lib/query-hooks", () => ({
 
 vi.mock("../components/DoctorSidebar", () => ({
   DoctorSidebar: ({
-    onSearchSelect,
+    onOpenPatientHistory,
     onStartConsultation,
     onSaveRecord,
     canTransitionAppointments,
@@ -46,7 +46,45 @@ vi.mock("../components/DoctorSidebar", () => ({
     saveDisabledReason,
     isTransitioningAppointment,
     isSavingRecord,
+    selectedPatientProfileId,
   }: {
+    onOpenPatientHistory: () => void;
+    onStartConsultation: () => void;
+    onSaveRecord: () => void;
+    canTransitionAppointments?: boolean;
+    transitionDisabledReason?: string | null;
+    canSaveRecord?: boolean;
+    saveDisabledReason?: string | null;
+    isTransitioningAppointment?: boolean;
+    isSavingRecord?: boolean;
+    selectedPatientProfileId?: string | null;
+  }) => (
+    <div>
+      <button type="button" onClick={onOpenPatientHistory} disabled={!selectedPatientProfileId}>
+        View Patient History
+      </button>
+      <button
+        type="button"
+        onClick={onStartConsultation}
+        disabled={isTransitioningAppointment || !canTransitionAppointments}
+      >
+        {isTransitioningAppointment ? "Starting consultation..." : "Start Consultation"}
+      </button>
+      <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
+        {isSavingRecord ? "Saving record..." : "Save & Print Record"}
+      </button>
+      {transitionDisabledReason ? <p>{transitionDisabledReason}</p> : null}
+      {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
+    </div>
+  ),
+}));
+
+vi.mock("../components/DoctorWorkspace", () => ({
+  DoctorWorkspace: ({
+    profileId,
+    onSearchSelect,
+  }: {
+    profileId: string;
     onSearchSelect: (patient: {
       patientId: number;
       appointmentId: number;
@@ -61,14 +99,6 @@ vi.mock("../components/DoctorSidebar", () => ({
       reason: string;
       time: string;
     }) => void;
-    onStartConsultation: () => void;
-    onSaveRecord: () => void;
-    canTransitionAppointments?: boolean;
-    transitionDisabledReason?: string | null;
-    canSaveRecord?: boolean;
-    saveDisabledReason?: string | null;
-    isTransitioningAppointment?: boolean;
-    isSavingRecord?: boolean;
   }) => (
     <div>
       <button
@@ -92,25 +122,8 @@ vi.mock("../components/DoctorSidebar", () => ({
       >
         Select patient
       </button>
-      <button
-        type="button"
-        onClick={onStartConsultation}
-        disabled={isTransitioningAppointment || !canTransitionAppointments}
-      >
-        {isTransitioningAppointment ? "Starting consultation..." : "Start Consultation"}
-      </button>
-      <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
-        {isSavingRecord ? "Saving record..." : "Save & Print Record"}
-      </button>
-      {transitionDisabledReason ? <p>{transitionDisabledReason}</p> : null}
-      {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
+      <div data-testid="doctor-workspace">{profileId}</div>
     </div>
-  ),
-}));
-
-vi.mock("../components/DoctorWorkspace", () => ({
-  DoctorWorkspace: ({ profileId }: { profileId: string }) => (
-    <div data-testid="doctor-workspace">{profileId}</div>
   ),
 }));
 
@@ -131,13 +144,15 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     setPatientAge: vi.fn(),
     patientCode: "P-0007",
     setPatientCode: vi.fn(),
+    selectedPatientProfileId: "7",
+    selectedPatientLabel: "Jane Doe",
     patientLookupNotice: null,
     nicNumber: "990011223V",
+    nicIdentityLabel: "Patient NIC" as const,
     setNicNumber: vi.fn(),
     gender: "Female" as const,
     setGender: vi.fn(),
-    handlePatientCodeCommit: vi.fn(),
-    handleNicLookupCommit: vi.fn(),
+    handleSearchCommit: vi.fn(),
     searchMatches: [],
     patientVitals: [{ label: "BP", value: "120/80" }],
     patientAllergies: [],
@@ -222,6 +237,7 @@ describe("DoctorSection", () => {
     render(<DoctorSection />);
 
     await user.click(screen.getByRole("button", { name: /select patient/i }));
+    await user.click(screen.getByRole("button", { name: /view patient history/i }));
     await user.click(screen.getByRole("button", { name: /start consultation/i }));
     await user.click(screen.getByRole("button", { name: /save & print record/i }));
 

@@ -19,7 +19,7 @@ export default async function ShellLayout({
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F4F4F9]">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
       <NavigationPanel
         sessionRole={session.role}
         sessionPermissions={session.permissions}

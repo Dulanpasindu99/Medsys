@@ -50,7 +50,15 @@ function readOptionalWrappedArray(record: AnyRecord, key: string): AnyRecord[] {
 }
 
 function toString(value: unknown, fallback = "") {
-  return typeof value === "string" ? value : fallback;
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return fallback;
 }
 
 function toNumber(value: unknown): number | null {
