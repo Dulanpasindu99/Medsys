@@ -302,9 +302,31 @@ export async function listPatientVitals(patientId: number | string) {
   return expectApiRecordArray(response, "patient vitals");
 }
 
+export async function createPatientVital(
+  patientId: number | string,
+  input: { name: string; value: string }
+) {
+  const response = await apiFetch<unknown>(`/api/backend/v1/patients/${patientId}/vitals`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return isApiRecord(response) ? response : { success: true };
+}
+
 export async function listPatientAllergies(patientId: number | string) {
   const response = await apiFetch<unknown>(`/api/patients/${patientId}/allergies`, { method: "GET" });
   return expectApiRecordArray(response, "patient allergies");
+}
+
+export async function createPatientAllergy(
+  patientId: number | string,
+  input: { name: string; severity: "low" | "medium" | "high" }
+) {
+  const response = await apiFetch<unknown>(`/api/backend/v1/patients/${patientId}/allergies`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return isApiRecord(response) ? response : { success: true };
 }
 
 export async function listPatientConditions(patientId: number | string) {

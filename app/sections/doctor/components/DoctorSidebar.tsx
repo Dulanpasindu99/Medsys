@@ -15,6 +15,28 @@ type DoctorSidebarProps = {
   onOpenPatientHistory: () => void;
   patientVitals: PatientVital[];
   patientAllergies: AllergyAlert[];
+  vitalDrafts: {
+    bloodPressure: string;
+    heartRate: string;
+    temperature: string;
+    weight: string;
+  };
+  onVitalDraftChange: (
+    key: "bloodPressure" | "heartRate" | "temperature" | "weight",
+    value: string
+  ) => void;
+  canEditVitals?: boolean;
+  vitalsDisabledReason?: string | null;
+  vitalsFeedback?: { tone: "info" | "success" | "error"; message: string } | null;
+  onSaveVitals: () => void;
+  allergyDraftName: string;
+  onAllergyDraftNameChange: (value: string) => void;
+  allergyDraftSeverity: "low" | "medium" | "high";
+  onAllergyDraftSeverityChange: (value: "low" | "medium" | "high") => void;
+  canEditAllergies?: boolean;
+  allergiesDisabledReason?: string | null;
+  allergyFeedback?: { tone: "info" | "success" | "error"; message: string } | null;
+  onAddOrUpdateAllergy: () => void;
   onStartConsultation: () => void;
   onSaveRecord: () => void;
   canTransitionAppointments?: boolean;
@@ -72,6 +94,20 @@ export function DoctorSidebar({
   onOpenPatientHistory,
   patientVitals,
   patientAllergies,
+  vitalDrafts,
+  onVitalDraftChange,
+  canEditVitals = false,
+  vitalsDisabledReason = null,
+  vitalsFeedback = null,
+  onSaveVitals,
+  allergyDraftName,
+  onAllergyDraftNameChange,
+  allergyDraftSeverity,
+  onAllergyDraftSeverityChange,
+  canEditAllergies = false,
+  allergiesDisabledReason = null,
+  allergyFeedback = null,
+  onAddOrUpdateAllergy,
   onStartConsultation,
   onSaveRecord,
   canTransitionAppointments = true,
@@ -84,6 +120,8 @@ export function DoctorSidebar({
   saveFeedback,
   isSavingRecord = false,
 }: DoctorSidebarProps) {
+  const showPatientEditors = Boolean(selectedPatientProfileId);
+
   return (
     <div className="order-2 col-span-12 flex h-full flex-col lg:order-2 lg:col-span-4 xl:col-span-4">
       <div className="flex h-full flex-col lg:sticky lg:top-4">
@@ -140,27 +178,73 @@ export function DoctorSidebar({
               </span>
             }
           >
-            <div className="grid grid-cols-2 gap-3">
-              {patientVitals.length ? (
-                patientVitals.map((vital) => (
-                  <div
-                    key={vital.label}
-                    className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
+            {showPatientEditors ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ["bloodPressure", "Blood Pressure"],
+                    ["heartRate", "Heart Rate"],
+                    ["temperature", "Temperature"],
+                    ["weight", "Weight"],
+                  ].map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                        {label}
+                      </p>
+                      <input
+                        value={vitalDrafts[key as keyof typeof vitalDrafts]}
+                        onChange={(event) =>
+                          onVitalDraftChange(
+                            key as "bloodPressure" | "heartRate" | "temperature" | "weight",
+                            event.target.value
+                          )
+                        }
+                        disabled={!canEditVitals}
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
+                        placeholder={`Enter ${label.toLowerCase()}`}
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={onSaveVitals}
+                    disabled={!canEditVitals}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      {vital.label}
+                    Save Vitals
+                  </button>
+                  {!canEditVitals && vitalsDisabledReason ? (
+                    <p className="text-sm font-semibold text-amber-700">
+                      {vitalsDisabledReason}
                     </p>
-                    <p className="mt-1 text-xl font-bold text-slate-900">
-                      {vital.value}
+                  ) : null}
+                  {vitalsFeedback ? (
+                    <p
+                      className={`text-sm font-semibold ${
+                        vitalsFeedback.tone === "success"
+                          ? "text-emerald-700"
+                          : vitalsFeedback.tone === "error"
+                            ? "text-rose-700"
+                            : "text-slate-600"
+                      }`}
+                    >
+                      {vitalsFeedback.message}
                     </p>
-                  </div>
-                ))
-              ) : (
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
                 <p className="col-span-2 rounded-2xl bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500 ring-1 ring-slate-100">
                   Select a patient to load live vitals.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </SidebarSection>
 
           <SidebarSection
@@ -199,6 +283,61 @@ export function DoctorSidebar({
                   Allergy alerts will appear after patient selection.
                 </p>
               )}
+              {showPatientEditors ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 ring-1 ring-slate-100">
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <input
+                      value={allergyDraftName}
+                      onChange={(event) => onAllergyDraftNameChange(event.target.value)}
+                      disabled={!canEditAllergies}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+                      placeholder="Add or update allergy"
+                    />
+                    <select
+                      value={allergyDraftSeverity}
+                      onChange={(event) =>
+                        onAllergyDraftSeverityChange(
+                          event.target.value as "low" | "medium" | "high"
+                        )
+                      }
+                      disabled={!canEditAllergies}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <button
+                      type="button"
+                      onClick={onAddOrUpdateAllergy}
+                      disabled={!canEditAllergies}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      Add Or Update Allergy
+                    </button>
+                    {!canEditAllergies && allergiesDisabledReason ? (
+                      <p className="text-sm font-semibold text-amber-700">
+                        {allergiesDisabledReason}
+                      </p>
+                    ) : null}
+                    {allergyFeedback ? (
+                      <p
+                        className={`text-sm font-semibold ${
+                          allergyFeedback.tone === "success"
+                            ? "text-emerald-700"
+                            : allergyFeedback.tone === "error"
+                              ? "text-rose-700"
+                              : "text-slate-600"
+                        }`}
+                      >
+                        {allergyFeedback.message}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </SidebarSection>
 

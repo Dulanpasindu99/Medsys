@@ -34,6 +34,20 @@ export default function DoctorSection() {
     selectedPatientLabel,
     patientVitals,
     patientAllergies,
+    vitalDrafts,
+    setVitalDraft,
+    canEditVitals,
+    vitalsDisabledReason,
+    vitalsFeedback,
+    handleSaveVitals,
+    allergyDraftName,
+    setAllergyNameDraft,
+    allergyDraftSeverity,
+    setAllergySeverityDraft,
+    canEditAllergies,
+    allergiesDisabledReason,
+    allergyFeedback,
+    handleAddOrUpdateAllergy,
     queueState,
     patientDetailsState,
     canSaveRecord,
@@ -69,7 +83,7 @@ export default function DoctorSection() {
       className="flex min-h-screen items-start justify-center px-4 py-4 text-slate-900"
     >
       <div className="w-full flex-1 overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.96)_42%,rgba(219,234,254,0.94)_100%)] shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl">
-        <div className="relative flex flex-1 flex-col p-8">
+        <div className="relative flex flex-1 flex-col p-4">
           <div className="mx-auto flex w-full flex-1">
             <div className="grid w-full grid-cols-12 items-stretch gap-4">
               <div className="col-span-12 space-y-4">
@@ -108,6 +122,20 @@ export default function DoctorSection() {
                 }
                 patientVitals={patientVitals}
                 patientAllergies={patientAllergies}
+                vitalDrafts={vitalDrafts}
+                onVitalDraftChange={setVitalDraft}
+                canEditVitals={canEditVitals}
+                vitalsDisabledReason={vitalsDisabledReason}
+                vitalsFeedback={vitalsFeedback}
+                onSaveVitals={handleSaveVitals}
+                allergyDraftName={allergyDraftName}
+                onAllergyDraftNameChange={setAllergyNameDraft}
+                allergyDraftSeverity={allergyDraftSeverity}
+                onAllergyDraftSeverityChange={setAllergySeverityDraft}
+                canEditAllergies={canEditAllergies}
+                allergiesDisabledReason={allergiesDisabledReason}
+                allergyFeedback={allergyFeedback}
+                onAddOrUpdateAllergy={handleAddOrUpdateAllergy}
                 onStartConsultation={handleStartConsultation}
                 onSaveRecord={handleSaveRecord}
                 canTransitionAppointments={canTransitionAppointments}

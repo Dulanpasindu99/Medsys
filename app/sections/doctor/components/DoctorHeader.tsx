@@ -113,8 +113,8 @@ export function DoctorHeader({
               onClick={() => onGenderChange("Male")}
               className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wider transition ${
                 gender === "Male"
-                  ? "bg-slate-800 text-white shadow-md"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                  ? "bg-[#35A8D3] text-white shadow-[0_10px_24px_rgba(53,168,211,0.35)]"
+                  : "bg-white text-[#2F8FB8] ring-1 ring-[#B9E3F2] hover:bg-[#EAF7FC]"
               }`}
             >
               Male
@@ -124,8 +124,8 @@ export function DoctorHeader({
               onClick={() => onGenderChange("Female")}
               className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wider transition ${
                 gender === "Female"
-                  ? "bg-rose-600 text-white shadow-md"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-rose-50"
+                  ? "bg-[#C1357D] text-white shadow-[0_10px_24px_rgba(193,53,125,0.35)]"
+                  : "bg-white text-[#A92D6C] ring-1 ring-[#F1C1D7] hover:bg-[#FCEAF2]"
               }`}
             >
               Female
