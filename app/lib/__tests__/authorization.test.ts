@@ -21,7 +21,7 @@ describe("authorization policy", () => {
 
   it("enforces route access through the permission matrix", () => {
     expect(canAccessRoute("doctor", "doctorHome")).toBe(true);
-    expect(canAccessRoute("doctor", "assistantWorkspace")).toBe(false);
+    expect(canAccessRoute("doctor", "assistantWorkspace")).toBe(true);
     expect(canAccessRoute("assistant", "assistantWorkspace")).toBe(true);
     expect(canAccessRoute("assistant", "doctorHome")).toBe(false);
     expect(canAccessRoute("owner", "ownerWorkspace")).toBe(true);
@@ -35,9 +35,10 @@ describe("authorization policy", () => {
     expect(hasPermission("assistant", "prescription.dispense")).toBe(true);
     expect(hasPermission("assistant", "appointment.update")).toBe(false);
     expect(hasPermission("doctor", "user.read")).toBe(false);
-    expect(hasPermission("doctor", "patient.write")).toBe(false);
-    expect(hasPermission("doctor", "inventory.write")).toBe(false);
-    expect(hasPermission("doctor", "prescription.dispense")).toBe(false);
+    expect(hasPermission("doctor", "patient.write")).toBe(true);
+    expect(hasPermission("doctor", "inventory.write")).toBe(true);
+    expect(hasPermission("doctor", "prescription.dispense")).toBe(true);
+    expect(hasPermission("doctor", "appointment.create")).toBe(true);
     expect(hasPermission("doctor", "appointment.update")).toBe(true);
     expect(hasPermission("owner", "user.write")).toBe(true);
     expect(hasPermission("owner", "inventory.write")).toBe(true);
@@ -70,7 +71,7 @@ describe("authorization policy", () => {
   it("matches appointment creation to the live backend policy", () => {
     expect(canCreateAppointments("owner")).toBe(true);
     expect(canCreateAppointments("assistant")).toBe(true);
-    expect(canCreateAppointments("doctor")).toBe(false);
+    expect(canCreateAppointments("doctor")).toBe(true);
   });
 
   it("matches appointment lifecycle updates to the live frontend policy", () => {
@@ -86,6 +87,7 @@ describe("authorization policy", () => {
       "analytics",
       "inventory",
       "ai",
+      "assistant",
     ]);
 
     expect(getNavigationItemsForRole("assistant").map((item) => item.id)).toEqual([

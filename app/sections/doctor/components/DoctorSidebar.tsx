@@ -153,14 +153,23 @@ export function DoctorSidebar({
                 {assistantRegistrationHref ? (
                   <a
                     href={assistantRegistrationHref}
-                    className="inline-flex rounded-full bg-[var(--ioc-blue)] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_22px_rgba(10,132,255,0.3)] transition hover:bg-[#0070f0]"
+                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--ioc-blue)] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(10,132,255,0.3)] transition hover:bg-[#0070f0]"
                   >
-                    Create Patient In Assistant Page
+                    Create Patient
                   </a>
                 ) : (
-                  <p className="text-xs text-amber-700">
-                    This account does not have assistant registration access.
-                  </p>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 ring-1 ring-slate-200"
+                    >
+                      Create Patient
+                    </button>
+                    <p className="text-xs text-amber-700">
+                      This account does not have assistant registration access yet.
+                    </p>
+                  </div>
                 )}
               </div>
             ) : (
