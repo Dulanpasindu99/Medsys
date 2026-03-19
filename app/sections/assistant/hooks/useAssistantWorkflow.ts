@@ -24,12 +24,14 @@ import {
   useAnalyticsOverviewQuery,
   useAppointmentsQuery,
   useCurrentUserQuery,
+  useFamiliesQuery,
   usePatientsQuery,
   usePendingDispenseQueueQuery,
 } from "../../../lib/query-hooks";
 import { queryKeys } from "../../../lib/query-keys";
 import type {
   AssistantDoctorAvailability,
+  AssistantFamilyOption,
   AssistantFormState,
   AssistantPatientOption,
   AssistantScheduleFormState,
@@ -109,6 +111,17 @@ function toDisplayTime(value: unknown) {
   return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+function normalizeSriLankanPhone(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const compact = trimmed.replace(/[\s()-]+/g, "");
+  if (!compact) return "";
+  if (compact.startsWith("+94")) return `+94${compact.slice(3).replace(/\D/g, "")}`;
+  if (compact.startsWith("94")) return `+94${compact.slice(2).replace(/\D/g, "")}`;
+  if (compact.startsWith("0")) return `+94${compact.slice(1).replace(/\D/g, "")}`;
+  return compact;
+}
+
 function toDateTimeLocalValue(value: Date) {
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
@@ -123,7 +136,7 @@ function getDefaultScheduledAt() {
 function normalizePatientsById(rawPatients: unknown) {
   const map = new Map<number, AnyRecord>();
   asArray(rawPatients).forEach((row) => {
-    const id = toNumber(row.id ?? row.patientId ?? row.patient_id);
+    const id = toNumber(row.id ?? row.patient_id);
     if (id !== null) {
       map.set(id, row);
     }
@@ -151,12 +164,7 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
     );
 
     const patientCode = toString(
-      row.patientCode ??
-        row.patient_code ??
-        nestedPatient?.patientCode ??
-        nestedPatient?.patient_code ??
-        patientRow?.patientCode ??
-        patientRow?.patient_code,
+      row.patient_code ?? nestedPatient?.patient_code ?? patientRow?.patient_code,
       ""
     );
 
@@ -174,12 +182,9 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
         row.age ??
         row.patientAge ??
         row.patient_age ??
-        row.dateOfBirth ??
         row.date_of_birth ??
-        nestedPatient?.dateOfBirth ??
         nestedPatient?.date_of_birth ??
         nestedPatient?.age ??
-        patientRow?.dateOfBirth ??
         patientRow?.date_of_birth ??
         patientRow?.age
       ) ?? 0;
@@ -193,38 +198,20 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
     );
 
     const guardianName = toString(
-      row.guardianName ??
-        row.guardian_name ??
-        nestedPatient?.guardianName ??
-        nestedPatient?.guardian_name ??
-        patientRow?.guardianName ??
-        patientRow?.guardian_name,
+      row.guardian_name ?? nestedPatient?.guardian_name ?? patientRow?.guardian_name,
       ""
     );
     const guardianNic = toString(
-      row.guardianNic ??
-        row.guardian_nic ??
-        nestedPatient?.guardianNic ??
-        nestedPatient?.guardian_nic ??
-        patientRow?.guardianNic ??
-        patientRow?.guardian_nic,
+      row.guardian_nic ?? nestedPatient?.guardian_nic ?? patientRow?.guardian_nic,
       ""
     );
     const guardianPhone = toString(
-      row.guardianPhone ??
-        row.guardian_phone ??
-        nestedPatient?.guardianPhone ??
-        nestedPatient?.guardian_phone ??
-        patientRow?.guardianPhone ??
-        patientRow?.guardian_phone,
+      row.guardian_phone ?? nestedPatient?.guardian_phone ?? patientRow?.guardian_phone,
       ""
     );
     const guardianRelationship = toString(
-      row.guardianRelationship ??
-        row.guardian_relationship ??
-        nestedPatient?.guardianRelationship ??
+      row.guardian_relationship ??
         nestedPatient?.guardian_relationship ??
-        patientRow?.guardianRelationship ??
         patientRow?.guardian_relationship,
       ""
     );
@@ -297,12 +284,7 @@ function normalizeCompletedPatients(rawCompletedAppointments: unknown, patientBy
       `Patient ${index + 1}`
     );
     const patientCode = toString(
-      row.patientCode ??
-        row.patient_code ??
-        nestedPatient?.patientCode ??
-        nestedPatient?.patient_code ??
-        patientRow?.patientCode ??
-        patientRow?.patient_code,
+      row.patient_code ?? nestedPatient?.patient_code ?? patientRow?.patient_code,
       ""
     );
     const nic = toString(
@@ -318,30 +300,19 @@ function normalizeCompletedPatients(rawCompletedAppointments: unknown, patientBy
         row.age ??
         row.patientAge ??
         row.patient_age ??
-        row.dateOfBirth ??
         row.date_of_birth ??
-        nestedPatient?.dateOfBirth ??
         nestedPatient?.date_of_birth ??
         nestedPatient?.age ??
-        patientRow?.dateOfBirth ??
         patientRow?.date_of_birth ??
         patientRow?.age
       ) ?? 0;
     const guardianNic = toString(
-      row.guardianNic ??
-        row.guardian_nic ??
-        nestedPatient?.guardianNic ??
-        nestedPatient?.guardian_nic ??
-        patientRow?.guardianNic ??
-        patientRow?.guardian_nic,
+      row.guardian_nic ?? nestedPatient?.guardian_nic ?? patientRow?.guardian_nic,
       ""
     );
     const guardianRelationship = toString(
-      row.guardianRelationship ??
-        row.guardian_relationship ??
-        nestedPatient?.guardianRelationship ??
+      row.guardian_relationship ??
         nestedPatient?.guardian_relationship ??
-        patientRow?.guardianRelationship ??
         patientRow?.guardian_relationship,
       ""
     );
@@ -389,7 +360,7 @@ function normalizeDoctorAvailability(rawAppointments: unknown): AssistantDoctorA
 function normalizePatientOptions(rawPatients: unknown): AssistantPatientOption[] {
   const normalized: AssistantPatientOption[] = [];
   asArray(rawPatients).forEach((row, index) => {
-    const id = toNumber(row.id ?? row.patientId ?? row.patient_id);
+    const id = toNumber(row.id ?? row.patient_id);
     if (id === null) {
       return;
     }
@@ -397,13 +368,31 @@ function normalizePatientOptions(rawPatients: unknown): AssistantPatientOption[]
     normalized.push({
       id,
       name: toName(row, `Patient ${index + 1}`),
-      patientCode: toString(row.patientCode ?? row.patient_code, ""),
+      patientCode: toString(row.patient_code, ""),
       nic: toString(row.nic, "No NIC"),
-      guardianName: toString(row.guardianName ?? row.guardian_name, "") || undefined,
-      guardianNic: toString(row.guardianNic ?? row.guardian_nic, "") || undefined,
+      familyId: toNumber(row.family_id) ?? undefined,
+      guardianName: toString(row.guardian_name, "") || undefined,
+      guardianNic: toString(row.guardian_nic, "") || undefined,
     });
   });
   return normalized;
+}
+
+function normalizeFamilyOptions(rawFamilies: unknown): AssistantFamilyOption[] {
+  const normalized: AssistantFamilyOption[] = [];
+  asArray(rawFamilies).forEach((row, index) => {
+    const id = toNumber(row.id ?? row.family_id);
+    if (id === null) {
+      return;
+    }
+
+    normalized.push({
+      id,
+      name: toString(row.name ?? row.familyName, `Family ${index + 1}`),
+      familyCode: toString(row.family_code ?? row.familyCode, "") || undefined,
+    });
+  });
+  return normalized.sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
@@ -425,6 +414,7 @@ export function useAssistantWorkflow() {
   const allAppointmentsQuery = useAppointmentsQuery();
   const completedAppointmentsQuery = useAppointmentsQuery({ status: "completed" });
   const patientsQuery = usePatientsQuery();
+  const familiesQuery = useFamiliesQuery();
   const analyticsOverviewQuery = useAnalyticsOverviewQuery();
   const currentUserQuery = useCurrentUserQuery();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -436,6 +426,7 @@ export function useAssistantWorkflow() {
     gender: "Male",
     nic: "",
     mobile: "",
+    address: "",
     allergyInput: "",
     allergies: ["No allergies"],
     bloodGroup: "O+",
@@ -448,6 +439,7 @@ export function useAssistantWorkflow() {
       guardianPhone: "",
       guardianRelationship: "",
       familyId: "",
+      familyCode: "",
     },
   });
 
@@ -502,6 +494,10 @@ export function useAssistantWorkflow() {
     () => normalizePatientOptions(rawPatients),
     [rawPatients]
   );
+  const familyOptions = useMemo(
+    () => normalizeFamilyOptions(familiesQuery.data ?? EMPTY_ROWS),
+    [familiesQuery.data]
+  );
   const stats = useMemo(
     () => normalizeStats(analyticsOverviewQuery.data ?? {}, rawPatients),
     [analyticsOverviewQuery.data, rawPatients]
@@ -542,6 +538,7 @@ export function useAssistantWorkflow() {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.families.list }),
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
       ...(includeCurrentUser
         ? [queryClient.invalidateQueries({ queryKey: queryKeys.auth.currentUser })]
@@ -550,6 +547,7 @@ export function useAssistantWorkflow() {
       allAppointmentsQuery.refetch(),
       completedAppointmentsQuery.refetch(),
       patientsQuery.refetch(),
+      familiesQuery.refetch(),
       analyticsOverviewQuery.refetch(),
       ...(includeCurrentUser ? [currentUserQuery.refetch()] : []),
     ]);
@@ -584,6 +582,7 @@ export function useAssistantWorkflow() {
       allAppointmentsQuery.isError ||
       completedAppointmentsQuery.isError ||
       patientsQuery.isError ||
+      familiesQuery.isError ||
       analyticsOverviewQuery.isError ||
       currentUserQuery.isError;
 
@@ -597,6 +596,7 @@ export function useAssistantWorkflow() {
     completed,
     completedAppointmentsQuery,
     currentUserQuery.isError,
+    familiesQuery.isError,
     patientById.size,
     patientsQuery,
     pendingPatients.length,
@@ -660,8 +660,12 @@ export function useAssistantWorkflow() {
         dob: formState.dateOfBirth,
         gender: formState.gender.toLowerCase() as "male" | "female",
         nic: formState.nic.trim() || null,
-        phone: formState.mobile.trim() || null,
+        phone: normalizeSriLankanPhone(formState.mobile) || null,
+        address: formState.address.trim() || null,
         ...(formState.guardian.familyId ? { familyId: Number(formState.guardian.familyId) } : {}),
+        ...(!formState.guardian.familyId && formState.guardian.familyCode.trim()
+          ? { familyCode: formState.guardian.familyCode.trim() }
+          : {}),
         ...(formState.guardian.guardianPatientId
           ? { guardianPatientId: Number(formState.guardian.guardianPatientId) }
           : {}),
@@ -672,7 +676,7 @@ export function useAssistantWorkflow() {
           ? { guardianNic: formState.guardian.guardianNic.trim() }
           : {}),
         ...(formState.guardian.guardianPhone.trim()
-          ? { guardianPhone: formState.guardian.guardianPhone.trim() }
+          ? { guardianPhone: normalizeSriLankanPhone(formState.guardian.guardianPhone) }
           : {}),
         ...(formState.guardian.guardianRelationship.trim()
           ? { guardianRelationship: formState.guardian.guardianRelationship.trim() }
@@ -693,6 +697,7 @@ export function useAssistantWorkflow() {
         dateOfBirth: "",
         gender: "Male",
         mobile: "",
+        address: "",
         allergyInput: "",
         allergies: ["No allergies"],
         regularDrug: "",
@@ -704,6 +709,7 @@ export function useAssistantWorkflow() {
           guardianPhone: "",
           guardianRelationship: "",
           familyId: "",
+          familyCode: "",
         },
       }));
       if (createdPatientId !== null) {
@@ -877,6 +883,7 @@ export function useAssistantWorkflow() {
     stats,
     availableDoctors,
     patientOptions,
+    familyOptions,
     filteredCompleted,
     addPatient,
     addAllergy,
@@ -905,6 +912,7 @@ export function useAssistantWorkflow() {
       allAppointmentsQuery.isFetching ||
       completedAppointmentsQuery.isFetching ||
       patientsQuery.isFetching ||
+      familiesQuery.isFetching ||
       analyticsOverviewQuery.isFetching ||
       currentUserQuery.isFetching,
     syncError:

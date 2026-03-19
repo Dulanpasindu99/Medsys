@@ -28,10 +28,10 @@ describe("backend contract adapters", () => {
         patients: [
           {
             id: 7,
-            firstName: "Jane",
-            lastName: "Doe",
+            first_name: "Jane",
+            last_name: "Doe",
             phone: "555-2222",
-            createdAt: "2026-03-09T00:00:00.000Z",
+            created_at: "2026-03-09T00:00:00.000Z",
           },
         ],
       })
@@ -53,14 +53,14 @@ describe("backend contract adapters", () => {
       adaptPatientDetailResponse({
         patient: {
           id: 4,
-          firstName: "John",
-          lastName: "Smith",
+          first_name: "John",
+          last_name: "Smith",
         },
         history: [
           {
             id: 3,
             note: "Observed for 24 hours",
-            createdAt: "2026-03-09T00:00:00.000Z",
+            created_at: "2026-03-09T00:00:00.000Z",
             actorUserId: 8,
             createdByName: "Dr. House",
             createdByRole: "doctor",
@@ -160,8 +160,8 @@ describe("backend contract adapters", () => {
         data: [
           {
             id: 7,
-            firstName: "Jane",
-            lastName: "Doe",
+            first_name: "Jane",
+            last_name: "Doe",
           },
         ],
       }),
@@ -174,8 +174,8 @@ describe("backend contract adapters", () => {
       () =>
         adaptPatientDetailResponse({
         id: 4,
-        firstName: "John",
-        lastName: "Smith",
+        first_name: "John",
+        last_name: "Smith",
       }),
       "patient detail payload is missing patient object."
     );

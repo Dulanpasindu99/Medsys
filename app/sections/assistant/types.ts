@@ -38,6 +38,7 @@ export type AssistantGuardianFormState = {
   guardianPhone: string;
   guardianRelationship: string;
   familyId: string;
+  familyCode: string;
 };
 
 export type AssistantFormState = {
@@ -47,6 +48,7 @@ export type AssistantFormState = {
   gender: "Male" | "Female";
   nic: string;
   mobile: string;
+  address: string;
   allergyInput: string;
   allergies: string[];
   bloodGroup: string;
@@ -60,8 +62,15 @@ export type AssistantPatientOption = {
   name: string;
   patientCode: string;
   nic: string;
+  familyId?: number;
   guardianName?: string;
   guardianNic?: string;
+};
+
+export type AssistantFamilyOption = {
+  id: number;
+  name: string;
+  familyCode?: string;
 };
 
 export type AssistantDoctorAvailability = {

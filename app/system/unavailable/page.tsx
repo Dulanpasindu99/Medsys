@@ -45,13 +45,13 @@ export default async function SystemUnavailablePage({
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/"
-            className="rounded-2xl bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:bg-[#0070f0]"
+            className="app-button app-button--primary"
           >
             Retry
           </Link>
           <Link
             href="/login"
-            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="app-button app-button--secondary"
           >
             Go to login
           </Link>

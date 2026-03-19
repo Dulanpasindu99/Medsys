@@ -10,20 +10,17 @@ const toneStyles: Record<
   loading: {
     badge: "bg-sky-50 text-sky-700 ring-sky-100",
     title: "text-slate-900",
-    button:
-      "border border-slate-200 text-slate-700 hover:bg-slate-50",
+    button: "app-button app-button--secondary",
   },
   empty: {
     badge: "bg-amber-50 text-amber-700 ring-amber-100",
     title: "text-slate-900",
-    button:
-      "border border-slate-200 text-slate-700 hover:bg-slate-50",
+    button: "app-button app-button--secondary",
   },
   error: {
     badge: "bg-rose-50 text-rose-700 ring-rose-100",
     title: "text-rose-900",
-    button:
-      "bg-[var(--ioc-blue)] text-white hover:bg-[#0070f0]",
+    button: "app-button app-button--primary",
   },
 };
 
@@ -63,7 +60,7 @@ export function AsyncStatePanel({
             <button
               type="button"
               onClick={onAction}
-              className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${styles.button}`}
+              className={styles.button}
             >
               {actionLabel}
             </button>

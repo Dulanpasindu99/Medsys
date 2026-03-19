@@ -37,11 +37,12 @@ describe("usePatientProfileData", () => {
     mockedGetPatientProfile.mockResolvedValue({
       id: 12,
       name: "Jane Doe",
+      patient_code: "P-0012",
       nic: "990011223V",
       age: 31,
       gender: "female",
-      mobile: "0771234567",
-      createdAt: "2026-03-07T10:30:00.000Z",
+      phone: "0771234567",
+      created_at: "2026-03-07T10:30:00.000Z",
     });
     mockedGetPatientFamily.mockResolvedValue({
       name: "Doe",
@@ -67,11 +68,12 @@ describe("usePatientProfileData", () => {
       {
         id: 12,
         name: "Jane Doe",
+        patient_code: "P-0012",
         nic: "990011223V",
         age: 31,
         gender: "female",
         phone: "0771234567",
-        createdAt: "2026-03-07T10:30:00.000Z",
+        created_at: "2026-03-07T10:30:00.000Z",
       },
     ]);
   });
@@ -98,6 +100,7 @@ describe("usePatientProfileData", () => {
     expect(result.current.profile).toMatchObject({
       id: "12",
       name: "Jane Doe",
+      patientCode: "P-0012",
       nic: "990011223V",
       age: 31,
       gender: "Female",

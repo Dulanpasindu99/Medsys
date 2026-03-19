@@ -179,7 +179,7 @@ export function OwnerStaffFormCard({
         <button
           onClick={onCreate}
           disabled={isSubmitting || !canManageStaff}
-          className="rounded-full bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[0_14px_30px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
+          className="app-button app-button--primary app-button--pill"
         >
           {isSubmitting ? "Creating user..." : "Create user"}
         </button>

@@ -72,9 +72,7 @@ function unwrapProfileRecord(value: unknown): AnyRecord | null {
     if (
       dataRecord.nic !== undefined ||
       dataRecord.guardian_nic !== undefined ||
-      dataRecord.guardianNic !== undefined ||
-      dataRecord.patient_code !== undefined ||
-      dataRecord.patientCode !== undefined
+      dataRecord.patient_code !== undefined
     ) {
       return dataRecord;
     }
@@ -126,7 +124,7 @@ function normalizeGender(value: unknown): PatientGender {
 }
 
 function toName(row: AnyRecord, fallback: string) {
-  const direct = getString(row.name ?? row.fullName).trim();
+  const direct = getString(row.name ?? row.fullName ?? row.full_name).trim();
   if (direct) return direct;
   const firstName = getString(row.firstName ?? row.first_name).trim();
   const lastName = getString(row.lastName ?? row.last_name).trim();
@@ -171,7 +169,7 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
   patientRows.forEach((row) => {
     const id = getNumber(row.id ?? row.patientId ?? row.patient_id);
     if (id !== null) patientById.set(id, row);
-    const code = normalizeLookupValue(getString(row.patientCode ?? row.patient_code));
+    const code = normalizeLookupValue(getString(row.patient_code));
     if (code) patientByCode.set(code, row);
   });
 
@@ -181,12 +179,7 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
     const patientIdFromRow = getNumber(row.patientId ?? row.patient_id ?? nestedPatient?.id) ?? undefined;
     const doctorId = getNumber(row.doctorId ?? row.doctor_id ?? asRecord(row.doctor)?.id) ?? undefined;
     const appointmentPatientCode = normalizeLookupValue(
-      getString(
-        nestedPatient?.patientCode ??
-          nestedPatient?.patient_code ??
-          row.patientCode ??
-          row.patient_code
-      )
+      getString(nestedPatient?.patient_code ?? row.patient_code)
     );
     const patientRow =
       (patientIdFromRow ? patientById.get(patientIdFromRow) : null) ??
@@ -206,12 +199,7 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
       `Patient ${patientId ?? index + 1}`
     );
     const patientCode = getString(
-      nestedPatient?.patientCode ??
-        nestedPatient?.patient_code ??
-        row.patientCode ??
-        row.patient_code ??
-        patientRow?.patientCode ??
-        patientRow?.patient_code,
+      nestedPatient?.patient_code ?? row.patient_code ?? patientRow?.patient_code,
       ""
     );
 
@@ -225,12 +213,9 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
       row.age,
       row.patientAge,
       row.patient_age,
-      nestedPatient?.dateOfBirth,
       nestedPatient?.date_of_birth,
-      row.dateOfBirth,
       row.date_of_birth,
       patientRow?.age,
-      patientRow?.dateOfBirth,
       patientRow?.date_of_birth
     );
 
@@ -243,32 +228,23 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
     );
 
     const reason = getString(row.reason ?? row.chiefComplaint ?? row.notes, "Consultation");
-    const time = getDateLabel(row.scheduledAt ?? row.scheduled_at ?? row.createdAt ?? row.created_at);
+    const time = getDateLabel(row.scheduledAt ?? row.scheduled_at ?? row.created_at ?? row.createdAt);
     const appointmentStatus = getString(row.status).toLowerCase();
     const guardianName = getString(
-      nestedPatient?.guardianName ??
-        nestedPatient?.guardian_name ??
-        row.guardianName ??
+      nestedPatient?.guardian_name ??
         row.guardian_name ??
-        patientRow?.guardianName ??
         patientRow?.guardian_name,
       ""
     );
     const guardianNic = getString(
-      nestedPatient?.guardianNic ??
-        nestedPatient?.guardian_nic ??
-        row.guardianNic ??
+      nestedPatient?.guardian_nic ??
         row.guardian_nic ??
-        patientRow?.guardianNic ??
         patientRow?.guardian_nic,
       ""
     );
     const guardianRelationship = getString(
-      nestedPatient?.guardianRelationship ??
-        nestedPatient?.guardian_relationship ??
-        row.guardianRelationship ??
+      nestedPatient?.guardian_relationship ??
         row.guardian_relationship ??
-        patientRow?.guardianRelationship ??
         patientRow?.guardian_relationship,
       ""
     );
@@ -296,27 +272,25 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
       profileId: patientId ? String(patientId) : undefined,
     } satisfies Patient;
   });
-
-  if (fromAppointments.length) return fromAppointments;
-
-  return patientRows.map((row, index) => {
+  const standalonePatients = patientRows.map((row, index) => {
     const id = getNumber(row.id ?? row.patientId ?? row.patient_id);
     return {
       patientId: id ?? undefined,
       name: toName(row, `Patient ${index + 1}`),
-      patientCode: getString(row.patientCode ?? row.patient_code, ""),
+      patientCode: getString(row.patient_code, ""),
       nic: getString(row.nic, "No NIC"),
-      guardianName: getString(row.guardianName ?? row.guardian_name, "") || undefined,
-      guardianNic: getString(row.guardianNic ?? row.guardian_nic, "") || undefined,
-      guardianRelationship:
-        getString(row.guardianRelationship ?? row.guardian_relationship, "") || undefined,
+      guardianName: getString(row.guardian_name, "") || undefined,
+      guardianNic: getString(row.guardian_nic, "") || undefined,
+      guardianRelationship: getString(row.guardian_relationship, "") || undefined,
       time: "-",
       reason: "General visit",
-      age: toAge(row.age, row.dateOfBirth, row.date_of_birth),
+      age: toAge(row.age, row.date_of_birth),
       gender: normalizeGender(row.gender),
       profileId: id ? String(id) : undefined,
     } satisfies Patient;
   });
+
+  return [...fromAppointments, ...standalonePatients];
 }
 
 function normalizeVitals(raw: unknown): PatientVital[] {
@@ -441,7 +415,7 @@ function resolveIdentityFromProfile(profile: AnyRecord | null) {
     };
   }
 
-  const guardianNic = getString(profile.guardianNic ?? profile.guardian_nic);
+  const guardianNic = getString(profile.guardian_nic);
   if (guardianNic) {
     return {
       value: guardianNic,
@@ -866,12 +840,11 @@ export function useDoctorWorkspaceData(
 
     const resolvedName = toProfileName(selectedPatientProfile, patientName || `Patient ${selectedPatientId}`);
     const resolvedPatientCode = getString(
-      selectedPatientProfile.patientCode ?? selectedPatientProfile.patient_code,
+      selectedPatientProfile.patient_code,
       patientCode
     );
     const resolvedAge = toAge(
       selectedPatientProfile.age,
-      selectedPatientProfile.dateOfBirth,
       selectedPatientProfile.date_of_birth,
       selectedPatientProfile.dob
     );

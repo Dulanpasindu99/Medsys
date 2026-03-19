@@ -46,17 +46,13 @@ export function PatientFilters({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setGender("Male")}
-              className={`rounded-full px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] transition-all ${
-                gender === "Male" ? "bg-slate-800 text-white shadow-lg shadow-slate-200" : "bg-white text-slate-400 ring-1 ring-slate-100 hover:bg-slate-50"
-              }`}
+              className={`app-segment app-segment--male px-6 text-[11px] tracking-[0.2em] ${gender === "Male" ? "is-active" : ""}`}
             >
               Male
             </button>
             <button
               onClick={() => setGender("Female")}
-              className={`rounded-full px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] transition-all ${
-                gender === "Female" ? "bg-slate-800 text-white shadow-lg shadow-slate-200" : "bg-white text-slate-400 ring-1 ring-slate-100 hover:bg-slate-50"
-              }`}
+              className={`app-segment app-segment--female px-6 text-[11px] tracking-[0.2em] ${gender === "Female" ? "is-active" : ""}`}
             >
               Female
             </button>

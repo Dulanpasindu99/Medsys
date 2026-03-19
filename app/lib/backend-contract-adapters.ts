@@ -85,7 +85,7 @@ function normalizePermissionArray(value: unknown): AppPermission[] {
 }
 
 function joinName(record: AnyRecord) {
-  const direct = toString(record.name ?? record.fullName).trim();
+  const direct = toString(record.name ?? record.fullName ?? record.full_name).trim();
   if (direct) return direct;
 
   const firstName = toString(record.firstName ?? record.first_name).trim();
@@ -109,52 +109,36 @@ function normalizePatientRecord(record: AnyRecord) {
     throw contractMismatch("patient record is missing a stable id or name.");
   }
 
-  const dateOfBirth = toString(
-    record.date_of_birth ?? record.dateOfBirth ?? record.dob,
-    ""
-  );
+  const dateOfBirth = toString(record.date_of_birth ?? record.dob, "");
   const phone = toString(record.phone ?? record.mobile, "");
   const address = toString(record.address, "");
-  const createdAt = toString(record.created_at ?? record.createdAt, "");
+  const createdAt = toString(record.created_at, "");
   const nic = toString(record.nic, "");
   const age = toNumber(record.age);
   const gender = toString(record.gender, "");
   const priority = toString(record.priority, "");
-  const patientCode = toString(record.patientCode ?? record.patient_code, "");
-  const familyId = toNumber(record.familyId ?? record.family_id ?? asRecord(record.family)?.id);
+  const patientCode = toString(record.patient_code, "");
+  const familyId = toNumber(record.family_id ?? asRecord(record.family)?.id);
   const guardianPatientId = toNumber(
-    record.guardianPatientId ??
-      record.guardian_patient_id ??
-      asRecord(record.guardianPatient)?.id ??
-      asRecord(record.guardian_patient)?.id
+    record.guardian_patient_id ??
+      asRecord(record.guardian_patient)?.id ??
+      asRecord(record.guardianPatient)?.id
   );
   const guardianName = toString(
-    record.guardianName ??
-      record.guardian_name ??
-      asRecord(record.guardianPatient)?.name ??
-      asRecord(record.guardian_patient)?.name,
+    record.guardian_name ?? asRecord(record.guardian_patient)?.name,
     ""
   );
   const guardianNic = toString(
-    record.guardianNic ??
-      record.guardian_nic ??
-      asRecord(record.guardianPatient)?.nic ??
-      asRecord(record.guardian_patient)?.nic,
+    record.guardian_nic ?? asRecord(record.guardian_patient)?.nic,
     ""
   );
   const guardianPhone = toString(
-    record.guardianPhone ??
-      record.guardian_phone ??
-      asRecord(record.guardianPatient)?.phone ??
-      asRecord(record.guardian_patient)?.phone,
+    record.guardian_phone ?? asRecord(record.guardian_patient)?.phone,
     ""
   );
-  const guardianRelationship = toString(
-    record.guardianRelationship ?? record.guardian_relationship,
-    ""
-  );
-  const firstName = toString(record.firstName ?? record.first_name, "");
-  const lastName = toString(record.lastName ?? record.last_name, "");
+  const guardianRelationship = toString(record.guardian_relationship, "");
+  const firstName = toString(record.first_name, "");
+  const lastName = toString(record.last_name, "");
 
   return {
     ...record,

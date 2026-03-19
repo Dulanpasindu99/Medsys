@@ -97,6 +97,7 @@ export function DoctorAssistantCoverage({
             formState={workflow.formState}
             setFormState={workflow.setFormState}
             patientOptions={workflow.patientOptions}
+            familyOptions={workflow.familyOptions}
             addAllergy={workflow.addAllergy}
             addPatient={workflow.addPatient}
             canCreatePatients={workflow.canCreatePatientsInWorkflow}

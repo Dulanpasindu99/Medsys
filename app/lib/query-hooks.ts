@@ -7,6 +7,7 @@ import {
   getCurrentUser,
   getPatientFamily,
   getPatientProfile,
+  listFamilies,
   listUsers,
   listAppointments,
   listPatientAllergies,
@@ -86,6 +87,14 @@ export function usePatientsQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.patients.list,
     queryFn: listPatients,
+    enabled,
+  });
+}
+
+export function useFamiliesQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.families.list,
+    queryFn: listFamilies,
     enabled,
   });
 }

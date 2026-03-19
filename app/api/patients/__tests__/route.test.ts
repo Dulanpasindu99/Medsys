@@ -52,13 +52,13 @@ describe("/api/patients BFF routes", () => {
           patients: [
             {
               id: 7,
-              firstName: "Jane",
-              lastName: "Doe",
+              first_name: "Jane",
+              last_name: "Doe",
               nic: "990011223V",
               age: 31,
               gender: "female",
               phone: "555-0000",
-              createdAt: "2026-03-09T00:00:00.000Z",
+              created_at: "2026-03-09T00:00:00.000Z",
             },
           ],
         }),
@@ -79,6 +79,8 @@ describe("/api/patients BFF routes", () => {
         {
           id: 7,
           name: "Jane Doe",
+          first_name: "Jane",
+          last_name: "Doe",
           date_of_birth: null,
           phone: "555-0000",
           address: null,
@@ -99,18 +101,18 @@ describe("/api/patients BFF routes", () => {
           JSON.stringify({
             patient: {
               id: 7,
-              firstName: "Jane",
-              lastName: "Doe",
+              first_name: "Jane",
+              last_name: "Doe",
               nic: "990011223V",
               age: 31,
               gender: "female",
-              createdAt: "2026-03-09T00:00:00.000Z",
+              created_at: "2026-03-09T00:00:00.000Z",
             },
             history: [
               {
                 id: 3,
                 note: "Observed for 24 hours",
-                createdAt: "2026-03-09T00:00:00.000Z",
+                created_at: "2026-03-09T00:00:00.000Z",
                 createdByUserId: 1,
                 createdByName: "Doctor User",
                 createdByRole: "doctor",
@@ -133,6 +135,8 @@ describe("/api/patients BFF routes", () => {
       patient: {
         id: 7,
         name: "Jane Doe",
+        first_name: "Jane",
+        last_name: "Doe",
         date_of_birth: null,
         address: null,
         phone: null,
@@ -175,12 +179,11 @@ describe("/api/patients BFF routes", () => {
 
     const response = await createPatientRoute(
       buildRequest("http://localhost/api/patients", "assistant", "POST", {
-        name: "",
-        dateOfBirth: "09-03-2026",
+        firstName: "",
+        lastName: "",
+        dob: "09-03-2026",
         phone: 12345,
-        age: -1,
         gender: "unknown",
-        priority: "urgent",
         extra: "field",
       })
     );
@@ -190,12 +193,11 @@ describe("/api/patients BFF routes", () => {
     expect(body).toEqual({
       error: "Validation failed.",
       issues: expect.arrayContaining([
-        { field: "name", message: "Is required." },
-        { field: "dateOfBirth", message: "Must use YYYY-MM-DD format." },
+        { field: "firstName", message: "Is required." },
+        { field: "lastName", message: "Is required." },
+        { field: "dob", message: "Must use YYYY-MM-DD format." },
         { field: "phone", message: "Must be a string." },
-        { field: "age", message: "Must be zero or greater." },
         { field: "gender", message: "Must be one of male, female, other." },
-        { field: "priority", message: "Must be one of low, normal, high, critical." },
         { field: "extra", message: "Unknown field." },
       ]),
     });
@@ -223,12 +225,12 @@ describe("/api/patients BFF routes", () => {
 
     const response = await createPatientRoute(
       buildRequest("http://localhost/api/patients", "assistant", "POST", {
-        name: " Jane Doe ",
+        firstName: " Jane ",
+        lastName: " Doe ",
+        dob: "1999-03-09",
         nic: "991234567V",
-        age: 27,
         gender: "female",
-        mobile: "555-2222",
-        priority: "high",
+        phone: "555-2222",
       })
     );
     const body = await response.json();
@@ -236,15 +238,13 @@ describe("/api/patients BFF routes", () => {
     expect(response.status).toBe(200);
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
       JSON.stringify({
-        name: "Jane Doe",
-        dateOfBirth: null,
+        firstName: "Jane",
+        lastName: "Doe",
+        dob: "1999-03-09",
         phone: "555-2222",
         address: null,
         nic: "991234567V",
-        age: 27,
         gender: "female",
-        mobile: "555-2222",
-        priority: "high",
       })
     );
     expect(body).toEqual({
@@ -314,7 +314,7 @@ describe("/api/patients BFF routes", () => {
               {
                 id: 3,
                 note: "Observed for 24 hours",
-                createdAt: "2026-03-09T00:00:00.000Z",
+                created_at: "2026-03-09T00:00:00.000Z",
                 createdByUserId: 1,
                 createdByName: "Doctor User",
                 createdByRole: "doctor",
@@ -354,8 +354,8 @@ describe("/api/patients BFF routes", () => {
         new Response(
           JSON.stringify({
             id: 7,
-            firstName: "Jane",
-            lastName: "Doe",
+            first_name: "Jane",
+            last_name: "Doe",
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )

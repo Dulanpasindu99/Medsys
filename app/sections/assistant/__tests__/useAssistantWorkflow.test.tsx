@@ -7,6 +7,7 @@ import {
   getAnalyticsOverview,
   getCurrentUser,
   listAppointments,
+  listFamilies,
   listPatients,
   listPendingDispenseQueue,
 } from "../../../lib/api-client";
@@ -20,6 +21,7 @@ vi.mock("../../../lib/api-client", () => ({
   getAnalyticsOverview: vi.fn(),
   getCurrentUser: vi.fn(),
   listAppointments: vi.fn(),
+  listFamilies: vi.fn(),
   listPatients: vi.fn(),
   listPendingDispenseQueue: vi.fn(),
 }));
@@ -30,6 +32,7 @@ const mockedDispensePrescription = vi.mocked(dispensePrescription);
 const mockedGetAnalyticsOverview = vi.mocked(getAnalyticsOverview);
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedListAppointments = vi.mocked(listAppointments);
+const mockedListFamilies = vi.mocked(listFamilies);
 const mockedListPatients = vi.mocked(listPatients);
 const mockedListPendingDispenseQueue = vi.mocked(listPendingDispenseQueue);
 
@@ -49,19 +52,17 @@ function buildPatientFixture(input: {
     first_name: firstName,
     lastName: lastNameParts.join(" "),
     last_name: lastNameParts.join(" "),
-    patientCode: `P-${String(input.id).padStart(4, "0")}`,
     patient_code: `P-${String(input.id).padStart(4, "0")}`,
-    dateOfBirth: "1995-01-01",
+    family_id: input.id + 100,
     date_of_birth: "1995-01-01",
     phone: null,
     mobile: null,
     address: null,
-    createdAt: "2026-03-09T00:00:00.000Z",
     created_at: "2026-03-09T00:00:00.000Z",
     nic: input.nic,
     age: input.age,
-    gender: input.gender,
-    priority: null,
+      gender: input.gender,
+      priority: null,
   };
 }
 
@@ -70,6 +71,7 @@ describe("useAssistantWorkflow", () => {
     vi.clearAllMocks();
     mockedListPendingDispenseQueue.mockResolvedValue([]);
     mockedListPatients.mockResolvedValue([]);
+    mockedListFamilies.mockResolvedValue([]);
     mockedGetAnalyticsOverview.mockResolvedValue({});
     mockedGetCurrentUser.mockResolvedValue({
       id: 42,
@@ -84,13 +86,12 @@ describe("useAssistantWorkflow", () => {
       fullName: "Created Patient",
       firstName: "Created",
       lastName: "Patient",
-      patientCode: "P-0099",
-      dateOfBirth: null,
+      patient_code: "P-0099",
       date_of_birth: null,
       phone: null,
       mobile: null,
       address: null,
-      createdAt: "2026-03-09T00:00:00.000Z",
+      family_id: 199,
       created_at: "2026-03-09T00:00:00.000Z",
       nic: null,
       age: null,
@@ -173,6 +174,120 @@ describe("useAssistantWorkflow", () => {
     );
     expect(result.current.filteredCompleted[0]?.time).toEqual(expect.any(String));
     expect(result.current.stats).toEqual({ total: 12, male: 7, female: 5, existing: 10, new: 2 });
+  });
+
+  it("sends address, family code, and Sri Lankan phone format in patient create requests", async () => {
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.setFormState((prev) => ({
+        ...prev,
+        firstName: "Mini",
+        lastName: "Perera",
+        dateOfBirth: "2016-01-01",
+        gender: "Female",
+        address: "12 Lake Road",
+        mobile: "0771234567",
+        guardian: {
+          ...prev.guardian,
+          familyCode: "FAM-1007",
+          guardianName: "Sunethra Perera",
+          guardianNic: "198765432109",
+        },
+      }));
+    });
+
+    await act(async () => {
+      await result.current.addPatient();
+    });
+
+    expect(mockedCreatePatient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: "Mini",
+        lastName: "Perera",
+        dob: "2016-01-01",
+        address: "12 Lake Road",
+        phone: "+94771234567",
+        familyCode: "FAM-1007",
+        guardianName: "Sunethra Perera",
+        guardianNic: "198765432109",
+      })
+    );
+  });
+
+  it("prefers a selected guardian family id over a manual family code", async () => {
+    mockedListPatients.mockResolvedValue([
+      buildPatientFixture({
+        id: 7,
+        name: "Jane Doe",
+        nic: "990011223V",
+        age: 31,
+        gender: "female",
+      }),
+    ]);
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientOptions).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.setFormState((prev) => ({
+        ...prev,
+        firstName: "Mini",
+        lastName: "Perera",
+        dateOfBirth: "2016-01-01",
+        gender: "Female",
+        guardian: {
+          ...prev.guardian,
+          guardianPatientId: "7",
+          familyId: "107",
+          familyCode: "FAM-MANUAL",
+          guardianName: "Jane Doe",
+          guardianNic: "990011223V",
+        },
+      }));
+    });
+
+    await act(async () => {
+      await result.current.addPatient();
+    });
+
+    expect(mockedCreatePatient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        familyId: 107,
+      })
+    );
+    expect(mockedCreatePatient.mock.calls.at(-1)?.[0]).not.toHaveProperty("familyCode");
+  });
+
+  it("loads family options so the intake form can show family names", async () => {
+    mockedListFamilies.mockResolvedValue([
+      { id: 12, name: "Perera Family", family_code: "FAM-0012" },
+      { id: 15, name: "Silva Family", family_code: "FAM-0015" },
+    ]);
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.familyOptions).toHaveLength(2);
+    });
+
+    expect(result.current.familyOptions).toEqual([
+      { id: 12, name: "Perera Family", familyCode: "FAM-0012" },
+      { id: 15, name: "Silva Family", familyCode: "FAM-0015" },
+    ]);
   });
 
   it("adds allergies without keeping the default sentinel or duplicates", async () => {

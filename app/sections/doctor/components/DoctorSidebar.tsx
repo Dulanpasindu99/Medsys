@@ -140,7 +140,7 @@ export function DoctorSidebar({
                 <button
                   type="button"
                   onClick={onOpenPatientHistory}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 active:translate-y-0"
+                  className="app-button app-button--secondary app-button--full uppercase tracking-wider"
                 >
                   View Patient History
                 </button>
@@ -153,7 +153,7 @@ export function DoctorSidebar({
                 {assistantRegistrationHref ? (
                   <a
                     href={assistantRegistrationHref}
-                    className="inline-flex w-full items-center justify-center rounded-2xl bg-[var(--ioc-blue)] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(10,132,255,0.3)] transition hover:bg-[#0070f0]"
+                    className="app-button app-button--primary app-button--full"
                   >
                     Create Patient
                   </a>
@@ -162,7 +162,7 @@ export function DoctorSidebar({
                     <button
                       type="button"
                       disabled
-                      className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 ring-1 ring-slate-200"
+                      className="app-button app-button--soft app-button--full"
                     >
                       Create Patient
                     </button>
@@ -223,7 +223,7 @@ export function DoctorSidebar({
                     type="button"
                     onClick={onSaveVitals}
                     disabled={!canEditVitals}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="app-button app-button--secondary app-button--full uppercase tracking-wider"
                   >
                     Save Vitals
                   </button>
@@ -322,7 +322,7 @@ export function DoctorSidebar({
                       type="button"
                       onClick={onAddOrUpdateAllergy}
                       disabled={!canEditAllergies}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="app-button app-button--secondary app-button--full uppercase tracking-wider"
                     >
                       Add Or Update Allergy
                     </button>
@@ -370,7 +370,7 @@ export function DoctorSidebar({
                   disabled={
                     isTransitioningAppointment || !canTransitionAppointments
                   }
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="app-button app-button--secondary app-button--full uppercase tracking-wider"
                 >
                   {isTransitioningAppointment
                     ? "Starting consultation..."
@@ -380,7 +380,7 @@ export function DoctorSidebar({
                   type="button"
                   onClick={onSaveRecord}
                   disabled={isSavingRecord || !canSaveRecord}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ioc-blue)] px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0070f0] hover:shadow-sky-500/30 active:translate-y-0 active:shadow-md disabled:cursor-not-allowed disabled:opacity-70"
+                  className="app-button app-button--primary app-button--full uppercase tracking-wider"
                 >
                   {isSavingRecord ? "Saving record..." : "Save & Print Record"}
                 </button>

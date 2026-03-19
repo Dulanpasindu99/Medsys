@@ -70,7 +70,7 @@ function toName(row: AnyRecord, fallback: string) {
 function toAge(row: AnyRecord) {
   const directAge = toNumber(row.age);
   if (directAge !== null) return directAge;
-  const dob = toString(row.dateOfBirth ?? row.date_of_birth ?? row.dob);
+  const dob = toString(row.date_of_birth ?? row.dob);
   if (!dob) return 0;
   const parsed = new Date(`${dob}T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime())) return 0;
@@ -203,7 +203,7 @@ async function fetchPatientDirectorySnapshot(): Promise<{
 
     const familyNameById = new Map<number, string>();
     familyRows.forEach((row) => {
-      const id = toNumber(row.id ?? row.familyId ?? row.family_id);
+      const id = toNumber(row.id ?? row.family_id);
       if (id !== null) {
         familyNameById.set(id, toString(row.name ?? row.familyName, `Family ${id}`));
       }
@@ -212,21 +212,18 @@ async function fetchPatientDirectorySnapshot(): Promise<{
     let detailFailures = 0;
     const normalized = await Promise.all(
       patientRows.map(async (row, index) => {
-        const patientId = toNumber(row.id ?? row.patientId ?? row.patient_id) ?? undefined;
+        const patientId = toNumber(row.id ?? row.patient_id) ?? undefined;
         const name = toName(row, `Patient ${index + 1}`);
         const nic = toString(row.nic, "No NIC");
         const age = toAge(row);
         const patientGender = toGender(row.gender);
         const mobile = toString(row.mobile ?? row.phone, "Not provided");
-        const patientCode = toString(row.patientCode ?? row.patient_code, "");
-        const guardianName = toString(row.guardianName ?? row.guardian_name, "");
-        const guardianNic = toString(row.guardianNic ?? row.guardian_nic, "");
-        const guardianRelationship = toString(
-          row.guardianRelationship ?? row.guardian_relationship,
-          ""
-        );
+        const patientCode = toString(row.patient_code, "");
+        const guardianName = toString(row.guardian_name, "");
+        const guardianNic = toString(row.guardian_nic, "");
+        const guardianRelationship = toString(row.guardian_relationship, "");
 
-        const familyId = toNumber(row.familyId ?? row.family_id);
+        const familyId = toNumber(row.family_id);
         const nestedFamily = asRecord(row.family);
         const familyName =
           toString(nestedFamily?.name) ||
@@ -267,7 +264,7 @@ async function fetchPatientDirectorySnapshot(): Promise<{
 
         const relatedAppointments = appointmentRows.filter((appointment) => {
           const apptPatientId = toNumber(
-            appointment.patientId ?? appointment.patient_id ?? asRecord(appointment.patient)?.id
+            appointment.patient_id ?? appointment.patientId ?? asRecord(appointment.patient)?.id
           );
           return patientId !== undefined && apptPatientId === patientId;
         });
@@ -282,7 +279,9 @@ async function fetchPatientDirectorySnapshot(): Promise<{
           .find(Boolean);
 
         const lastTimelineDate = timelineRows
-          .map((entry) => toString(entry.date ?? entry.recordedAt ?? entry.createdAt))
+          .map((entry) =>
+            toString(entry.date ?? entry.recordedAt ?? entry.created_at ?? entry.createdAt)
+          )
           .filter(Boolean)
           .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 

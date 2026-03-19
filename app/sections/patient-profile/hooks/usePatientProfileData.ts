@@ -59,7 +59,7 @@ function toName(record: ApiRecord | null, fallback: string) {
 function toAge(record: ApiRecord | null) {
   const directAge = toNumber(record?.age);
   if (directAge !== null) return directAge;
-  const dob = toString(record?.dateOfBirth ?? record?.date_of_birth ?? record?.dob);
+  const dob = toString(record?.date_of_birth ?? record?.dob);
   if (!dob) return 0;
   const parsed = new Date(`${dob}T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime())) return 0;
@@ -86,7 +86,10 @@ function mapTimelineEntries(rawTimeline: unknown, rawVitals: unknown): PatientTi
     if (!row) return [];
     return [
       {
-        date: toString(row.date ?? row.recordedAt ?? row.createdAt, new Date().toISOString()),
+        date: toString(
+          row.date ?? row.recordedAt ?? row.created_at ?? row.createdAt,
+          new Date().toISOString()
+        ),
         title: toString(row.title ?? row.event ?? row.noteTitle, "Clinical update"),
         description: toString(row.description ?? row.notes ?? row.note, "No additional notes."),
         kind: "general" as const,
@@ -101,7 +104,10 @@ function mapTimelineEntries(rawTimeline: unknown, rawVitals: unknown): PatientTi
     if (!row) return [];
     return [
       {
-        date: toString(row.recordedAt ?? row.date ?? row.createdAt, new Date().toISOString()),
+        date: toString(
+          row.recordedAt ?? row.date ?? row.created_at ?? row.createdAt,
+          new Date().toISOString()
+        ),
         title: toString(row.label ?? row.name ?? row.vitalName ?? "Vitals"),
         description: "Vital measurement recorded",
         kind: "bp" as const,
@@ -197,45 +203,30 @@ export function usePatientProfileData(profileId: string) {
       id: String(numericId),
       name: toName((profileRecord as ApiRecord | null) ?? (patientRow as ApiRecord | null), `Patient ${numericId}`),
       patientCode: toString(
-        profileRecord?.patientCode ??
-          profileRecord?.patient_code ??
-          patientRow?.patientCode ??
-          patientRow?.patient_code,
+        profileRecord?.patient_code ?? patientRow?.patient_code,
         ""
       ),
       nic: toString(profileRecord?.nic ?? patientRow?.nic, "No NIC"),
       guardianName: toString(
-        profileRecord?.guardianName ??
-          profileRecord?.guardian_name ??
-          patientRow?.guardianName ??
-          patientRow?.guardian_name,
+        profileRecord?.guardian_name ?? patientRow?.guardian_name,
         ""
       ) || undefined,
       guardianNic: toString(
-        profileRecord?.guardianNic ??
-          profileRecord?.guardian_nic ??
-          patientRow?.guardianNic ??
-          patientRow?.guardian_nic,
+        profileRecord?.guardian_nic ?? patientRow?.guardian_nic,
         ""
       ) || undefined,
       guardianPhone: toString(
-        profileRecord?.guardianPhone ??
-          profileRecord?.guardian_phone ??
-          patientRow?.guardianPhone ??
-          patientRow?.guardian_phone,
+        profileRecord?.guardian_phone ?? patientRow?.guardian_phone,
         ""
       ) || undefined,
       guardianRelationship: toString(
-        profileRecord?.guardianRelationship ??
-          profileRecord?.guardian_relationship ??
-          patientRow?.guardianRelationship ??
-          patientRow?.guardian_relationship,
+        profileRecord?.guardian_relationship ?? patientRow?.guardian_relationship,
         ""
       ) || undefined,
       age: toAge((profileRecord as ApiRecord | null) ?? (patientRow as ApiRecord | null)),
       gender: toGender(profileRecord?.gender ?? patientRow?.gender),
       mobile: toString(
-        profileRecord?.mobile ?? patientRow?.mobile ?? patientRow?.phone,
+        profileRecord?.phone ?? patientRow?.phone ?? patientRow?.mobile,
         "Not provided"
       ),
       family: {
@@ -251,7 +242,7 @@ export function usePatientProfileData(profileId: string) {
       conditions,
       allergies,
       firstSeen: toString(
-        profileRecord?.firstSeen ?? profileRecord?.createdAt ?? patientRow?.createdAt,
+        profileRecord?.firstSeen ?? profileRecord?.created_at ?? patientRow?.created_at,
         new Date().toISOString()
       ),
       timeline,

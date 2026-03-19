@@ -37,9 +37,12 @@ export function AssistantSidebar({
   onOpenProfile,
   isLoading = false,
 }: AssistantSidebarProps) {
+  const controlClassName =
+    "min-h-14 w-full rounded-[20px] border border-slate-200/90 bg-white/90 px-4 py-3 text-sm font-medium text-slate-900 shadow-[inset_0_1px_2px_rgba(148,163,184,0.18),0_8px_20px_rgba(255,255,255,0.75)] outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100/80";
+
   return (
     <>
-      <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 shadow-inner">
+      <div className="rounded-[26px] border border-slate-200/90 bg-gradient-to-br from-white via-slate-50 to-sky-50/50 px-4 py-4 shadow-[0_18px_38px_rgba(148,163,184,0.08)] ring-1 ring-white/80">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-slate-900">Schedule Appointment</h2>
           <span className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 ring-1 ring-sky-100">
@@ -53,7 +56,7 @@ export function AssistantSidebar({
             onChange={(event) =>
               onScheduleFormChange((prev) => ({ ...prev, patientId: event.target.value }))
             }
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-inner outline-none"
+            className={controlClassName}
           >
             <option value="">Select patient</option>
             {patientOptions.map((patient) => (
@@ -68,7 +71,7 @@ export function AssistantSidebar({
             onChange={(event) =>
               onScheduleFormChange((prev) => ({ ...prev, doctorId: event.target.value }))
             }
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-inner outline-none"
+            className={controlClassName}
           >
             <option value="">Select doctor</option>
             {availableDoctors
@@ -86,7 +89,7 @@ export function AssistantSidebar({
             onChange={(event) =>
               onScheduleFormChange((prev) => ({ ...prev, scheduledAt: event.target.value }))
             }
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-inner outline-none"
+            className={controlClassName}
           />
           <input
             value={scheduleForm.reason}
@@ -95,9 +98,9 @@ export function AssistantSidebar({
               onScheduleFormChange((prev) => ({ ...prev, reason: event.target.value }))
             }
             placeholder="Consultation reason"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-inner outline-none"
+            className={controlClassName}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {(["Normal", "Urgent", "Critical"] as const).map((priority) => (
               <button
                 key={priority}
@@ -106,11 +109,13 @@ export function AssistantSidebar({
                 onClick={() =>
                   onScheduleFormChange((prev) => ({ ...prev, priority }))
                 }
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  scheduleForm.priority === priority
-                    ? "bg-amber-500 text-white"
-                    : "bg-white text-amber-700 ring-1 ring-amber-100"
-                }`}
+                className={`w-full ${
+                  priority === "Normal"
+                    ? "app-priority app-priority--normal"
+                    : priority === "Urgent"
+                      ? "app-priority app-priority--urgent"
+                      : "app-priority app-priority--critical"
+                } ${scheduleForm.priority === priority ? "is-active" : ""}`}
               >
                 {priority}
               </button>
@@ -120,7 +125,7 @@ export function AssistantSidebar({
             type="button"
             onClick={onScheduleAppointment}
             disabled={isScheduling || !canCreateAppointments}
-            className="w-full rounded-2xl bg-[var(--ioc-blue)] px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:-translate-y-0.5 hover:bg-[#0070f0] disabled:cursor-not-allowed disabled:opacity-70"
+            className="app-button app-button--primary app-button--full"
           >
             {isScheduling ? "Scheduling..." : "Schedule appointment"}
           </button>
@@ -151,10 +156,10 @@ export function AssistantSidebar({
         )}
       </div>
 
-      <div className="mt-6 flex items-center justify-between text-sm font-semibold text-slate-900">
+      <div className="mt-6 flex items-center justify-between gap-3 text-sm font-semibold text-slate-900">
         <span>Completed Patient List</span>
         <input
-          className="rounded-full border border-slate-200 px-3 py-2 text-xs shadow-inner"
+          className="min-h-11 w-full max-w-[170px] rounded-full border border-slate-200/90 bg-white/90 px-4 py-2 text-xs font-medium shadow-[inset_0_1px_2px_rgba(148,163,184,0.16)] outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-4 focus:ring-sky-100"
           placeholder="Search patient"
           value={completedSearch}
           onChange={(e) => onCompletedSearchChange(e.target.value)}
@@ -166,7 +171,7 @@ export function AssistantSidebar({
             key={`${entry.profileId ?? "completed"}-${entry.nic}-${entry.time}-${index}`}
             type="button"
             onClick={() => onOpenProfile(entry.profileId)}
-            className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-700 transition hover:-translate-y-0.5 hover:bg-sky-50 hover:ring-1 hover:ring-sky-200"
+            className="flex w-full items-center justify-between rounded-[22px] border border-slate-100 bg-slate-50/90 px-4 py-3 text-left text-xs text-slate-700 transition hover:-translate-y-0.5 hover:bg-sky-50 hover:ring-1 hover:ring-sky-200"
           >
             <div>
               <p className="font-semibold text-slate-900">{entry.name}</p>

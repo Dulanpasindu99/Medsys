@@ -50,14 +50,14 @@ export default function OwnerSection() {
                         <div className="flex flex-wrap gap-3 text-sm text-slate-600">
                             <Link
                                 href="/login"
-                                className="inline-flex items-center gap-2 rounded-full bg-[var(--ioc-blue)] px-3 py-2 font-semibold text-white shadow-[0_10px_24px_rgba(10,132,255,0.35)] transition hover:-translate-y-0.5 hover:bg-[#0070f0]"
+                                className="app-button app-button--primary app-button--pill px-4"
                             >
                                 Back to login
                             </Link>
                             <button
                                 type="button"
                                 onClick={refresh}
-                                className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:-translate-y-0.5"
+                                className="app-button app-button--secondary app-button--pill px-4"
                                 disabled={isSyncing}
                             >
                                 {isSyncing ? 'Refreshing...' : 'Refresh live staff'}

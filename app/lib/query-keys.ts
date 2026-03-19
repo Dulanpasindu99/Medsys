@@ -34,6 +34,9 @@ export const queryKeys = {
       ["patients", "conditions", String(patientId)] as const,
     timeline: (patientId: number | string) => ["patients", "timeline", String(patientId)] as const,
   },
+  families: {
+    list: ["families", "list"] as const,
+  },
   appointments: {
     list: (status?: string) =>
       status ? (["appointments", "list", status] as const) : (["appointments", "list"] as const),

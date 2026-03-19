@@ -32,7 +32,7 @@ export default function GlobalError({
               <button
                 type="button"
                 onClick={() => reset()}
-                className="rounded-2xl bg-[var(--ioc-blue)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(10,132,255,0.4)] transition hover:bg-[#0070f0]"
+                className="app-button app-button--primary"
               >
                 Try again
               </button>

@@ -245,6 +245,7 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
     "nic",
     "gender",
     "familyId",
+    "familyCode",
     "guardianPatientId",
     "guardianName",
     "guardianNic",
@@ -277,6 +278,12 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const familyIdOptional =
     payload.familyId === undefined ? success<number | undefined>(undefined) : familyId;
   if (!familyIdOptional.ok) issues.push(...familyIdOptional.issues);
+
+  const familyCode = normalizeOptionalString(payload.familyCode, "familyCode", {
+    maxLength: 60,
+    allowEmpty: false,
+  });
+  if (!familyCode.ok) issues.push(...familyCode.issues);
 
   const guardianPatientId = normalizeRequiredPositiveInteger(
     payload.guardianPatientId,
@@ -361,6 +368,7 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
     !nic.ok ||
     !gender.ok ||
     !familyIdOptional.ok ||
+    !familyCode.ok ||
     !guardianPatientIdOptional.ok ||
     !guardianName.ok ||
     !guardianNic.ok ||
@@ -371,6 +379,7 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   }
 
   const guardianPatientIdValue = guardianPatientIdOptional.value;
+  const familyCodeValue = familyCode.value;
   const guardianNameValue = guardianName.value;
   const guardianNicValue = guardianNic.value;
   const guardianPhoneValue = guardianPhone.value;
@@ -386,6 +395,7 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
     nic: nic.value ?? null,
     gender: gender.value,
     ...(familyIdValue ? { familyId: familyIdValue } : {}),
+    ...(familyCodeValue ? { familyCode: familyCodeValue } : {}),
     ...(guardianPatientIdValue
       ? { guardianPatientId: guardianPatientIdValue }
       : {}),
@@ -408,6 +418,7 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     "nic",
     "gender",
     "familyId",
+    "familyCode",
     "guardianPatientId",
     "guardianName",
     "guardianNic",
@@ -428,6 +439,7 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     nic?: string | null;
     gender?: "male" | "female" | "other";
     familyId?: number | null;
+    familyCode?: string | null;
     guardianPatientId?: number | null;
     guardianName?: string | null;
     guardianNic?: string | null;
@@ -506,6 +518,18 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
       issues.push(...familyId.issues);
     } else {
       result.familyId = familyId.value;
+    }
+  }
+
+  if ("familyCode" in payload) {
+    const familyCode = normalizeOptionalString(payload.familyCode, "familyCode", {
+      maxLength: 60,
+      allowEmpty: false,
+    });
+    if (!familyCode.ok) {
+      issues.push(...familyCode.issues);
+    } else {
+      result.familyCode = familyCode.value ?? null;
     }
   }
 

@@ -21,6 +21,7 @@ export default function AssistantSection() {
         stats,
         availableDoctors,
         patientOptions,
+        familyOptions,
         filteredCompleted,
         addPatient,
         addAllergy,
@@ -80,6 +81,7 @@ export default function AssistantSection() {
                                             formState={formState}
                                             setFormState={setFormState}
                                             patientOptions={patientOptions}
+                                            familyOptions={familyOptions}
                                             addAllergy={addAllergy}
                                             addPatient={addPatient}
                                             canCreatePatients={canCreatePatientsInWorkflow}

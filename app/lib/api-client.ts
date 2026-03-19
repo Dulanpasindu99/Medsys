@@ -135,6 +135,7 @@ export type PatientWriteInput = {
   phone?: string | null;
   address?: string | null;
   familyId?: number;
+  familyCode?: string | null;
   guardianPatientId?: number;
   guardianName?: string | null;
   guardianNic?: string | null;

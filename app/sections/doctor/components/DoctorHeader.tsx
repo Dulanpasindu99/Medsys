@@ -111,22 +111,14 @@ export function DoctorHeader({
             <button
               type="button"
               onClick={() => onGenderChange("Male")}
-              className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wider transition ${
-                gender === "Male"
-                  ? "bg-[#35A8D3] text-white shadow-[0_10px_24px_rgba(53,168,211,0.35)]"
-                  : "bg-white text-[#2F8FB8] ring-1 ring-[#B9E3F2] hover:bg-[#EAF7FC]"
-              }`}
+              className={`app-segment app-segment--male ${gender === "Male" ? "is-active" : ""}`}
             >
               Male
             </button>
             <button
               type="button"
               onClick={() => onGenderChange("Female")}
-              className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wider transition ${
-                gender === "Female"
-                  ? "bg-[#C1357D] text-white shadow-[0_10px_24px_rgba(193,53,125,0.35)]"
-                  : "bg-white text-[#A92D6C] ring-1 ring-[#F1C1D7] hover:bg-[#FCEAF2]"
-              }`}
+              className={`app-segment app-segment--female ${gender === "Female" ? "is-active" : ""}`}
             >
               Female
             </button>

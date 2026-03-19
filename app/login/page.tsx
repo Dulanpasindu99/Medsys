@@ -158,7 +158,7 @@ const OwnerPanel = ({
       </div>
       <Link
         href="/owner"
-        className="ios-button-primary px-5 py-2 text-[11px] uppercase tracking-[0.2em]"
+        className="app-button app-button--primary app-button--pill px-5 text-[11px] uppercase tracking-[0.2em]"
       >
         Owner tools
       </Link>
@@ -186,7 +186,7 @@ const OwnerPanel = ({
         type="button"
         onClick={onSubmit}
         disabled={isSubmitting}
-        className="ios-button-primary px-6 disabled:cursor-not-allowed disabled:opacity-70"
+        className="app-button app-button--primary app-button--pill px-6"
       >
         {isSubmitting ? "Signing in..." : "Sign in as owner"}
       </button>
@@ -251,7 +251,7 @@ const DoctorPanel = ({
       type="button"
       onClick={onSubmit}
       disabled={isSubmitting}
-      className="ios-button-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-70"
+      className="app-button app-button--primary app-button--full mt-4"
     >
       {isSubmitting ? "Signing in..." : "Continue as doctor"}
     </button>
@@ -305,7 +305,7 @@ const AssistantPanel = ({
       type="button"
       onClick={onSubmit}
       disabled={isSubmitting}
-      className="ios-button-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-70"
+      className="app-button app-button--primary app-button--full mt-4"
     >
       {isSubmitting ? "Signing in..." : "Continue as assistant"}
     </button>
