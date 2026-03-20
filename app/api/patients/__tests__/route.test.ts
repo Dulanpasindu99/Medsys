@@ -204,6 +204,36 @@ describe("/api/patients BFF routes", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("rejects invalid Sri Lankan NIC values for patient create payloads", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await createPatientRoute(
+      buildRequest("http://localhost/api/patients", "assistant", "POST", {
+        firstName: "Harini",
+        lastName: "Silva",
+        dob: "1996-11-20",
+        nic: "19961120000",
+        gender: "female",
+        phone: "+94715678900",
+        address: "Panadura, Sri Lanka",
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      error: "Validation failed.",
+      issues: [
+        {
+          field: "nic",
+          message: "Must be a valid Sri Lankan NIC: 12 digits or 9 digits followed by V/X.",
+        },
+      ],
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("passes the current frontend patient payload shape through the BFF", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -231,22 +261,30 @@ describe("/api/patients BFF routes", () => {
         nic: "991234567V",
         gender: "female",
         phone: "555-2222",
+        bloodGroup: "B+",
+        priority: "high",
+        allergies: [
+          { allergyName: "Penicillin", severity: "high", isActive: true },
+        ],
       })
     );
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
-      JSON.stringify({
-        firstName: "Jane",
-        lastName: "Doe",
-        dob: "1999-03-09",
-        phone: "555-2222",
-        address: null,
-        nic: "991234567V",
-        gender: "female",
-      })
-    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      firstName: "Jane",
+      lastName: "Doe",
+      dob: "1999-03-09",
+      phone: "555-2222",
+      address: null,
+      bloodGroup: "B+",
+      allergies: [
+        { allergyName: "Penicillin", severity: "high", isActive: true },
+      ],
+      priority: "high",
+      nic: "991234567V",
+      gender: "female",
+    });
     expect(body).toEqual({
       patient: {
         id: 9,

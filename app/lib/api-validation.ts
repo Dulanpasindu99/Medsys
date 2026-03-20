@@ -235,6 +235,111 @@ function normalizePhone(value: unknown, field: string) {
   return normalizeOptionalString(value, field, { maxLength: 30, allowEmpty: false });
 }
 
+function normalizeSriLankanNic(value: unknown, field: string) {
+  const normalized = normalizeOptionalString(value, field, {
+    maxLength: 32,
+    allowEmpty: false,
+  });
+  if (!normalized.ok) {
+    return normalized;
+  }
+
+  if (normalized.value === undefined || normalized.value === null) {
+    return normalized;
+  }
+
+  const nic = normalized.value.toUpperCase();
+  if (!/^(?:\d{12}|\d{9}[VX])$/.test(nic)) {
+    return failure([
+      {
+        field,
+        message: "Must be a valid Sri Lankan NIC: 12 digits or 9 digits followed by V/X.",
+      },
+    ]);
+  }
+
+  return success(nic);
+}
+
+function normalizeBloodGroup(value: unknown, field: string) {
+  const normalized = normalizeOptionalString(value, field, {
+    maxLength: 4,
+    allowEmpty: false,
+  });
+  if (!normalized.ok) {
+    return normalized;
+  }
+
+  if (normalized.value === undefined || normalized.value === null) {
+    return normalized;
+  }
+
+  const bloodGroup = normalized.value.toUpperCase();
+  if (!["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].includes(bloodGroup)) {
+    return failure([{ field, message: "Must be a valid blood group." }]);
+  }
+
+  return success(bloodGroup);
+}
+
+function normalizePatientAllergies(value: unknown, field: string) {
+  if (value === undefined) {
+    return success<
+      | Array<{ allergyName: string; severity: "low" | "moderate" | "high"; isActive: boolean }>
+      | undefined
+    >(undefined);
+  }
+
+  if (!Array.isArray(value)) {
+    return failure([{ field, message: "Must be an array of allergy objects." }]);
+  }
+
+  const issues: ValidationIssue[] = [];
+  const normalized = value.flatMap((entry, index) => {
+    if (!isRecord(entry)) {
+      issues.push({ field: `${field}[${index}]`, message: "Must be an object." });
+      return [];
+    }
+
+    const allergyName = normalizeRequiredString(entry.allergyName, `${field}[${index}].allergyName`, {
+      maxLength: 120,
+    });
+    if (!allergyName.ok) {
+      issues.push(...allergyName.issues);
+    }
+
+    const severityRaw = entry.severity;
+    if (severityRaw !== "low" && severityRaw !== "moderate" && severityRaw !== "high") {
+      issues.push({
+        field: `${field}[${index}].severity`,
+        message: "Must be one of low, moderate, high.",
+      });
+    }
+
+    const isActiveRaw = entry.isActive;
+    if (isActiveRaw !== undefined && typeof isActiveRaw !== "boolean") {
+      issues.push({
+        field: `${field}[${index}].isActive`,
+        message: "Must be a boolean.",
+      });
+    }
+
+    if (!allergyName.ok || (severityRaw !== "low" && severityRaw !== "moderate" && severityRaw !== "high")) {
+      return [];
+    }
+
+    return [
+      {
+        allergyName: allergyName.value,
+        severity: severityRaw,
+        isActive: isActiveRaw === undefined ? true : isActiveRaw,
+      } as const,
+    ];
+  });
+
+  return issues.length > 0 ? failure(issues) : success(normalized);
+}
+
 export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
     "firstName",
@@ -242,6 +347,9 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
     "dob",
     "phone",
     "address",
+    "bloodGroup",
+    "allergies",
+    "priority",
     "nic",
     "gender",
     "familyId",
@@ -268,7 +376,16 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   const address = normalizeOptionalString(payload.address, "address", { maxLength: 255, allowEmpty: false });
   if (!address.ok) issues.push(...address.issues);
 
-  const nic = normalizeOptionalString(payload.nic, "nic", { maxLength: 32, allowEmpty: false });
+  const bloodGroup = normalizeBloodGroup(payload.bloodGroup, "bloodGroup");
+  if (!bloodGroup.ok) issues.push(...bloodGroup.issues);
+
+  const allergies = normalizePatientAllergies(payload.allergies, "allergies");
+  if (!allergies.ok) issues.push(...allergies.issues);
+
+  const priority = normalizePatientPriority(payload.priority, "priority");
+  if (!priority.ok) issues.push(...priority.issues);
+
+  const nic = normalizeSriLankanNic(payload.nic, "nic");
   if (!nic.ok) issues.push(...nic.issues);
 
   const gender = normalizePatientGender(payload.gender, "gender");
@@ -301,10 +418,7 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
   });
   if (!guardianName.ok) issues.push(...guardianName.issues);
 
-  const guardianNic = normalizeOptionalString(payload.guardianNic, "guardianNic", {
-    maxLength: 32,
-    allowEmpty: false,
-  });
+  const guardianNic = normalizeSriLankanNic(payload.guardianNic, "guardianNic");
   if (!guardianNic.ok) issues.push(...guardianNic.issues);
 
   const guardianPhone = normalizePhone(payload.guardianPhone, "guardianPhone");
@@ -365,6 +479,9 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
     !dob.ok ||
     !phone.ok ||
     !address.ok ||
+    !bloodGroup.ok ||
+    !allergies.ok ||
+    !priority.ok ||
     !nic.ok ||
     !gender.ok ||
     !familyIdOptional.ok ||
@@ -392,6 +509,9 @@ export function validatePatientCreatePayload(payload: Record<string, unknown>) {
     dob: dob.value ?? null,
     phone: phone.value ?? null,
     address: address.value ?? null,
+    ...(bloodGroup.value ? { bloodGroup: bloodGroup.value } : {}),
+    ...(allergies.value && allergies.value.length > 0 ? { allergies: allergies.value } : {}),
+    ...(priority.value ? { priority: priority.value } : {}),
     nic: nic.value ?? null,
     gender: gender.value,
     ...(familyIdValue ? { familyId: familyIdValue } : {}),
@@ -493,7 +613,7 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
   }
 
   if ("nic" in payload) {
-    const nic = normalizeOptionalString(payload.nic, "nic", { maxLength: 32, allowEmpty: false });
+    const nic = normalizeSriLankanNic(payload.nic, "nic");
     if (!nic.ok) {
       issues.push(...nic.issues);
     } else {
@@ -557,10 +677,7 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
   }
 
   if ("guardianNic" in payload) {
-    const guardianNic = normalizeOptionalString(payload.guardianNic, "guardianNic", {
-      maxLength: 32,
-      allowEmpty: false,
-    });
+    const guardianNic = normalizeSriLankanNic(payload.guardianNic, "guardianNic");
     if (!guardianNic.ok) {
       issues.push(...guardianNic.issues);
     } else {

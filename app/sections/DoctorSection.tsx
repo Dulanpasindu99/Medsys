@@ -44,6 +44,9 @@ export default function DoctorSection() {
     setAllergyNameDraft,
     allergyDraftSeverity,
     setAllergySeverityDraft,
+    editingAllergyName,
+    handleEditAllergy,
+    handleClearAllergyDraft,
     canEditAllergies,
     allergiesDisabledReason,
     allergyFeedback,
@@ -132,6 +135,9 @@ export default function DoctorSection() {
                 onAllergyDraftNameChange={setAllergyNameDraft}
                 allergyDraftSeverity={allergyDraftSeverity}
                 onAllergyDraftSeverityChange={setAllergySeverityDraft}
+                editingAllergyName={editingAllergyName}
+                onEditAllergy={handleEditAllergy}
+                onClearAllergyDraft={handleClearAllergyDraft}
                 canEditAllergies={canEditAllergies}
                 allergiesDisabledReason={allergiesDisabledReason}
                 allergyFeedback={allergyFeedback}

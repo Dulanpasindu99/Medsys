@@ -155,6 +155,7 @@ describe("useDoctorWorkspaceData", () => {
     expect(result.current.patientAllergies[0]).toMatchObject({
       name: "Peanut",
       severity: "High",
+      severityKey: "high",
     });
   });
 
@@ -650,20 +651,27 @@ describe("useDoctorWorkspaceData", () => {
     act(() => {
       result.current.setVitalDraft("bloodPressure", "120/80");
       result.current.setVitalDraft("heartRate", "72 bpm");
+      result.current.setVitalDraft("temperature", "36.8");
+      result.current.setVitalDraft("spo2", "99");
     });
 
     await act(async () => {
       await result.current.handleSaveVitals();
     });
 
-    expect(mockedCreatePatientVital).toHaveBeenCalledWith(7, {
-      name: "Blood Pressure",
-      value: "120/80",
-    });
-    expect(mockedCreatePatientVital).toHaveBeenCalledWith(7, {
-      name: "Heart Rate",
-      value: "72 bpm",
-    });
+    expect(mockedCreatePatientVital).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        bpSystolic: 120,
+        bpDiastolic: 80,
+        heartRate: 72,
+        temperatureC: 36.8,
+        spo2: 99,
+        recordedAt: expect.any(String),
+      })
+    );
+    expect(mockedCreatePatientVital.mock.calls[0]?.[1]).not.toHaveProperty("encounterId");
+    expect(mockedCreatePatientVital).toHaveBeenCalledTimes(1);
     expect(result.current.vitalsFeedback?.message).toBe("Patient vitals updated.");
   });
 
@@ -708,11 +716,66 @@ describe("useDoctorWorkspaceData", () => {
     });
 
     expect(mockedCreatePatientAllergy).toHaveBeenCalledWith(7, {
-      name: "Peanut",
+      allergyName: "Peanut",
       severity: "high",
     });
     expect(result.current.allergyDraftName).toBe("");
     expect(result.current.allergyFeedback?.message).toBe("Patient allergy updated.");
+  });
+
+  it("loads an existing allergy into the draft editor and dedupes case variants", async () => {
+    mockedUsePatientAllergiesQuery.mockReturnValue(
+      buildQueryState({
+        data: [
+          { name: "DUST", severity: "moderate" },
+          { name: "Dust", severity: "high" },
+        ],
+      }) as never
+    );
+
+    const clinicalWorkflow = {
+      selectedDiseases: [],
+      selectedTests: [],
+      rxRows: [],
+    } as never;
+    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
+
+    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
+      wrapper: createQueryWrapper(),
+    });
+
+    act(() => {
+      result.current.handlePatientSelect({
+        patientId: 7,
+        appointmentId: 22,
+        doctorId: 5,
+        name: "Jane Doe",
+        patientCode: "P-0007",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        reason: "Fever",
+        time: "10:30",
+        profileId: "7",
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientAllergies).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.handleEditAllergy(result.current.patientAllergies[0]!);
+    });
+
+    expect(result.current.patientAllergies[0]).toMatchObject({
+      name: "Dust",
+      severity: "High",
+      severityKey: "high",
+    });
+    expect(result.current.editingAllergyName).toBe("Dust");
+    expect(result.current.allergyDraftName).toBe("Dust");
+    expect(result.current.allergyDraftSeverity).toBe("high");
   });
 
   it("shows a lookup notice when top identity lookup finds no patient", async () => {
@@ -800,9 +863,9 @@ describe("useDoctorWorkspaceData", () => {
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: queryKeys.encounters.list,
     });
-    expect(patientsQuery.refetch).toHaveBeenCalled();
-    expect(appointmentsQuery.refetch).toHaveBeenCalled();
-    expect(currentUserQuery.refetch).toHaveBeenCalled();
+    expect(patientsQuery.refetch).not.toHaveBeenCalled();
+    expect(appointmentsQuery.refetch).not.toHaveBeenCalled();
+    expect(currentUserQuery.refetch).not.toHaveBeenCalled();
     expect(result.current.saveState.status).toBe("success");
     expect(result.current.selectedAppointmentStatus).toBe("completed");
   });
@@ -922,7 +985,7 @@ describe("useDoctorWorkspaceData", () => {
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: ["appointments"],
     });
-    expect(appointmentsQuery.refetch).toHaveBeenCalled();
+    expect(appointmentsQuery.refetch).not.toHaveBeenCalled();
     expect(result.current.transitionState.status).toBe("success");
     expect(result.current.selectedAppointmentStatus).toBe("in_consultation");
   });

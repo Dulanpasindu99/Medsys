@@ -30,6 +30,7 @@ import {
 } from "../../../lib/query-hooks";
 import { queryKeys } from "../../../lib/query-keys";
 import type {
+  AssistantAllergyEntry,
   AssistantDoctorAvailability,
   AssistantFamilyOption,
   AssistantFormState,
@@ -120,6 +121,22 @@ function normalizeSriLankanPhone(value: string) {
   if (compact.startsWith("94")) return `+94${compact.slice(2).replace(/\D/g, "")}`;
   if (compact.startsWith("0")) return `+94${compact.slice(1).replace(/\D/g, "")}`;
   return compact;
+}
+
+function isValidSriLankanNic(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  return /^(?:\d{12}|\d{9}[VvXx])$/.test(trimmed);
+}
+
+function normalizeAllergyName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function mapAssistantPriorityToApiPriority(priority: AssistantFormState["priority"]) {
+  if (priority === "Critical") return "critical" as const;
+  if (priority === "Urgent") return "high" as const;
+  return "normal" as const;
 }
 
 function toDateTimeLocalValue(value: Date) {
@@ -428,7 +445,8 @@ export function useAssistantWorkflow() {
     mobile: "",
     address: "",
     allergyInput: "",
-    allergies: ["No allergies"],
+    allergySeverity: "moderate",
+    allergies: [],
     bloodGroup: "O+",
     priority: "Normal",
     regularDrug: "",
@@ -640,6 +658,18 @@ export function useAssistantWorkflow() {
       );
       return;
     }
+    if (!isValidSriLankanNic(formState.nic)) {
+      setCreatePatientState(
+        errorMutationState("Patient NIC must be 12 digits or 9 digits followed by V/X.")
+      );
+      return;
+    }
+    if (!isValidSriLankanNic(formState.guardian.guardianNic)) {
+      setCreatePatientState(
+        errorMutationState("Guardian NIC must be 12 digits or 9 digits followed by V/X.")
+      );
+      return;
+    }
     if (isMinor && !hasGuardianLink && !hasGuardianName) {
       setCreatePatientState(
         errorMutationState("Child registration needs an existing guardian link or guardian name.")
@@ -662,6 +692,13 @@ export function useAssistantWorkflow() {
         nic: formState.nic.trim() || null,
         phone: normalizeSriLankanPhone(formState.mobile) || null,
         address: formState.address.trim() || null,
+        bloodGroup: formState.bloodGroup.trim() || null,
+        priority: mapAssistantPriorityToApiPriority(formState.priority),
+        allergies: formState.allergies.map((entry) => ({
+          allergyName: entry.name,
+          severity: entry.severity,
+          isActive: true,
+        })),
         ...(formState.guardian.familyId ? { familyId: Number(formState.guardian.familyId) } : {}),
         ...(!formState.guardian.familyId && formState.guardian.familyCode.trim()
           ? { familyCode: formState.guardian.familyCode.trim() }
@@ -699,7 +736,9 @@ export function useAssistantWorkflow() {
         mobile: "",
         address: "",
         allergyInput: "",
-        allergies: ["No allergies"],
+        allergySeverity: "moderate",
+        allergies: [],
+        bloodGroup: "O+",
         regularDrug: "",
         priority: "Normal",
         guardian: {
@@ -727,11 +766,19 @@ export function useAssistantWorkflow() {
   };
 
   const addAllergy = () => {
-    const entry = formState.allergyInput.trim();
+    const entry = formState.allergyInput.trim().replace(/\s+/g, " ");
     if (!entry) return;
     setFormState((prev) => ({
       ...prev,
-      allergies: Array.from(new Set([...prev.allergies.filter((v) => v !== "No allergies"), entry])),
+      allergies: prev.allergies.some(
+        (allergy) => normalizeAllergyName(allergy.name) === normalizeAllergyName(entry)
+      )
+        ? prev.allergies.map((allergy) =>
+            normalizeAllergyName(allergy.name) === normalizeAllergyName(entry)
+              ? ({ ...allergy, severity: prev.allergySeverity } satisfies AssistantAllergyEntry)
+              : allergy
+          )
+        : [...prev.allergies, { name: entry, severity: prev.allergySeverity }],
       allergyInput: "",
     }));
   };

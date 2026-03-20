@@ -44,8 +44,8 @@ type AnyRecord = Record<string, unknown>;
 type ClinicalWorkflow = ReturnType<typeof useDoctorClinicalWorkflow>;
 type VisitPlannerState = ReturnType<typeof useVisitPlanner>;
 const EMPTY_ROWS: unknown[] = [];
-type VitalDraftKey = "bloodPressure" | "heartRate" | "temperature" | "weight";
-type AllergySeverity = "low" | "medium" | "high";
+type VitalDraftKey = "bloodPressure" | "heartRate" | "temperature" | "spo2";
+type AllergySeverity = "low" | "moderate" | "high";
 
 function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
@@ -294,10 +294,44 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
 }
 
 function normalizeVitals(raw: unknown): PatientVital[] {
-  return asArray(raw).map((row, index) => ({
-    label: getString(row.label ?? row.name ?? row.vitalName ?? row.type, `Vital ${index + 1}`),
-    value: getString(row.value ?? row.reading ?? row.result, "--"),
-  }));
+  return asArray(raw).flatMap((row, index) => {
+    const typedVitals: PatientVital[] = [];
+    const bpSystolic = getNumber(row.bpSystolic ?? row.bp_systolic);
+    const bpDiastolic = getNumber(row.bpDiastolic ?? row.bp_diastolic);
+    const heartRate = getNumber(row.heartRate ?? row.heart_rate);
+    const temperatureC = getNumber(row.temperatureC ?? row.temperature_c);
+    const spo2 = getNumber(row.spo2 ?? row.spo_2);
+
+    if (bpSystolic !== null || bpDiastolic !== null) {
+      typedVitals.push({
+        label: "Blood Pressure",
+        value:
+          bpSystolic !== null && bpDiastolic !== null
+            ? `${bpSystolic}/${bpDiastolic}`
+            : `${bpSystolic ?? "--"}/${bpDiastolic ?? "--"}`,
+      });
+    }
+    if (heartRate !== null) {
+      typedVitals.push({ label: "Heart Rate", value: String(heartRate) });
+    }
+    if (temperatureC !== null) {
+      typedVitals.push({ label: "Temperature", value: String(temperatureC) });
+    }
+    if (spo2 !== null) {
+      typedVitals.push({ label: "SpO2", value: String(spo2) });
+    }
+
+    if (typedVitals.length > 0) {
+      return typedVitals;
+    }
+
+    return [
+      {
+        label: getString(row.label ?? row.name ?? row.vitalName ?? row.type, `Vital ${index + 1}`),
+        value: getString(row.value ?? row.reading ?? row.result, "--"),
+      },
+    ];
+  });
 }
 
 function buildVitalDrafts(vitals: PatientVital[]) {
@@ -305,7 +339,7 @@ function buildVitalDrafts(vitals: PatientVital[]) {
     bloodPressure: "",
     heartRate: "",
     temperature: "",
-    weight: "",
+    spo2: "",
   };
 
   vitals.forEach((vital) => {
@@ -322,8 +356,8 @@ function buildVitalDrafts(vitals: PatientVital[]) {
       drafts.temperature = vital.value;
       return;
     }
-    if (label === "weight") {
-      drafts.weight = vital.value;
+    if (label === "spo2" || label === "spo 2" || label === "oxygen saturation") {
+      drafts.spo2 = vital.value;
     }
   });
 
@@ -331,34 +365,51 @@ function buildVitalDrafts(vitals: PatientVital[]) {
 }
 
 function normalizeAllergies(raw: unknown): AllergyAlert[] {
-  return asArray(raw).map((row, index) => {
+  const deduped = new Map<string, AllergyAlert>();
+
+  asArray(raw).forEach((row, index) => {
     const name = getString(row.name ?? row.allergyName ?? row.allergen, `Allergy ${index + 1}`);
     const severity = getString(row.severity, "Medium");
     const level = severity.toLowerCase();
+    const key = normalizeLookupValue(name);
 
-    if (level === "high" || level === "critical") {
-      return {
-        name,
-        severity: "High",
-        dot: "bg-rose-400",
-        pill: "bg-rose-50 text-rose-700 ring-rose-100",
-      };
+    const normalized =
+      level === "high" || level === "critical"
+        ? {
+            name,
+            severity: "High",
+            severityKey: "high" as const,
+            dot: "bg-rose-400",
+            pill: "bg-rose-50 text-rose-700 ring-rose-100",
+          }
+        : level === "low"
+          ? {
+              name,
+              severity: "Low",
+              severityKey: "low" as const,
+              dot: "bg-emerald-400",
+              pill: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+            }
+          : {
+              name,
+              severity: "Medium",
+              severityKey: "moderate" as const,
+              dot: "bg-amber-400",
+              pill: "bg-amber-50 text-amber-700 ring-amber-100",
+            };
+
+    const current = deduped.get(key);
+    const currentRank =
+      current?.severityKey === "high" ? 3 : current?.severityKey === "moderate" ? 2 : 1;
+    const nextRank =
+      normalized.severityKey === "high" ? 3 : normalized.severityKey === "moderate" ? 2 : 1;
+
+    if (!current || nextRank >= currentRank) {
+      deduped.set(key, normalized);
     }
-    if (level === "low") {
-      return {
-        name,
-        severity: "Low",
-        dot: "bg-emerald-400",
-        pill: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-      };
-    }
-    return {
-      name,
-      severity: "Medium",
-      dot: "bg-amber-400",
-      pill: "bg-amber-50 text-amber-700 ring-amber-100",
-    };
   });
+
+  return Array.from(deduped.values());
 }
 
 function dedupePatientsByIdentity(patients: Patient[]) {
@@ -495,11 +546,12 @@ export function useDoctorWorkspaceData(
     bloodPressure: "",
     heartRate: "",
     temperature: "",
-    weight: "",
+    spo2: "",
   });
   const [vitalsSaveState, setVitalsSaveState] = useState<MutationState>(idleMutationState());
   const [allergyDraftName, setAllergyDraftName] = useState("");
-  const [allergyDraftSeverity, setAllergyDraftSeverity] = useState<AllergySeverity>("medium");
+  const [allergyDraftSeverity, setAllergyDraftSeverity] = useState<AllergySeverity>("moderate");
+  const [editingAllergyName, setEditingAllergyName] = useState<string | null>(null);
   const [allergySaveState, setAllergySaveState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
@@ -782,6 +834,9 @@ export function useDoctorWorkspaceData(
 
   const setAllergyNameDraft = (value: string) => {
     clearAllergySaveState();
+    if (editingAllergyName && normalizeLookupValue(value) !== normalizeLookupValue(editingAllergyName)) {
+      setEditingAllergyName(null);
+    }
     setAllergyDraftName(value);
   };
 
@@ -805,10 +860,11 @@ export function useDoctorWorkspaceData(
       bloodPressure: "",
       heartRate: "",
       temperature: "",
-      weight: "",
+      spo2: "",
     });
     setAllergyDraftName("");
-    setAllergyDraftSeverity("medium");
+    setAllergyDraftSeverity("moderate");
+    setEditingAllergyName(null);
     clearVitalsSaveState();
     clearAllergySaveState();
   };
@@ -946,8 +1002,6 @@ export function useDoctorWorkspaceData(
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
       queryClient.invalidateQueries({ queryKey: queryKeys.encounters.list }),
-      patientsQuery.refetch(),
-      waitingAppointmentsQuery.refetch(),
     ]);
   };
 
@@ -961,10 +1015,17 @@ export function useDoctorWorkspaceData(
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.vitals(selectedPatientId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.allergies(selectedPatientId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.timeline(selectedPatientId) }),
-      patientProfileQuery.refetch(),
-      patientVitalsQuery.refetch(),
-      patientAllergiesQuery.refetch(),
     ]);
+  };
+
+  const refreshSelectedPatientAllergies = async () => {
+    if (!selectedPatientId) {
+      return;
+    }
+
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.patients.allergies(selectedPatientId),
+    });
   };
 
   const handleSaveRecord = async () => {
@@ -1027,7 +1088,7 @@ export function useDoctorWorkspaceData(
       });
       setSelectedAppointmentStatus("completed");
       setSaveState(successMutationState("Encounter saved to backend."));
-      await Promise.all([refreshDoctorQueries(), currentUserQuery.refetch()]);
+      await refreshDoctorQueries();
     } catch (error) {
       setSaveState(
         errorMutationState((error as ApiClientError)?.message ?? "Failed to save encounter.")
@@ -1045,23 +1106,50 @@ export function useDoctorWorkspaceData(
       return;
     }
 
-    const entries = [
-      { name: "Blood Pressure", value: vitalDrafts.bloodPressure.trim() },
-      { name: "Heart Rate", value: vitalDrafts.heartRate.trim() },
-      { name: "Temperature", value: vitalDrafts.temperature.trim() },
-      { name: "Weight", value: vitalDrafts.weight.trim() },
-    ].filter((entry) => entry.value);
+    const bloodPressureText = vitalDrafts.bloodPressure.trim();
+    const heartRateText = vitalDrafts.heartRate.trim();
+    const temperatureText = vitalDrafts.temperature.trim();
+    const spo2Text = vitalDrafts.spo2.trim();
 
-    if (!entries.length) {
+    const bloodPressureMatch = bloodPressureText.match(/^\s*(\d{2,3})\s*\/\s*(\d{2,3})\s*$/);
+    const bpSystolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : undefined;
+    const bpDiastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : undefined;
+    const heartRateMatch = heartRateText.match(/\d+(?:\.\d+)?/);
+    const heartRate = heartRateMatch ? Number(heartRateMatch[0]) : undefined;
+    const temperatureMatch = temperatureText.match(/\d+(?:\.\d+)?/);
+    const temperatureC = temperatureMatch ? Number(temperatureMatch[0]) : undefined;
+    const spo2Match = spo2Text.match(/\d+(?:\.\d+)?/);
+    const spo2 = spo2Match ? Number(spo2Match[0]) : undefined;
+
+    const hasAnySupportedVital =
+      bpSystolic !== undefined ||
+      bpDiastolic !== undefined ||
+      heartRate !== undefined ||
+      temperatureC !== undefined ||
+      spo2 !== undefined;
+
+    if (!hasAnySupportedVital) {
       setVitalsSaveState(errorMutationState("Enter at least one vital value before saving."));
+      return;
+    }
+
+    if (bloodPressureText && (bpSystolic === undefined || bpDiastolic === undefined)) {
+      setVitalsSaveState(
+        errorMutationState("Blood pressure must use systolic/diastolic format, like 120/80.")
+      );
       return;
     }
 
     try {
       setVitalsSaveState(pendingMutationState());
-      for (const entry of entries) {
-        await createPatientVital(selectedPatientId, entry);
-      }
+      await createPatientVital(selectedPatientId, {
+        ...(bpSystolic !== undefined ? { bpSystolic } : {}),
+        ...(bpDiastolic !== undefined ? { bpDiastolic } : {}),
+        ...(heartRate !== undefined ? { heartRate } : {}),
+        ...(temperatureC !== undefined ? { temperatureC } : {}),
+        ...(spo2 !== undefined ? { spo2 } : {}),
+        recordedAt: new Date().toISOString(),
+      });
       await refreshSelectedPatientDetails();
       setVitalsSaveState(successMutationState("Patient vitals updated."));
     } catch (error) {
@@ -1091,17 +1179,32 @@ export function useDoctorWorkspaceData(
     try {
       setAllergySaveState(pendingMutationState());
       await createPatientAllergy(selectedPatientId, {
-        name,
+        allergyName: name,
         severity: allergyDraftSeverity,
       });
-      await refreshSelectedPatientDetails();
+      await refreshSelectedPatientAllergies();
       setAllergyDraftName("");
+      setEditingAllergyName(null);
       setAllergySaveState(successMutationState("Patient allergy updated."));
     } catch (error) {
       setAllergySaveState(
         errorMutationState((error as ApiClientError)?.message ?? "Failed to update patient allergy.")
       );
     }
+  };
+
+  const handleEditAllergy = (allergy: AllergyAlert) => {
+    clearAllergySaveState();
+    setEditingAllergyName(allergy.name);
+    setAllergyDraftName(allergy.name);
+    setAllergyDraftSeverity(allergy.severityKey);
+  };
+
+  const handleClearAllergyDraft = () => {
+    clearAllergySaveState();
+    setEditingAllergyName(null);
+    setAllergyDraftName("");
+    setAllergyDraftSeverity("moderate");
   };
 
   const handleStartConsultation = async () => {
@@ -1188,6 +1291,9 @@ export function useDoctorWorkspaceData(
     setAllergyNameDraft,
     allergyDraftSeverity,
     setAllergySeverityDraft,
+    editingAllergyName,
+    handleEditAllergy,
+    handleClearAllergyDraft,
     canEditAllergies,
     allergiesDisabledReason,
     allergySaveState,
@@ -1210,9 +1316,9 @@ export function useDoctorWorkspaceData(
     reload: () => {
       void Promise.all([
         refreshDoctorQueries(),
-        currentUserQuery.refetch(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.currentUser }),
         ...(selectedPatientId
-          ? [patientProfileQuery.refetch(), patientVitalsQuery.refetch(), patientAllergiesQuery.refetch()]
+          ? [refreshSelectedPatientDetails()]
           : []),
       ]);
     },

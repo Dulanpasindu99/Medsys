@@ -19,10 +19,10 @@ type DoctorSidebarProps = {
     bloodPressure: string;
     heartRate: string;
     temperature: string;
-    weight: string;
+    spo2: string;
   };
   onVitalDraftChange: (
-    key: "bloodPressure" | "heartRate" | "temperature" | "weight",
+    key: "bloodPressure" | "heartRate" | "temperature" | "spo2",
     value: string
   ) => void;
   canEditVitals?: boolean;
@@ -31,8 +31,11 @@ type DoctorSidebarProps = {
   onSaveVitals: () => void;
   allergyDraftName: string;
   onAllergyDraftNameChange: (value: string) => void;
-  allergyDraftSeverity: "low" | "medium" | "high";
-  onAllergyDraftSeverityChange: (value: "low" | "medium" | "high") => void;
+  allergyDraftSeverity: "low" | "moderate" | "high";
+  onAllergyDraftSeverityChange: (value: "low" | "moderate" | "high") => void;
+  editingAllergyName?: string | null;
+  onEditAllergy: (allergy: AllergyAlert) => void;
+  onClearAllergyDraft: () => void;
   canEditAllergies?: boolean;
   allergiesDisabledReason?: string | null;
   allergyFeedback?: { tone: "info" | "success" | "error"; message: string } | null;
@@ -104,6 +107,9 @@ export function DoctorSidebar({
   onAllergyDraftNameChange,
   allergyDraftSeverity,
   onAllergyDraftSeverityChange,
+  editingAllergyName = null,
+  onEditAllergy,
+  onClearAllergyDraft,
   canEditAllergies = false,
   allergiesDisabledReason = null,
   allergyFeedback = null,
@@ -194,7 +200,7 @@ export function DoctorSidebar({
                     ["bloodPressure", "Blood Pressure"],
                     ["heartRate", "Heart Rate"],
                     ["temperature", "Temperature"],
-                    ["weight", "Weight"],
+                    ["spo2", "SpO2"],
                   ].map(([key, label]) => (
                     <label
                       key={key}
@@ -207,7 +213,7 @@ export function DoctorSidebar({
                         value={vitalDrafts[key as keyof typeof vitalDrafts]}
                         onChange={(event) =>
                           onVitalDraftChange(
-                            key as "bloodPressure" | "heartRate" | "temperature" | "weight",
+                            key as "bloodPressure" | "heartRate" | "temperature" | "spo2",
                             event.target.value
                           )
                         }
@@ -269,7 +275,11 @@ export function DoctorSidebar({
                 patientAllergies.map((allergy) => (
                   <div
                     key={allergy.name}
-                    className="flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 ring-1 ring-white/70 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+                    className={`flex items-center justify-between rounded-2xl bg-white/90 px-4 py-3 ring-1 shadow-[0_12px_28px_rgba(15,23,42,0.08)] ${
+                      editingAllergyName?.toLowerCase() === allergy.name.toLowerCase()
+                        ? "ring-rose-200"
+                        : "ring-white/70"
+                    }`}
                   >
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -285,6 +295,14 @@ export function DoctorSidebar({
                       <span className={`size-2 rounded-full ${allergy.dot}`} />
                       {allergy.severity}
                     </span>
+                    <button
+                      type="button"
+                      disabled={!canEditAllergies}
+                      onClick={() => onEditAllergy(allergy)}
+                      className="ml-3 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition hover:border-rose-200 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      Edit
+                    </button>
                   </div>
                 ))
               ) : (
@@ -294,6 +312,18 @@ export function DoctorSidebar({
               )}
               {showPatientEditors ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 ring-1 ring-slate-100">
+                  {editingAllergyName ? (
+                    <div className="mb-3 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-rose-100">
+                      <span>Editing {editingAllergyName}</span>
+                      <button
+                        type="button"
+                        onClick={onClearAllergyDraft}
+                        className="rounded-full bg-white px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-600 ring-1 ring-rose-100 transition hover:text-rose-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                     <input
                       value={allergyDraftName}
@@ -306,14 +336,14 @@ export function DoctorSidebar({
                       value={allergyDraftSeverity}
                       onChange={(event) =>
                         onAllergyDraftSeverityChange(
-                          event.target.value as "low" | "medium" | "high"
+                          event.target.value as "low" | "moderate" | "high"
                         )
                       }
                       disabled={!canEditAllergies}
                       className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       <option value="low">Low</option>
-                      <option value="medium">Medium</option>
+                      <option value="moderate">Medium</option>
                       <option value="high">High</option>
                     </select>
                   </div>
@@ -324,8 +354,11 @@ export function DoctorSidebar({
                       disabled={!canEditAllergies}
                       className="app-button app-button--secondary app-button--full uppercase tracking-wider"
                     >
-                      Add Or Update Allergy
+                      {editingAllergyName ? "Update Allergy" : "Add Allergy"}
                     </button>
+                    <p className="text-xs font-medium text-slate-500">
+                      Removal is not available yet because the backend delete allergy endpoint is not exposed in this app.
+                    </p>
                     {!canEditAllergies && allergiesDisabledReason ? (
                       <p className="text-sm font-semibold text-amber-700">
                         {allergiesDisabledReason}

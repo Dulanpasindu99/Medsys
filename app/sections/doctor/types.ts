@@ -34,6 +34,7 @@ export type PatientVital = {
 export type AllergyAlert = {
   name: string;
   severity: string;
+  severityKey: "low" | "moderate" | "high";
   dot: string;
   pill: string;
 };

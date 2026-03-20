@@ -1,4 +1,9 @@
 export type AssistantPriority = "Normal" | "Urgent" | "Critical";
+export type AssistantAllergySeverity = "low" | "moderate" | "high";
+export type AssistantAllergyEntry = {
+  name: string;
+  severity: AssistantAllergySeverity;
+};
 
 export interface Prescription {
   prescriptionId?: number;
@@ -50,7 +55,8 @@ export type AssistantFormState = {
   mobile: string;
   address: string;
   allergyInput: string;
-  allergies: string[];
+  allergySeverity: AssistantAllergySeverity;
+  allergies: AssistantAllergyEntry[];
   bloodGroup: string;
   priority: AssistantPriority;
   regularDrug: string;

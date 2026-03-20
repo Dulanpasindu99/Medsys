@@ -214,9 +214,56 @@ describe("useAssistantWorkflow", () => {
         dob: "2016-01-01",
         address: "12 Lake Road",
         phone: "+94771234567",
+        bloodGroup: "O+",
+        priority: "normal",
+        allergies: [],
         familyCode: "FAM-1007",
         guardianName: "Sunethra Perera",
         guardianNic: "198765432109",
+      })
+    );
+  });
+
+  it("sends selected allergies and blood group in patient create requests", async () => {
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.setFormState((prev) => ({
+        ...prev,
+        firstName: "Harini",
+        lastName: "Silva",
+        dateOfBirth: "1996-11-20",
+        gender: "Female",
+        nic: "199611200001",
+        mobile: "0715678900",
+        address: "Panadura, Sri Lanka",
+        bloodGroup: "B+",
+        priority: "Urgent",
+        allergies: [
+          { name: "Penicillin", severity: "high" },
+          { name: "Dust", severity: "low" },
+        ],
+      }));
+    });
+
+    await act(async () => {
+      await result.current.addPatient();
+    });
+
+    expect(mockedCreatePatient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bloodGroup: "B+",
+        priority: "high",
+        allergies: [
+          { allergyName: "Penicillin", severity: "high", isActive: true },
+          { allergyName: "Dust", severity: "low", isActive: true },
+        ],
       })
     );
   });
@@ -300,23 +347,35 @@ describe("useAssistantWorkflow", () => {
     });
 
     act(() => {
-      result.current.setFormState((prev) => ({ ...prev, allergyInput: "Peanut" }));
+      result.current.setFormState((prev) => ({
+        ...prev,
+        allergyInput: "Peanut",
+        allergySeverity: "high",
+      }));
     });
     act(() => {
       result.current.addAllergy();
     });
 
-    expect(result.current.formState.allergies).toEqual(["Peanut"]);
+    expect(result.current.formState.allergies).toEqual([
+      { name: "Peanut", severity: "high" },
+    ]);
     expect(result.current.formState.allergyInput).toBe("");
 
     act(() => {
-      result.current.setFormState((prev) => ({ ...prev, allergyInput: "Peanut" }));
+      result.current.setFormState((prev) => ({
+        ...prev,
+        allergyInput: "Peanut",
+        allergySeverity: "low",
+      }));
     });
     act(() => {
       result.current.addAllergy();
     });
 
-    expect(result.current.formState.allergies).toEqual(["Peanut"]);
+    expect(result.current.formState.allergies).toEqual([
+      { name: "Peanut", severity: "low" },
+    ]);
   });
 
   it("does not submit patient creation when required fields are missing", async () => {
@@ -333,6 +392,36 @@ describe("useAssistantWorkflow", () => {
     });
 
     expect(mockedCreatePatient).not.toHaveBeenCalled();
+  });
+
+  it("blocks patient creation when the patient NIC format is invalid", async () => {
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockedListPendingDispenseQueue).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.setFormState((prev) => ({
+        ...prev,
+        firstName: "Harini",
+        lastName: "Silva",
+        dateOfBirth: "1996-11-20",
+        gender: "Female",
+        nic: "19961120000",
+        mobile: "0715678900",
+        address: "Panadura, Sri Lanka",
+      }));
+    });
+
+    await act(async () => {
+      await result.current.addPatient();
+    });
+
+    expect(mockedCreatePatient).not.toHaveBeenCalled();
+    expect(result.current.createPatientState.error).toMatch(/patient nic must be 12 digits or 9 digits followed by v\/x/i);
   });
 
   it("advances to the next queue item when dispense identifiers are unavailable", async () => {

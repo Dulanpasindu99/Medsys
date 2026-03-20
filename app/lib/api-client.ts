@@ -134,6 +134,13 @@ export type PatientWriteInput = {
   nic?: string | null;
   phone?: string | null;
   address?: string | null;
+  bloodGroup?: string | null;
+  allergies?: Array<{
+    allergyName: string;
+    severity: "low" | "moderate" | "high";
+    isActive?: boolean;
+  }>;
+  priority?: "low" | "normal" | "high" | "critical";
   familyId?: number;
   familyCode?: string | null;
   guardianPatientId?: number;
@@ -305,7 +312,15 @@ export async function listPatientVitals(patientId: number | string) {
 
 export async function createPatientVital(
   patientId: number | string,
-  input: { name: string; value: string }
+  input: {
+    encounterId?: number | null;
+    bpSystolic?: number | null;
+    bpDiastolic?: number | null;
+    heartRate?: number | null;
+    temperatureC?: number | null;
+    spo2?: number | null;
+    recordedAt: string;
+  }
 ) {
   const response = await apiFetch<unknown>(`/api/backend/v1/patients/${patientId}/vitals`, {
     method: "POST",
@@ -321,7 +336,7 @@ export async function listPatientAllergies(patientId: number | string) {
 
 export async function createPatientAllergy(
   patientId: number | string,
-  input: { name: string; severity: "low" | "medium" | "high" }
+  input: { allergyName: string; severity: "low" | "moderate" | "high" }
 ) {
   const response = await apiFetch<unknown>(`/api/backend/v1/patients/${patientId}/allergies`, {
     method: "POST",
