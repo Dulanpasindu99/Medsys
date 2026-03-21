@@ -39,6 +39,8 @@ vi.mock("../components/DoctorSidebar", () => ({
   DoctorSidebar: ({
     onOpenPatientHistory,
     onStartConsultation,
+    visitActionLabel,
+    visitModeLabel,
     onSaveRecord,
     canTransitionAppointments,
     transitionDisabledReason,
@@ -57,9 +59,12 @@ vi.mock("../components/DoctorSidebar", () => ({
     saveDisabledReason?: string | null;
     isTransitioningAppointment?: boolean;
     isSavingRecord?: boolean;
+    visitActionLabel?: string;
+    visitModeLabel?: string;
     selectedPatientProfileId?: string | null;
   }) => (
     <div>
+      <div>{visitModeLabel ?? "No Visit"}</div>
       <button type="button" onClick={onOpenPatientHistory} disabled={!selectedPatientProfileId}>
         View Patient History
       </button>
@@ -68,7 +73,7 @@ vi.mock("../components/DoctorSidebar", () => ({
         onClick={onStartConsultation}
         disabled={isTransitioningAppointment || !canTransitionAppointments}
       >
-        {isTransitioningAppointment ? "Starting consultation..." : "Start Consultation"}
+        {isTransitioningAppointment ? "Starting visit..." : visitActionLabel ?? "Start Visit"}
       </button>
       <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
         {isSavingRecord ? "Saving record..." : "Save & Print Record"}
@@ -184,6 +189,8 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     patientDetailsState: emptyLoadState(),
     canSaveRecord: true,
     canTransitionAppointments: true,
+    visitActionLabel: "Continue Visit",
+    visitModeLabel: "Queue Visit",
     saveDisabledReason: null,
     transitionDisabledReason: null,
     selectedAppointmentStatus: "waiting" as const,
@@ -262,7 +269,7 @@ describe("DoctorSection", () => {
 
     await user.click(screen.getByRole("button", { name: /select patient/i }));
     await user.click(screen.getByRole("button", { name: /view patient history/i }));
-    await user.click(screen.getByRole("button", { name: /start consultation/i }));
+    await user.click(screen.getByRole("button", { name: /continue visit/i }));
     await user.click(screen.getByRole("button", { name: /save & print record/i }));
 
     expect(handlePatientSelect).toHaveBeenCalledTimes(1);
@@ -293,7 +300,7 @@ describe("DoctorSection", () => {
 
     render(<DoctorSection />);
 
-    expect(screen.getByRole("button", { name: /starting consultation/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /starting visit/i })).toBeDisabled();
   });
 
   it("disables encounter submission when the active role cannot save records", () => {
@@ -309,7 +316,7 @@ describe("DoctorSection", () => {
 
     render(<DoctorSection />);
 
-    expect(screen.getByRole("button", { name: /start consultation/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /continue visit/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /save & print record/i })).toBeDisabled();
     expect(
       screen.getByText(/doctor workspace access is required before updating appointment status/i)

@@ -8,6 +8,7 @@ export type ApiClientError = {
 type ApiContractError = ApiClientError;
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
 export type ApiRecord = Record<string, unknown>;
+export type VisitStartPriority = "low" | "normal" | "high" | "critical";
 
 const DEFAULT_API_BASE = "/api/backend";
 const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
@@ -386,6 +387,25 @@ export async function updateAppointment(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+export async function startVisit(input: {
+  patientId: number;
+  reason: string;
+  priority: VisitStartPriority;
+}) {
+  const response = await apiFetch<{
+    reused?: boolean;
+    visit?: unknown;
+  }>("/api/visits/start", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+
+  return {
+    reused: Boolean(response.reused),
+    visit: expectApiRecord(response.visit, "visit start"),
+  };
 }
 
 export async function createEncounter(input: {

@@ -2,8 +2,7 @@ import { useState } from "react";
 
 export type VisitOption = "TwoWeeks" | "ThreeWeeks";
 
-const formatDate = (date: Date) =>
-  date.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 
 function getNextVisitDate(option: VisitOption) {
   const today = new Date();

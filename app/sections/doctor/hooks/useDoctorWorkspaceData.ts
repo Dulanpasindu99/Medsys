@@ -4,6 +4,7 @@ import {
   createPatientAllergy,
   createEncounter,
   createPatientVital,
+  startVisit,
   updateAppointment,
   type ApiClientError,
 } from "../../../lib/api-client";
@@ -539,6 +540,7 @@ export function useDoctorWorkspaceData(
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
     useState<AppointmentLifecycleStatus | null>(null);
+  const [selectedVisitMode, setSelectedVisitMode] = useState<"walk_in" | "queue" | null>(null);
   const [patientLookupNotice, setPatientLookupNotice] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
   const [transitionState, setTransitionState] = useState<MutationState>(idleMutationState());
@@ -707,8 +709,19 @@ export function useDoctorWorkspaceData(
     hasDoctorWorkspaceAccess &&
     !!currentUserQuery.data &&
     hasPermission(currentUserQuery.data, "appointment.update") &&
-    selectedAppointmentId !== null &&
-    selectedAppointmentStatus === "waiting";
+    selectedPatientId !== null &&
+    selectedAppointmentStatus !== "completed" &&
+    selectedAppointmentStatus !== "cancelled";
+  const visitActionLabel =
+    selectedAppointmentStatus === "waiting" || selectedAppointmentStatus === "in_consultation"
+      ? "Continue Visit"
+      : "Start Visit";
+  const visitModeLabel =
+    selectedVisitMode === "queue"
+      ? "Queue Visit"
+      : selectedVisitMode === "walk_in"
+        ? "Walk-In"
+        : "No Visit";
   const canEditVitals =
     !!currentUserQuery.data &&
     selectedPatientId !== null &&
@@ -727,25 +740,23 @@ export function useDoctorWorkspaceData(
         : currentUserQuery.data && !hasPermission(currentUserQuery.data, "appointment.update")
           ? "Appointment update permission is required before saving encounters."
         : !selectedPatientId || !selectedAppointmentId
-          ? "Select a waiting appointment before saving encounter."
+          ? "Start or resume a visit before saving the encounter."
           : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
             ? "Completed or cancelled appointments cannot be updated from the doctor workspace."
             : null;
   const transitionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
-      ? "Checking doctor access before updating appointment status."
+      ? "Checking doctor access before starting the active visit."
       : currentUserQuery.data && !isDoctorRole
-        ? "Doctor role is required before updating appointment status."
+        ? "Doctor role is required before starting the active visit."
         : currentUserQuery.data && !hasDoctorWorkspaceAccess
-          ? "Doctor workspace access is required before updating appointment status."
+          ? "Doctor workspace access is required before starting the active visit."
         : currentUserQuery.data && !hasPermission(currentUserQuery.data, "appointment.update")
-          ? "Appointment update permission is required before starting consultation."
-        : !selectedAppointmentId
-          ? "Select a waiting appointment before starting consultation."
-          : selectedAppointmentStatus === "in_consultation"
-            ? "Consultation already started for this appointment."
-            : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
-              ? "Only waiting appointments can be moved into consultation."
+          ? "Appointment update permission is required before starting the active visit."
+        : !selectedPatientId
+          ? "Select a patient before starting the active visit."
+          : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
+              ? "Completed or cancelled visits cannot be continued from the doctor workspace."
               : null;
   const vitalsDisabledReason =
     !selectedPatientId
@@ -856,6 +867,7 @@ export function useDoctorWorkspaceData(
     setSelectedAppointmentId(null);
     setSelectedDoctorId(null);
     setSelectedAppointmentStatus(null);
+    setSelectedVisitMode(null);
     setVitalDrafts({
       bloodPressure: "",
       heartRate: "",
@@ -884,6 +896,9 @@ export function useDoctorWorkspaceData(
     setSelectedAppointmentId(patient.appointmentId ?? null);
     setSelectedDoctorId(patient.doctorId ?? null);
     setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
+    setSelectedVisitMode(
+      patient.appointmentId && patient.appointmentStatus ? "queue" : "walk_in"
+    );
     setSearchState("");
     clearVitalsSaveState();
     clearAllergySaveState();
@@ -991,7 +1006,7 @@ export function useDoctorWorkspaceData(
 
     clearSelectedPatientContext();
     setPatientLookupNotice(
-      `No patient records were found for "${query}". Create a new patient in the Assistant page, then return here to continue treatment.`
+      `No patient records were found for "${query}". Create the patient first, then start the visit to continue treatment.`
     );
   };
 
@@ -1212,31 +1227,47 @@ export function useDoctorWorkspaceData(
       setTransitionState(
         errorMutationState(
           transitionDisabledReason ??
-            "Doctor permission is required before advancing appointment status."
+            "Doctor permission is required before starting the active visit."
         )
       );
       return;
     }
 
-    if (!selectedAppointmentId) {
-      setTransitionState(
-        errorMutationState("Select a waiting appointment before starting consultation.")
-      );
+    if (!selectedPatientId) {
+      setTransitionState(errorMutationState("Select a patient before starting the active visit."));
       return;
     }
 
     try {
       setTransitionState(pendingMutationState());
-      await updateAppointment(selectedAppointmentId, {
-        status: "in_consultation",
+      const response = await startVisit({
+        patientId: selectedPatientId,
+        reason: "Walk-in consultation",
+        priority: "normal",
       });
-      setSelectedAppointmentStatus("in_consultation");
+      const visitId = getNumber(response.visit.id);
+      const visitDoctorId = getNumber(response.visit.doctorId ?? response.visit.doctor_id);
+      const visitStatus = getString(response.visit.status).toLowerCase();
+
+      setSelectedAppointmentId(visitId);
+      setSelectedDoctorId(visitDoctorId);
+      setSelectedAppointmentStatus(
+        visitStatus === "waiting" ||
+          visitStatus === "in_consultation" ||
+          visitStatus === "completed" ||
+          visitStatus === "cancelled"
+          ? (visitStatus as AppointmentLifecycleStatus)
+          : "in_consultation"
+      );
+      setSelectedVisitMode((current) => current ?? "walk_in");
       await refreshDoctorQueries();
-      setTransitionState(successMutationState("Appointment moved to in consultation."));
+      setTransitionState(
+        successMutationState(response.reused ? "Active visit resumed." : "Visit started.")
+      );
     } catch (error) {
       setTransitionState(
         errorMutationState(
-          (error as ApiClientError)?.message ?? "Failed to update appointment status."
+          (error as ApiClientError)?.message ?? "Failed to start the active visit."
         )
       );
     }
@@ -1247,8 +1278,8 @@ export function useDoctorWorkspaceData(
     errorMessage: "Failed to save encounter.",
   });
   const transitionFeedback = getMutationFeedback(transitionState, {
-    pendingMessage: "Starting consultation...",
-    errorMessage: "Failed to update appointment status.",
+    pendingMessage: "Starting visit...",
+    errorMessage: "Failed to start visit.",
   });
   const vitalsFeedback = getMutationFeedback(vitalsSaveState, {
     pendingMessage: "Saving patient vitals...",
@@ -1303,6 +1334,8 @@ export function useDoctorWorkspaceData(
     patientDetailsState,
     canSaveRecord,
     canTransitionAppointments,
+    visitActionLabel,
+    visitModeLabel,
     saveDisabledReason,
     transitionDisabledReason,
     selectedAppointmentStatus,

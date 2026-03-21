@@ -39,12 +39,34 @@ export type AllergyAlert = {
   pill: string;
 };
 
+export type DrugDoseUnit =
+  | "mg"
+  | "ml"
+  | "mcg"
+  | "g"
+  | "tablet"
+  | "capsule"
+  | "drops"
+  | "puffs"
+  | "sachet";
+
+export type DrugFrequencyCode =
+  | "OD"
+  | "BD"
+  | "TDS"
+  | "QID"
+  | "Q4H"
+  | "Q6H"
+  | "Q8H"
+  | "HS"
+  | "STAT"
+  | "PRN";
+
 export type ClinicalDrugForm = {
   name: string;
   doseValue: string;
-  doseUnit: "MG" | "ML";
-  terms: "Daily" | "Hourly";
-  termsValue: string;
+  doseUnit: DrugDoseUnit;
+  frequencyCode: DrugFrequencyCode;
   amount: string;
   source: ClinicalDrug["source"];
 };

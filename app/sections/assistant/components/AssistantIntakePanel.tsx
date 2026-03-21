@@ -1,9 +1,22 @@
 import type React from "react";
+import dayjs from "dayjs";
+import FormControl from "@mui/material/FormControl";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import type { SelectChangeEvent } from "@mui/material/Select";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { FiPlus } from "react-icons/fi";
 import type {
   AssistantFamilyOption,
   AssistantFormState,
   AssistantPatientOption,
 } from "../types";
+import {
+  appMuiPickerTextFieldProps,
+  appMuiSelectSx,
+} from "../../../components/ui/muiFieldStyles";
 
 type AssistantIntakePanelProps = {
   formState: AssistantFormState;
@@ -25,16 +38,17 @@ const allergySeverityOptions = [
   { value: "high", label: "High" },
 ] as const;
 const inputClassName =
-  "min-h-14 w-full rounded-[20px] border border-slate-200/90 bg-white/90 px-4 py-3 text-sm font-medium text-slate-800 shadow-[inset_0_1px_2px_rgba(148,163,184,0.18),0_8px_20px_rgba(255,255,255,0.75)] outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100/80";
+  "h-14 w-full rounded-[20px] border border-slate-200/90 bg-white/90 px-3 py-3 text-[0.75rem] font-medium text-slate-800 shadow-[inset_0_1px_2px_rgba(148,163,184,0.18),0_8px_20px_rgba(255,255,255,0.75)] outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100/80";
 const sectionCardClassName =
   "space-y-3 rounded-[26px] border border-slate-200/90 bg-gradient-to-br from-white via-slate-50 to-sky-50/40 p-4 shadow-[0_18px_38px_rgba(148,163,184,0.08)] ring-1 ring-white/80";
 const segmentedButtonClassName =
   "min-h-10 flex-1 rounded-full px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] transition";
-const priorityButtonClassName: Record<(typeof priorityLevels)[number], string> = {
-  Normal: "app-priority app-priority--normal",
-  Urgent: "app-priority app-priority--urgent",
-  Critical: "app-priority app-priority--critical",
-};
+const priorityButtonClassName: Record<(typeof priorityLevels)[number], string> =
+  {
+    Normal: "app-priority app-priority--normal",
+    Urgent: "app-priority app-priority--urgent",
+    Critical: "app-priority app-priority--critical",
+  };
 const allergySeverityButtonClassName = {
   low: {
     active:
@@ -90,11 +104,20 @@ export function AssistantIntakePanel({
   const age = calculateAge(formState.dateOfBirth);
   const isMinor = age !== null && age < 18;
   const selectedFamily = familyOptions.find(
-    (family) => String(family.id) === formState.guardian.familyId
+    (family) => String(family.id) === formState.guardian.familyId,
   );
+  const assistantFieldSx = {
+    ...appMuiSelectSx,
+    fontSize: "0.75rem",
+    "& .MuiSelect-select": {
+      ...appMuiSelectSx["& .MuiSelect-select"],
+      fontSize: "0.75rem",
+      paddingLeft: "0.75rem",
+    },
+  } as const;
 
   return (
-    <>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">
           Add Patient to System
@@ -124,12 +147,12 @@ export function AssistantIntakePanel({
             }
           />
           <input
-            type="date"
             className={inputClassName}
-            value={formState.dateOfBirth}
+            placeholder="Mobile Number (Sri Lanka +94)"
+            value={formState.mobile}
             disabled={!canCreatePatients}
             onChange={(e) =>
-              setFormState((prev) => ({ ...prev, dateOfBirth: e.target.value }))
+              setFormState((prev) => ({ ...prev, mobile: e.target.value }))
             }
           />
           <input
@@ -143,16 +166,45 @@ export function AssistantIntakePanel({
               setFormState((prev) => ({ ...prev, nic: e.target.value }))
             }
           />
-          <input
-            className={inputClassName}
-            placeholder="Mobile Number (Sri Lanka +94)"
-            value={formState.mobile}
+          <DatePicker
+            value={formState.dateOfBirth ? dayjs(formState.dateOfBirth) : null}
             disabled={!canCreatePatients}
-            onChange={(e) =>
-              setFormState((prev) => ({ ...prev, mobile: e.target.value }))
+            format="DD/MM/YYYY"
+            onChange={(value) =>
+              setFormState((prev) => ({
+                ...prev,
+                dateOfBirth: value?.isValid() ? value.format("YYYY-MM-DD") : "",
+              }))
             }
+            slotProps={{
+              textField: {
+                ...appMuiPickerTextFieldProps,
+                placeholder: "dd/mm/yyyy",
+                InputLabelProps: { shrink: false },
+                sx: {
+                  ...appMuiPickerTextFieldProps.sx,
+                  "& .MuiOutlinedInput-root": {
+                    ...appMuiPickerTextFieldProps.sx[
+                      "& .MuiOutlinedInput-root"
+                    ],
+                    borderRadius: "40px",
+                    fontSize: "0.75rem",
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    ...appMuiPickerTextFieldProps.sx[
+                      "& .MuiOutlinedInput-notchedOutline"
+                    ],
+                    borderRadius: "40px",
+                  },
+                  "& .MuiInputBase-input": {
+                    ...appMuiPickerTextFieldProps.sx["& .MuiInputBase-input"],
+                    fontSize: "0.75rem",
+                  },
+                },
+              },
+            }}
           />
-          <div className="flex min-h-14 items-center rounded-[20px] border border-slate-200/90 bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-[inset_0_1px_2px_rgba(148,163,184,0.12),0_8px_20px_rgba(255,255,255,0.7)]">
+          <div className="flex h-14 items-center rounded-[20px] border border-slate-200/90 bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-[0.75rem] font-semibold text-slate-700 shadow-[inset_0_1px_2px_rgba(148,163,184,0.12),0_8px_20px_rgba(255,255,255,0.7)]">
             {age === null
               ? "Enter date of birth to calculate age"
               : `Age ${age} yrs`}
@@ -174,39 +226,60 @@ export function AssistantIntakePanel({
               Family Link
             </h3>
             <p className="mt-1 text-xs leading-5 text-slate-600">
-              Pick an existing family by name, use a known family code, or
-              leave this blank and let the backend create a family
-              automatically.
+              Pick an existing family by name, use a known family code, or leave
+              this blank and let the backend create a family automatically.
             </p>
           </div>
-          <select
-            value={formState.guardian.familyId}
-            disabled={!canCreatePatients}
-            onChange={(event) =>
-              setFormState((prev) => ({
-                ...prev,
-                guardian: {
-                  ...prev.guardian,
-                  familyId: event.target.value,
-                  familyCode: event.target.value ? "" : prev.guardian.familyCode,
-                },
-              }))
-            }
-            className={inputClassName}
-          >
-            <option value="">Select existing family by name</option>
-            {familyOptions.map((family) => (
-              <option key={family.id} value={String(family.id)}>
-                {family.name}
-                {family.familyCode ? ` | ${family.familyCode}` : ""}
-              </option>
-            ))}
-          </select>
+          <FormControl fullWidth className="pb-2">
+            <Select
+              value={formState.guardian.familyId}
+              displayEmpty
+              disabled={!canCreatePatients}
+              onChange={(event: SelectChangeEvent) =>
+                setFormState((prev) => ({
+                  ...prev,
+                  guardian: {
+                    ...prev.guardian,
+                    familyId: event.target.value,
+                    familyCode: event.target.value
+                      ? ""
+                      : prev.guardian.familyCode,
+                  },
+                }))
+              }
+              renderValue={(selected) => {
+                if (!selected) {
+                  return (
+                    <span className="text-slate-400">
+                      Select existing family by name
+                    </span>
+                  );
+                }
+                const family = familyOptions.find(
+                  (entry) => String(entry.id) === selected,
+                );
+                return family
+                  ? `${family.name}${family.familyCode ? ` | ${family.familyCode}` : ""}`
+                  : selected;
+              }}
+              sx={assistantFieldSx}
+            >
+              <MenuItem value="">Select existing family by name</MenuItem>
+              {familyOptions.map((family) => (
+                <MenuItem key={family.id} value={String(family.id)}>
+                  {family.name}
+                  {family.familyCode ? ` | ${family.familyCode}` : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <input
-            className={inputClassName}
+            className={`${inputClassName} mt-2`}
             placeholder="Known family code (optional)"
             value={formState.guardian.familyCode}
-            disabled={!canCreatePatients || Boolean(formState.guardian.familyId)}
+            disabled={
+              !canCreatePatients || Boolean(formState.guardian.familyId)
+            }
             onChange={(e) =>
               setFormState((prev) => ({
                 ...prev,
@@ -241,7 +314,9 @@ export function AssistantIntakePanel({
                 key={option}
                 type="button"
                 className={`${segmentedButtonClassName} ${
-                  option === "Female" ? "app-segment app-segment--female" : "app-segment app-segment--male"
+                  option === "Female"
+                    ? "app-segment app-segment--female"
+                    : "app-segment app-segment--male"
                 } ${formState.gender === option ? "is-active" : ""}`}
                 disabled={!canCreatePatients}
                 onClick={() =>
@@ -270,47 +345,65 @@ export function AssistantIntakePanel({
                 Child flow
               </span>
             </div>
-            <select
-              value={formState.guardian.guardianPatientId}
-              disabled={!canCreatePatients}
-              onChange={(event) => {
-                const selectedId = event.target.value;
-                const selectedGuardian = patientOptions.find(
-                  (patient) => String(patient.id) === selectedId,
-                );
-                setFormState((prev) => ({
-                  ...prev,
-                  guardian: {
-                    ...prev.guardian,
-                    guardianPatientId: selectedId,
-                    guardianName: selectedId
-                      ? (selectedGuardian?.name ?? prev.guardian.guardianName)
-                      : prev.guardian.guardianName,
-                    guardianNic: selectedId
-                      ? (selectedGuardian?.nic ?? prev.guardian.guardianNic)
-                      : prev.guardian.guardianNic,
-                    familyId:
-                      selectedId && selectedGuardian?.familyId
-                        ? String(selectedGuardian.familyId)
-                        : "",
-                    familyCode: selectedId ? "" : prev.guardian.familyCode,
-                  },
-                }));
-              }}
-              className={inputClassName}
-            >
-              <option value="">
-                Link existing guardian patient (recommended)
-              </option>
-              {patientOptions.map((patient) => (
-                <option key={patient.id} value={String(patient.id)}>
-                  {patient.name} |{" "}
-                  {patient.patientCode ||
-                    patient.nic ||
-                    `Patient #${patient.id}`}
-                </option>
-              ))}
-            </select>
+            <FormControl fullWidth>
+              <Select
+                value={formState.guardian.guardianPatientId}
+                displayEmpty
+                disabled={!canCreatePatients}
+                onChange={(event: SelectChangeEvent) => {
+                  const selectedId = event.target.value;
+                  const selectedGuardian = patientOptions.find(
+                    (patient) => String(patient.id) === selectedId,
+                  );
+                  setFormState((prev) => ({
+                    ...prev,
+                    guardian: {
+                      ...prev.guardian,
+                      guardianPatientId: selectedId,
+                      guardianName: selectedId
+                        ? (selectedGuardian?.name ?? prev.guardian.guardianName)
+                        : prev.guardian.guardianName,
+                      guardianNic: selectedId
+                        ? (selectedGuardian?.nic ?? prev.guardian.guardianNic)
+                        : prev.guardian.guardianNic,
+                      familyId:
+                        selectedId && selectedGuardian?.familyId
+                          ? String(selectedGuardian.familyId)
+                          : "",
+                      familyCode: selectedId ? "" : prev.guardian.familyCode,
+                    },
+                  }));
+                }}
+                renderValue={(selected) => {
+                  if (!selected) {
+                    return (
+                      <span className="text-slate-400">
+                        Link existing guardian patient (recommended)
+                      </span>
+                    );
+                  }
+                  const patient = patientOptions.find(
+                    (entry) => String(entry.id) === selected,
+                  );
+                  return patient
+                    ? `${patient.name} | ${patient.patientCode || patient.nic || `Patient #${patient.id}`}`
+                    : selected;
+                }}
+                sx={assistantFieldSx}
+              >
+                <MenuItem value="">
+                  Link existing guardian patient (recommended)
+                </MenuItem>
+                {patientOptions.map((patient) => (
+                  <MenuItem key={patient.id} value={String(patient.id)}>
+                    {patient.name} |{" "}
+                    {patient.patientCode ||
+                      patient.nic ||
+                      `Patient #${patient.id}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <input
                 className={inputClassName}
@@ -397,7 +490,9 @@ export function AssistantIntakePanel({
                       allergySeverityButtonClassName[allergy.severity].chip
                     }`}
                   >
-                    <span className="max-w-[10rem] truncate">{allergy.name}</span>
+                    <span className="max-w-[10rem] truncate">
+                      {allergy.name}
+                    </span>
                     <span
                       className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ring-1 ${
                         allergySeverityButtonClassName[allergy.severity].badge
@@ -427,7 +522,8 @@ export function AssistantIntakePanel({
               </div>
             ) : (
               <div className="rounded-[18px] border border-dashed border-rose-100 bg-white/70 px-4 py-3 text-xs font-medium text-slate-500">
-                No allergies added yet. Add an allergy name, choose the severity, and save it here.
+                No allergies added yet. Add an allergy name, choose the
+                severity, and save it here.
               </div>
             )}
 
@@ -457,19 +553,20 @@ export function AssistantIntakePanel({
               </div>
 
               <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <div className="flex items-center gap-3 overflow-x-auto lg:flex-1">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 lg:shrink-0">
                     Severity
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-2 whitespace-nowrap">
                     {allergySeverityOptions.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         disabled={!canCreatePatients}
-                        className={`min-h-10 min-w-20 rounded-full border px-4 text-[11px] font-semibold uppercase tracking-[0.14em] transition ${
+                        className={`min-h-10 min-w-18 rounded-full border px-3 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
                           formState.allergySeverity === option.value
-                            ? allergySeverityButtonClassName[option.value].active
+                            ? allergySeverityButtonClassName[option.value]
+                                .active
                             : allergySeverityButtonClassName[option.value].idle
                         }`}
                         onClick={() =>
@@ -487,11 +584,12 @@ export function AssistantIntakePanel({
 
                 <button
                   type="button"
-                  className="min-h-11 rounded-full bg-emerald-500 px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white shadow-[0_10px_22px_rgba(16,185,129,0.22)] transition hover:bg-emerald-600 disabled:opacity-70 lg:min-w-36"
+                  aria-label="Add allergy"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_22px_rgba(16,185,129,0.22)] transition hover:bg-emerald-600 disabled:opacity-70"
                   onClick={addAllergy}
                   disabled={isSubmitting || !canCreatePatients}
                 >
-                  Add Allergy
+                  <FiPlus aria-hidden="true" className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -531,12 +629,12 @@ export function AssistantIntakePanel({
             <div className="grid grid-cols-3 gap-2">
               {priorityLevels.map((level) => (
                 <button
-                key={level}
-                type="button"
-                className={`${priorityButtonClassName[level]} w-full min-h-11 tracking-normal ${
-                  formState.priority === level ? "is-active" : ""
-                }`}
-                disabled={!canCreatePatients}
+                  key={level}
+                  type="button"
+                  className={`${priorityButtonClassName[level]} w-full min-h-11 tracking-normal ${
+                    formState.priority === level ? "is-active" : ""
+                  }`}
+                  disabled={!canCreatePatients}
                   onClick={() =>
                     setFormState((prev) => ({ ...prev, priority: level }))
                   }
@@ -564,6 +662,6 @@ export function AssistantIntakePanel({
           </p>
         ) : null}
       </div>
-    </>
+    </LocalizationProvider>
   );
 }

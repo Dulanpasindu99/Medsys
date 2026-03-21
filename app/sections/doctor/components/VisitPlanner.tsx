@@ -1,3 +1,7 @@
+import dayjs from "dayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import type { VisitOption } from "../hooks/useVisitPlanner";
 
 type VisitPlannerProps = {
@@ -37,13 +41,31 @@ export function VisitPlanner({ nextVisitOption, nextVisitDate, onSelectOption, o
           </button>
         </div>
         <div className="relative">
-          <input
-            type="text"
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-50"
-            value={nextVisitDate}
-            onChange={(e) => onDateChange(e.target.value)}
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-slate-400">DD/MM/YYYY</div>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              value={nextVisitDate ? dayjs(nextVisitDate) : null}
+              onChange={(value) => onDateChange(value ? value.format("YYYY-MM-DD") : "")}
+              format="DD/MM/YYYY"
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  size: "small",
+                  sx: {
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "0.75rem",
+                      backgroundColor: "#ffffff",
+                      fontWeight: 700,
+                      minHeight: 48,
+                    },
+                    "& .MuiInputBase-input": {
+                      textAlign: "center",
+                      fontSize: "0.875rem",
+                    },
+                  },
+                },
+              }}
+            />
+          </LocalizationProvider>
         </div>
       </div>
 

@@ -90,4 +90,34 @@ describe("PatientProfileView", () => {
     expect(screen.getByText(/fallback data is being shown/i)).toBeInTheDocument();
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
   });
+
+  it("shows a no-history empty state when the patient has no timeline entries", () => {
+    mockedUsePatientProfileData.mockReturnValue({
+      profile: {
+        id: "12",
+        name: "Jane Doe",
+        patientCode: "P-0012",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        mobile: "0771234567",
+        family: { assigned: true, name: "Doe", members: ["John Doe"] },
+        conditions: [],
+        allergies: ["Dust", "Dust"],
+        firstSeen: "2026-03-07T10:30:00.000Z",
+        timeline: [],
+      },
+      timeline: [],
+      totalProfiles: 3,
+      formatDate: (value: string) => value,
+      loadState: readyLoadState(),
+      syncError: null,
+      reload: vi.fn(),
+    });
+
+    render(<PatientProfileView profileId="12" />);
+
+    expect(screen.getByText(/no patient history yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no recorded history, timeline notes, or vitals yet/i)).toBeInTheDocument();
+  });
 });

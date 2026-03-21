@@ -30,6 +30,7 @@ import {
   loginUser,
   registerUser,
   updateAppointment,
+  startVisit,
   updateInventoryItem,
   updateUserExtraPermissions,
 } from "../api-client";
@@ -268,6 +269,42 @@ describe("api client backend compatibility", () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments/12");
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({ status: "completed" }));
+  });
+
+  it("starts walk-in visits through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          reused: false,
+          visit: { id: 14, patientId: 7, doctorId: 5, status: "in_consultation" },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      startVisit({
+        patientId: 7,
+        reason: "Walk-in consultation",
+        priority: "normal",
+      })
+    ).resolves.toEqual({
+      reused: false,
+      visit: { id: 14, patientId: 7, doctorId: 5, status: "in_consultation" },
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/visits/start");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({
+        patientId: 7,
+        reason: "Walk-in consultation",
+        priority: "normal",
+      })
+    );
   });
 
   it("loads and saves encounters through the dedicated BFF route", async () => {

@@ -1,35 +1,79 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { DIAGNOSIS_MAPPING } from "../../../data/diagnosisMapping";
-import type { ClinicalDrug, ClinicalDrugForm } from "../types";
+import type { ClinicalDrug, ClinicalDrugForm, DrugDoseUnit, DrugFrequencyCode } from "../types";
+
+const SUGGESTED_DRUG_NAMES = [
+  "Ibuprofen",
+  "Naproxen",
+  "Acetaminophen",
+  "Paracetamol",
+  "Amoxicillin",
+  "Azithromycin",
+  "Metformin",
+  "Omeprazole",
+  "Amlodipine",
+  "Prednisone",
+  "Ciprofloxacin",
+  "Clopidogrel",
+] as const;
+
+const DOSE_UNIT_OPTIONS: readonly DrugDoseUnit[] = [
+  "mg",
+  "ml",
+  "mcg",
+  "g",
+  "tablet",
+  "capsule",
+  "drops",
+  "puffs",
+  "sachet",
+] as const;
+
+const FREQUENCY_LABELS: Record<DrugFrequencyCode, string> = {
+  OD: "OD - once daily",
+  BD: "BD - twice daily",
+  TDS: "TDS - three times daily",
+  QID: "QID - four times daily",
+  Q4H: "Q4H - every 4 hours",
+  Q6H: "Q6H - every 6 hours",
+  Q8H: "Q8H - every 8 hours",
+  HS: "HS - at night",
+  STAT: "STAT - immediately",
+  PRN: "PRN - as needed",
+};
+
+function formatDose(value: string, unit: DrugDoseUnit) {
+  const normalizedValue = value.trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const suffix =
+    unit === "mg" || unit === "ml" || unit === "mcg" || unit === "g"
+      ? unit.toUpperCase()
+      : unit === "tablet"
+        ? "tablet(s)"
+        : unit === "capsule"
+          ? "capsule(s)"
+          : unit === "drops"
+            ? "drops"
+            : unit === "puffs"
+              ? "puffs"
+              : "sachet(s)";
+
+  return `${normalizedValue} ${suffix}`.trim();
+}
 
 export function useDoctorClinicalWorkflow() {
   const [rxRows, setRxRows] = useState<ClinicalDrug[]>([]);
 
-  const suggestedDrugNames = useMemo(
-    () => [
-      "Ibuprofen",
-      "Naproxen",
-      "Acetaminophen",
-      "Paracetamol",
-      "Amoxicillin",
-      "Azithromycin",
-      "Metformin",
-      "Omeprazole",
-      "Amlodipine",
-      "Prednisone",
-      "Ciprofloxacin",
-      "Clopidogrel",
-      "Clopidogrel",
-    ],
-    []
-  );
+  const suggestedDrugNames = useMemo(() => [...SUGGESTED_DRUG_NAMES], []);
 
   const [clinicalDrugForm, setClinicalDrugForm] = useState<ClinicalDrugForm>({
     name: "",
     doseValue: "",
-    doseUnit: "MG",
-    terms: "Daily",
-    termsValue: "",
+    doseUnit: "mg",
+    frequencyCode: "TDS",
     amount: "",
     source: "Clinical",
   });
@@ -47,17 +91,14 @@ export function useDoctorClinicalWorkflow() {
   };
 
   const toggleDoseUnit = () => {
-    setClinicalDrugForm((prev) => ({
-      ...prev,
-      doseUnit: prev.doseUnit === "MG" ? "ML" : "MG",
-    }));
-  };
-
-  const toggleTerms = () => {
-    setClinicalDrugForm((prev) => ({
-      ...prev,
-      terms: prev.terms === "Daily" ? "Hourly" : "Daily",
-    }));
+    setClinicalDrugForm((prev) => {
+      const currentIndex = DOSE_UNIT_OPTIONS.indexOf(prev.doseUnit);
+      const nextIndex = (currentIndex + 1) % DOSE_UNIT_OPTIONS.length;
+      return {
+        ...prev,
+        doseUnit: DOSE_UNIT_OPTIONS[nextIndex] ?? "mg",
+      };
+    });
   };
 
   const toggleDrugSource = () => {
@@ -70,13 +111,12 @@ export function useDoctorClinicalWorkflow() {
   const addClinicalDrug = () => {
     const name = clinicalDrugForm.name.trim();
     const doseValue = clinicalDrugForm.doseValue.trim();
-    const termsValue = clinicalDrugForm.termsValue.trim();
     const amountValue = clinicalDrugForm.amount.trim();
 
     if (!name || !doseValue || !amountValue) return;
 
-    const dose = `${doseValue}${clinicalDrugForm.doseUnit}`;
-    const termsDisplay = termsValue ? `${clinicalDrugForm.terms} ${termsValue}` : clinicalDrugForm.terms;
+    const dose = formatDose(doseValue, clinicalDrugForm.doseUnit);
+    const termsDisplay = FREQUENCY_LABELS[clinicalDrugForm.frequencyCode];
 
     const newEntry: ClinicalDrug = {
       drug: name,
@@ -90,9 +130,8 @@ export function useDoctorClinicalWorkflow() {
     setClinicalDrugForm({
       name: "",
       doseValue: "",
-      doseUnit: "MG",
-      terms: "Daily",
-      termsValue: "",
+      doseUnit: "mg",
+      frequencyCode: "TDS",
       amount: "",
       source: "Clinical",
     });
@@ -368,7 +407,6 @@ export function useDoctorClinicalWorkflow() {
     updateClinicalDrugForm,
     filteredDrugSuggestions,
     toggleDoseUnit,
-    toggleTerms,
     toggleDrugSource,
     addClinicalDrug,
     handleDrugFormKeyDown,

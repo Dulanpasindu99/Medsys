@@ -149,10 +149,9 @@ describe("AssistantSection", () => {
     const openProfile = vi.fn();
     const closeProfile = vi.fn();
     const markDoneAndNext = vi.fn();
-    const scheduleAppointment = vi.fn();
 
     mockedUseAssistantWorkflow.mockReturnValue(
-      buildWorkflowState({ markDoneAndNext, scheduleAppointment })
+      buildWorkflowState({ markDoneAndNext })
     );
     mockedUsePatientProfilePopup.mockReturnValue({
       selectedProfileId: "7",
@@ -163,11 +162,9 @@ describe("AssistantSection", () => {
     render(<AssistantSection />);
 
     await user.click(screen.getByRole("button", { name: /jane doe/i }));
-    await user.click(screen.getByRole("button", { name: /schedule appointment/i }));
     await user.click(screen.getByRole("button", { name: /done & next/i }));
 
     expect(openProfile).toHaveBeenCalledWith("7");
-    expect(scheduleAppointment).toHaveBeenCalledTimes(1);
     expect(markDoneAndNext).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("patient-profile-modal")).toHaveTextContent("7");
   });
@@ -191,7 +188,6 @@ describe("AssistantSection", () => {
 
     expect(screen.getByRole("button", { name: /done & next/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /add patient/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /schedule appointment/i })).toBeDisabled();
     expect(
       screen.getAllByText(/only assistant and owner accounts can register patients/i).length
     ).toBeGreaterThan(0);
@@ -199,9 +195,7 @@ describe("AssistantSection", () => {
       screen.getAllByText(/only assistant and owner accounts can complete intake and dispense actions/i)
         .length
     ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(/only assistant and owner accounts can schedule appointments/i).length
-    ).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /schedule appointment/i })).not.toBeInTheDocument();
   });
 
   it("renders duplicate placeholder NIC entries without duplicate-key warnings", () => {

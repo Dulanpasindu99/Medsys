@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
+import FormControl from "@mui/material/FormControl";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import { SurfaceCard } from "../../../components/ui/SurfaceCard";
 import { SectionHeading } from "../../../components/ui/SectionHeading";
+import { appMuiSelectSx } from "../../../components/ui/muiFieldStyles";
 import type {
   AllergyAlert,
   AppointmentLifecycleStatus,
@@ -41,6 +45,8 @@ type DoctorSidebarProps = {
   allergyFeedback?: { tone: "info" | "success" | "error"; message: string } | null;
   onAddOrUpdateAllergy: () => void;
   onStartConsultation: () => void;
+  visitActionLabel?: string;
+  visitModeLabel?: string;
   onSaveRecord: () => void;
   canTransitionAppointments?: boolean;
   selectedAppointmentStatus?: AppointmentLifecycleStatus | null;
@@ -115,6 +121,8 @@ export function DoctorSidebar({
   allergyFeedback = null,
   onAddOrUpdateAllergy,
   onStartConsultation,
+  visitActionLabel = "Start Visit",
+  visitModeLabel = "No Visit",
   onSaveRecord,
   canTransitionAppointments = true,
   selectedAppointmentStatus = null,
@@ -161,7 +169,7 @@ export function DoctorSidebar({
                     href={assistantRegistrationHref}
                     className="app-button app-button--primary app-button--full"
                   >
-                    Create Patient
+                    Create Patient & Start Visit
                   </a>
                 ) : (
                   <div className="space-y-2">
@@ -170,7 +178,7 @@ export function DoctorSidebar({
                       disabled
                       className="app-button app-button--soft app-button--full"
                     >
-                      Create Patient
+                      Create Patient & Start Visit
                     </button>
                     <p className="text-xs text-amber-700">
                       This account does not have assistant registration access yet.
@@ -332,20 +340,33 @@ export function DoctorSidebar({
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
                       placeholder="Add or update allergy"
                     />
-                    <select
-                      value={allergyDraftSeverity}
-                      onChange={(event) =>
-                        onAllergyDraftSeverityChange(
-                          event.target.value as "low" | "moderate" | "high"
-                        )
-                      }
-                      disabled={!canEditAllergies}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      <option value="low">Low</option>
-                      <option value="moderate">Medium</option>
-                      <option value="high">High</option>
-                    </select>
+                    <FormControl sx={{ minWidth: 150 }}>
+                      <Select
+                        value={allergyDraftSeverity}
+                        onChange={(event) =>
+                          onAllergyDraftSeverityChange(
+                            event.target.value as "low" | "moderate" | "high"
+                          )
+                        }
+                        disabled={!canEditAllergies}
+                        sx={{
+                          ...appMuiSelectSx,
+                          minHeight: 44,
+                          height: 44,
+                          borderRadius: "0.75rem",
+                          boxShadow: "none",
+                          "& .MuiSelect-select": {
+                            minHeight: "44px",
+                            paddingTop: "0 !important",
+                            paddingBottom: "0 !important",
+                          },
+                        }}
+                      >
+                        <MenuItem value="low">Low</MenuItem>
+                        <MenuItem value="moderate">Medium</MenuItem>
+                        <MenuItem value="high">High</MenuItem>
+                      </Select>
+                    </FormControl>
                   </div>
                   <div className="mt-3 space-y-2">
                     <button
@@ -385,13 +406,18 @@ export function DoctorSidebar({
 
           <SidebarSection
             title="Consultation Status"
-            subtitle="Appointment lifecycle"
+            subtitle="Visit workflow"
             accent={
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
-                {selectedAppointmentStatus
-                  ? selectedAppointmentStatus.replace("_", " ")
-                  : "No selection"}
-              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 ring-1 ring-sky-100">
+                  {visitModeLabel}
+                </span>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                  {selectedAppointmentStatus
+                    ? selectedAppointmentStatus.replace("_", " ")
+                    : "No selection"}
+                </span>
+              </div>
             }
             className="mt-auto"
           >
@@ -406,8 +432,8 @@ export function DoctorSidebar({
                   className="app-button app-button--secondary app-button--full uppercase tracking-wider"
                 >
                   {isTransitioningAppointment
-                    ? "Starting consultation..."
-                    : "Start Consultation"}
+                    ? "Starting visit..."
+                    : visitActionLabel}
                 </button>
                 <button
                   type="button"

@@ -1,3 +1,6 @@
+import FormControl from "@mui/material/FormControl";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import type { DoctorSupportPermission, PermissionKey, Role } from "../types";
 import {
   doctorSupportPermissionLabels,
@@ -5,6 +8,7 @@ import {
   permissionLabels,
 } from "../hooks/useOwnerAccess";
 import { OwnerBadge } from "./OwnerBadge";
+import { appMuiSelectSx } from "../../../components/ui/muiFieldStyles";
 
 const INSET = "shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]";
 
@@ -56,18 +60,24 @@ export function OwnerStaffFormCard({
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
           <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Role</span>
-          <select
-            value={role}
-            onChange={(e) => {
-              const nextRole = e.target.value as Role;
-              setRole(nextRole);
-            }}
-            disabled={!canManageStaff}
-            className={`rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 ${INSET}`}
-          >
-            <option value="Doctor">Doctor</option>
-            <option value="Assistant">Assistant</option>
-          </select>
+          <FormControl fullWidth>
+            <Select
+              value={role}
+              onChange={(e) => {
+                const nextRole = e.target.value as Role;
+                setRole(nextRole);
+              }}
+              disabled={!canManageStaff}
+              sx={{
+                ...appMuiSelectSx,
+                backgroundColor: "rgba(248,250,252,0.7)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45)",
+              }}
+            >
+              <MenuItem value="Doctor">Doctor</MenuItem>
+              <MenuItem value="Assistant">Assistant</MenuItem>
+            </Select>
+          </FormControl>
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
           <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Full name</span>

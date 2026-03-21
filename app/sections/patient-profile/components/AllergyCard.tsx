@@ -19,8 +19,8 @@ export function AllergyCard({ profile }: AllergyCardProps) {
 
             <div className="mt-4 flex flex-wrap gap-2">
                 {profile.allergies.length > 0 ? (
-                    profile.allergies.map((allergy) => (
-                        <span key={allergy} className="rounded-full bg-white/90 px-3 py-2 text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
+                    profile.allergies.map((allergy, index) => (
+                        <span key={`${allergy}-${index}`} className="rounded-full bg-white/90 px-3 py-2 text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
                             {allergy}
                         </span>
                     ))

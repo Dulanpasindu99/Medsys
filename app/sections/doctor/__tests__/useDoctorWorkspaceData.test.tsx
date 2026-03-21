@@ -9,6 +9,7 @@ vi.mock("../../../lib/api-client", () => ({
   createPatientAllergy: vi.fn(),
   createEncounter: vi.fn(),
   createPatientVital: vi.fn(),
+  startVisit: vi.fn(),
   updateAppointment: vi.fn(),
 }));
 
@@ -25,6 +26,7 @@ import {
   createEncounter,
   createPatientAllergy,
   createPatientVital,
+  startVisit,
   updateAppointment,
 } from "../../../lib/api-client";
 import {
@@ -39,6 +41,7 @@ import {
 const mockedCreateEncounter = vi.mocked(createEncounter);
 const mockedCreatePatientAllergy = vi.mocked(createPatientAllergy);
 const mockedCreatePatientVital = vi.mocked(createPatientVital);
+const mockedStartVisit = vi.mocked(startVisit);
 const mockedUpdateAppointment = vi.mocked(updateAppointment);
 const mockedUsePatientsQuery = vi.mocked(usePatientsQuery);
 const mockedUseAppointmentsQuery = vi.mocked(useAppointmentsQuery);
@@ -114,6 +117,10 @@ describe("useDoctorWorkspaceData", () => {
     mockedCreateEncounter.mockResolvedValue({ id: 91 });
     mockedCreatePatientVital.mockResolvedValue({ id: 1 });
     mockedCreatePatientAllergy.mockResolvedValue({ id: 1 });
+    mockedStartVisit.mockResolvedValue({
+      reused: true,
+      visit: { id: 22, patientId: 7, doctorId: 5, status: "in_consultation" },
+    });
     mockedUpdateAppointment.mockResolvedValue({ id: 22, status: "in_consultation" });
   });
 
@@ -912,7 +919,7 @@ describe("useDoctorWorkspaceData", () => {
     expect(result.current.saveState.error).toMatch(/doctor role|doctor workspace access|appointment update permission/i);
   });
 
-  it("disables save and transition actions until a waiting appointment is selected", async () => {
+  it("disables save and visit actions until a patient is selected", async () => {
     const clinicalWorkflow = {
       selectedDiseases: [],
       selectedTests: [],
@@ -930,11 +937,11 @@ describe("useDoctorWorkspaceData", () => {
 
     expect(result.current.canSaveRecord).toBe(false);
     expect(result.current.canTransitionAppointments).toBe(false);
-    expect(result.current.saveDisabledReason).toMatch(/select a waiting appointment/i);
-    expect(result.current.transitionDisabledReason).toMatch(/select a waiting appointment/i);
+    expect(result.current.saveDisabledReason).toMatch(/start or resume a visit/i);
+    expect(result.current.transitionDisabledReason).toMatch(/select a patient/i);
   });
 
-  it("starts consultation and refreshes appointment queries", async () => {
+  it("starts or resumes a walk-in visit and refreshes appointment queries", async () => {
     const invalidateQueriesSpy = vi
       .spyOn(QueryClient.prototype, "invalidateQueries")
       .mockResolvedValue(undefined);
@@ -979,15 +986,19 @@ describe("useDoctorWorkspaceData", () => {
       await result.current.handleStartConsultation();
     });
 
-    expect(mockedUpdateAppointment).toHaveBeenCalledWith(22, {
-      status: "in_consultation",
+    expect(mockedStartVisit).toHaveBeenCalledWith({
+      patientId: 7,
+      reason: "Walk-in consultation",
+      priority: "normal",
     });
+    expect(mockedUpdateAppointment).not.toHaveBeenCalled();
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: ["appointments"],
     });
     expect(appointmentsQuery.refetch).not.toHaveBeenCalled();
     expect(result.current.transitionState.status).toBe("success");
     expect(result.current.selectedAppointmentStatus).toBe("in_consultation");
+    expect(result.current.visitActionLabel).toBe("Continue Visit");
   });
 
   it("clears stale save feedback when the selected patient context changes", async () => {

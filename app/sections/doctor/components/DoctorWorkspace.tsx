@@ -105,9 +105,6 @@ export function DoctorWorkspace({
                     clinicalDrugForm={clinicalWorkflow.clinicalDrugForm}
                     filteredDrugSuggestions={clinicalWorkflow.filteredDrugSuggestions}
                     onDrugFormChange={clinicalWorkflow.updateClinicalDrugForm}
-                    onToggleDoseUnit={clinicalWorkflow.toggleDoseUnit}
-                    onToggleTerms={clinicalWorkflow.toggleTerms}
-                    onToggleDrugSource={clinicalWorkflow.toggleDrugSource}
                     onAddClinicalDrug={clinicalWorkflow.addClinicalDrug}
                     onDrugFormKeyDown={clinicalWorkflow.handleDrugFormKeyDown}
                     onUpdateRxRow={clinicalWorkflow.updateRxRow}

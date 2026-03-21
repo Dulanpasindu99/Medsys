@@ -55,6 +55,8 @@ export default function DoctorSection() {
     patientDetailsState,
     canSaveRecord,
     canTransitionAppointments,
+    visitActionLabel,
+    visitModeLabel,
     saveDisabledReason,
     transitionDisabledReason,
     selectedAppointmentStatus,
@@ -99,7 +101,7 @@ export default function DoctorSection() {
                 {queueState.status === "empty" ? (
                   <AsyncNotice
                     tone="warning"
-                    message="No waiting appointments are available in the doctor queue right now."
+                    message="No active queue visits are available right now. You can still search a patient and start a walk-in visit."
                   />
                 ) : null}
                 {patientDetailsState.notice ? (
@@ -143,6 +145,8 @@ export default function DoctorSection() {
                 allergyFeedback={allergyFeedback}
                 onAddOrUpdateAllergy={handleAddOrUpdateAllergy}
                 onStartConsultation={handleStartConsultation}
+                visitActionLabel={visitActionLabel}
+                visitModeLabel={visitModeLabel}
                 onSaveRecord={handleSaveRecord}
                 canTransitionAppointments={canTransitionAppointments}
                 selectedAppointmentStatus={selectedAppointmentStatus}

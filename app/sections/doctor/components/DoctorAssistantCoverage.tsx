@@ -91,7 +91,7 @@ export function DoctorAssistantCoverage({
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1.9fr_1.16fr]">
         <AssistantPanelShell>
           <AssistantIntakePanel
             formState={workflow.formState}

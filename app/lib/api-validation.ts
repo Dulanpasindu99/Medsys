@@ -933,6 +933,39 @@ export function validateAppointmentUpdatePayload(payload: Record<string, unknown
       });
 }
 
+export function validateVisitStartPayload(payload: Record<string, unknown>) {
+  const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
+    "patientId",
+    "reason",
+    "priority",
+  ]);
+
+  const patientId = normalizeRequiredPositiveInteger(payload.patientId, "patientId");
+  if (!patientId.ok) issues.push(...patientId.issues);
+
+  const reason = normalizeRequiredString(payload.reason, "reason", { maxLength: 255 });
+  if (!reason.ok) issues.push(...reason.issues);
+
+  const priority = normalizePatientPriority(payload.priority, "priority");
+  if (!priority.ok) issues.push(...priority.issues);
+
+  if (
+    issues.length > 0 ||
+    !patientId.ok ||
+    !reason.ok ||
+    !priority.ok ||
+    priority.value === undefined
+  ) {
+    return failure(issues);
+  }
+
+  return success({
+    patientId: patientId.value,
+    reason: reason.value,
+    priority: priority.value,
+  });
+}
+
 export function validateDiseaseSuggestionQuery(value: string | null) {
   const terms = normalizeRequiredString(value ?? "", "terms", { minLength: 2, maxLength: 100 });
   return terms.ok ? success({ terms: terms.value }) : terms;

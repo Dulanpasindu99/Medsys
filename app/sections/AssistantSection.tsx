@@ -75,7 +75,7 @@ export default function AssistantSection() {
                                 {scheduleAppointmentFeedback ? <AsyncNotice tone={scheduleAppointmentFeedback.tone} message={scheduleAppointmentFeedback.message} /> : null}
                                 {dispenseFeedback ? <AsyncNotice tone={dispenseFeedback.tone} message={dispenseFeedback.message} /> : null}
 
-                                <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_2.2fr_1fr]">
+                                <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.92fr_1.16fr]">
                                     <AssistantPanelShell>
                                         <AssistantIntakePanel
                                             formState={formState}
@@ -117,6 +117,8 @@ export default function AssistantSection() {
                                             filteredCompleted={filteredCompleted}
                                             onOpenProfile={popup.openProfile}
                                             isLoading={loadState.status === 'loading'}
+                                            showSchedulingPanel={false}
+                                            showAvailableDoctors={false}
                                         />
                                     </AssistantPanelShell>
                                 </div>
