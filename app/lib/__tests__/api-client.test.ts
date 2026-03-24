@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAppointment,
+  saveConsultation,
   createEncounter,
   createPatient,
   createUser,
@@ -348,6 +349,47 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/encounters");
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/encounters");
     expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(JSON.stringify(payload));
+  });
+
+  it("saves consultations through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ encounterId: 13, prescriptionId: 21, newlyCreatedPatient: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = {
+      patientId: 7,
+      checkedAt: "2026-03-24T10:30:00Z",
+      reason: "Walk-in consultation",
+      priority: "normal" as const,
+      diagnoses: [{ diagnosisName: "Acute viral fever", icd10Code: "B34.9" }],
+      vitals: { heartRate: 84, temperatureC: 37.8 },
+      allergies: [{ allergyName: "Penicillin", severity: "high" as const, isActive: true }],
+      prescription: {
+        items: [
+          {
+            drugName: "Paracetamol",
+            dose: "500mg",
+            frequency: "TID",
+            duration: "3 days",
+            quantity: 9,
+            source: "clinical" as const,
+          },
+        ],
+      },
+    };
+
+    await expect(saveConsultation(payload)).resolves.toEqual({
+      encounterId: 13,
+      prescriptionId: 21,
+      newlyCreatedPatient: true,
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/consultations/save");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(payload));
   });
 
   it("loads families and audit logs through dedicated BFF routes", async () => {

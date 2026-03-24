@@ -1,11 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  createPatientAllergy,
-  createEncounter,
-  createPatientVital,
-  startVisit,
-  updateAppointment,
+  saveConsultation,
   type ApiClientError,
 } from "../../../lib/api-client";
 import { hasPermission } from "../../../lib/authorization";
@@ -36,6 +32,8 @@ import type { useVisitPlanner } from "./useVisitPlanner";
 import type {
   AllergyAlert,
   AppointmentLifecycleStatus,
+  ClinicalDiagnosisSelection,
+  GuardianCaptureMode,
   Patient,
   PatientGender,
   PatientVital,
@@ -121,7 +119,9 @@ function getDateLabel(value: unknown) {
 
 function normalizeGender(value: unknown): PatientGender {
   const text = getString(value).toLowerCase();
-  return text === "female" ? "Female" : "Male";
+  if (text === "female") return "Female";
+  if (text === "male") return "Male";
+  return "Unspecified";
 }
 
 function toName(row: AnyRecord, fallback: string) {
@@ -153,12 +153,133 @@ function toAge(...values: unknown[]) {
   return 0;
 }
 
-function toEncounterDate(value: string) {
-  const parsed = new Date(value);
+function normalizeIsoDate(value: unknown) {
+  const raw = getString(value).trim();
+  if (!raw) return "";
+  const directMatch = raw.match(/^\d{4}-\d{2}-\d{2}/);
+  if (directMatch) {
+    return directMatch[0] ?? "";
+  }
+  const parsed = new Date(raw);
   if (!Number.isNaN(parsed.getTime())) {
     return parsed.toISOString().slice(0, 10);
   }
-  return new Date().toISOString().slice(0, 10);
+  return "";
+}
+
+function parseVitalDrafts(vitalDrafts: Record<VitalDraftKey, string>) {
+  const bloodPressureText = vitalDrafts.bloodPressure.trim();
+  const heartRateText = vitalDrafts.heartRate.trim();
+  const temperatureText = vitalDrafts.temperature.trim();
+  const spo2Text = vitalDrafts.spo2.trim();
+  const bloodPressureMatch = bloodPressureText.match(/^\s*(\d{2,3})\s*\/\s*(\d{2,3})\s*$/);
+  const bpSystolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : undefined;
+  const bpDiastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : undefined;
+  const heartRateMatch = heartRateText.match(/\d+(?:\.\d+)?/);
+  const heartRate = heartRateMatch ? Number(heartRateMatch[0]) : undefined;
+  const temperatureMatch = temperatureText.match(/\d+(?:\.\d+)?/);
+  const temperatureC = temperatureMatch ? Number(temperatureMatch[0]) : undefined;
+  const spo2Match = spo2Text.match(/\d+(?:\.\d+)?/);
+  const spo2 = spo2Match ? Number(spo2Match[0]) : undefined;
+
+  return {
+    bloodPressureText,
+    bpSystolic,
+    bpDiastolic,
+    heartRate,
+    temperatureC,
+    spo2,
+    hasAnySupportedVital:
+      bpSystolic !== undefined ||
+      bpDiastolic !== undefined ||
+      heartRate !== undefined ||
+      temperatureC !== undefined ||
+      spo2 !== undefined,
+  };
+}
+
+function buildConsultationAllergyPayload(
+  consultationAllergies: Array<{ allergyName: string; severity: AllergySeverity; isActive: boolean }>,
+  allergyDraftName: string,
+  allergyDraftSeverity: AllergySeverity
+) {
+  const pendingName = allergyDraftName.trim();
+  const merged = [...consultationAllergies];
+
+  if (pendingName) {
+    const nextEntry = {
+      allergyName: pendingName,
+      severity: allergyDraftSeverity,
+      isActive: true,
+    } as const;
+    const existingIndex = merged.findIndex(
+      (entry) => normalizeLookupValue(entry.allergyName) === normalizeLookupValue(pendingName)
+    );
+
+    if (existingIndex >= 0) {
+      merged[existingIndex] = nextEntry;
+    } else {
+      merged.push(nextEntry);
+    }
+  }
+
+  return merged;
+}
+
+function toDiagnosisPayloadEntry(diagnosis: string | ClinicalDiagnosisSelection) {
+  if (typeof diagnosis !== "string") {
+    return {
+      diagnosisName: diagnosis.display.trim(),
+      icd10Code: diagnosis.code.trim().toUpperCase(),
+    };
+  }
+
+  const trimmed = diagnosis.trim();
+  const icdMatch = trimmed.match(/^([A-Z][0-9][A-Z0-9.]{1,10})\s*-\s*(.+)$/i);
+
+  if (!icdMatch) {
+    return {
+      diagnosisName: trimmed,
+      icd10Code: "",
+    };
+  }
+
+  return {
+    diagnosisName: icdMatch[2]?.trim() ?? trimmed,
+    icd10Code: icdMatch[1]?.trim().toUpperCase() ?? "",
+  };
+}
+
+function getResolvedPatientId(payload: AnyRecord) {
+  return (
+    getNumber(payload.patientId) ??
+    getNumber(asRecord(payload.patient)?.id) ??
+    getNumber(asRecord(payload.resolvedPatient)?.id) ??
+    getNumber(asRecord(payload.createdPatient)?.id)
+  );
+}
+
+function isMinorWithoutNic(dateOfBirth: string, nic: string) {
+  if (!dateOfBirth || nic.trim()) return false;
+  const age = toAge(dateOfBirth);
+  return age > 0 && age < 18;
+}
+
+function splitPatientNameParts(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0] ?? "", lastName: "" };
+  }
+
+  return {
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+  };
 }
 
 function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Patient[] {
@@ -203,10 +324,31 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
       nestedPatient?.patient_code ?? row.patient_code ?? patientRow?.patient_code,
       ""
     );
+    const familyId =
+      getNumber(
+        nestedPatient?.family_id ??
+          asRecord(nestedPatient?.family)?.id ??
+          row.family_id ??
+          asRecord(row.family)?.id ??
+          patientRow?.family_id ??
+          asRecord(patientRow?.family)?.id
+      ) ?? undefined;
 
     const nic = getString(
       nestedPatient?.nic ?? row.nic ?? row.patientNic ?? row.patient_nic ?? patientRow?.nic,
       "No NIC"
+    );
+    const dateOfBirth = normalizeIsoDate(
+      nestedPatient?.date_of_birth ??
+        nestedPatient?.dob ??
+        row.date_of_birth ??
+        row.dob ??
+        patientRow?.date_of_birth ??
+        patientRow?.dob
+    );
+    const phone = getString(
+      nestedPatient?.phone ?? row.phone ?? row.patient_phone ?? patientRow?.phone,
+      ""
     );
 
     const age = toAge(
@@ -262,9 +404,15 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
           : "waiting",
       name,
       patientCode,
+      familyId,
       nic,
+      phone: phone || undefined,
+      dateOfBirth: dateOfBirth || undefined,
       guardianName: guardianName || undefined,
       guardianNic: guardianNic || undefined,
+      guardianPhone:
+        getString(nestedPatient?.guardian_phone ?? row.guardian_phone ?? patientRow?.guardian_phone, "") ||
+        undefined,
       guardianRelationship: guardianRelationship || undefined,
       time,
       reason,
@@ -277,11 +425,16 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
     const id = getNumber(row.id ?? row.patientId ?? row.patient_id);
     return {
       patientId: id ?? undefined,
+      familyId:
+        getNumber(row.family_id ?? asRecord(row.family)?.id) ?? undefined,
       name: toName(row, `Patient ${index + 1}`),
       patientCode: getString(row.patient_code, ""),
       nic: getString(row.nic, "No NIC"),
+      phone: getString(row.phone, "") || undefined,
+      dateOfBirth: normalizeIsoDate(row.date_of_birth ?? row.dob) || undefined,
       guardianName: getString(row.guardian_name, "") || undefined,
       guardianNic: getString(row.guardian_nic, "") || undefined,
+      guardianPhone: getString(row.guardian_phone, "") || undefined,
       guardianRelationship: getString(row.guardian_relationship, "") || undefined,
       time: "-",
       reason: "General visit",
@@ -528,22 +681,33 @@ export function useDoctorWorkspaceData(
   const currentUserQuery = useCurrentUserQuery();
   const [search, setSearchState] = useState("");
   const [patientName, setPatientNameState] = useState("");
+  const [patientFirstName, setPatientFirstNameState] = useState("");
+  const [patientLastName, setPatientLastNameState] = useState("");
   const [patientAge, setPatientAgeState] = useState("");
+  const [patientDateOfBirth, setPatientDateOfBirthState] = useState("");
   const [patientCode, setPatientCodeState] = useState("");
   const [nicNumber, setNicNumberState] = useState("");
+  const [phoneNumber, setPhoneNumberState] = useState("");
   const [nicIdentityLabel, setNicIdentityLabel] = useState<"Patient NIC" | "Guardian NIC" | null>(
     null
   );
-  const [gender, setGenderState] = useState<PatientGender>("Male");
+  const [guardianName, setGuardianNameState] = useState("");
+  const [guardianNic, setGuardianNicState] = useState("");
+  const [guardianPhone, setGuardianPhoneState] = useState("");
+  const [guardianRelationship, setGuardianRelationshipState] = useState("");
+  const [guardianMode, setGuardianModeState] = useState<GuardianCaptureMode>("quick");
+  const [guardianDateOfBirth, setGuardianDateOfBirthState] = useState("");
+  const [guardianGender, setGuardianGenderState] = useState<PatientGender>("Female");
+  const [guardianSearch, setGuardianSearchState] = useState("");
+  const [selectedGuardianId, setSelectedGuardianId] = useState<number | null>(null);
+  const [gender, setGenderState] = useState<PatientGender>("Unspecified");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
+  const [, setSelectedAppointmentId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
     useState<AppointmentLifecycleStatus | null>(null);
-  const [selectedVisitMode, setSelectedVisitMode] = useState<"walk_in" | "queue" | null>(null);
   const [patientLookupNotice, setPatientLookupNotice] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
-  const [transitionState, setTransitionState] = useState<MutationState>(idleMutationState());
   const [vitalDrafts, setVitalDrafts] = useState<Record<VitalDraftKey, string>>({
     bloodPressure: "",
     heartRate: "",
@@ -553,7 +717,9 @@ export function useDoctorWorkspaceData(
   const [vitalsSaveState, setVitalsSaveState] = useState<MutationState>(idleMutationState());
   const [allergyDraftName, setAllergyDraftName] = useState("");
   const [allergyDraftSeverity, setAllergyDraftSeverity] = useState<AllergySeverity>("moderate");
-  const [editingAllergyName, setEditingAllergyName] = useState<string | null>(null);
+  const [consultationAllergies, setConsultationAllergies] = useState<
+    Array<{ allergyName: string; severity: AllergySeverity; isActive: boolean }>
+  >([]);
   const [allergySaveState, setAllergySaveState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
@@ -584,6 +750,23 @@ export function useDoctorWorkspaceData(
           .includes(query)
     ).slice(0, 8);
   }, [patients, search]);
+  const guardianSearchMatches = useMemo(() => {
+    const query = guardianSearch.trim().toLowerCase();
+    if (!query) return [];
+    return patients
+      .filter((patient) => patient.patientId !== selectedPatientId)
+      .filter(
+        (patient) =>
+          `${patient.name} ${patient.nic} ${patient.guardianNic ?? ""} ${patient.phone ?? ""}`
+            .toLowerCase()
+            .includes(query)
+      )
+      .slice(0, 6);
+  }, [guardianSearch, patients, selectedPatientId]);
+  const selectedGuardian = useMemo(
+    () => patients.find((patient) => patient.patientId === selectedGuardianId) ?? null,
+    [patients, selectedGuardianId]
+  );
 
   const queueState: LoadState = useMemo(() => {
     const patientRows = asArray(rawPatients);
@@ -697,90 +880,88 @@ export function useDoctorWorkspaceData(
     !!currentUserQuery.data &&
     isDoctorRole &&
     hasPermission(currentUserQuery.data, "doctor.workspace.view");
-  const canSaveRecord =
+  const requiresGuardianDetails = isMinorWithoutNic(patientDateOfBirth, nicNumber);
+  const hasDraftPatient =
+    patientName.trim().length > 0 || patientDateOfBirth.trim().length > 0 || nicNumber.trim().length > 0;
+  const hasValidDraftPatient =
+    patientName.trim().length > 0 &&
+    patientDateOfBirth.trim().length > 0 &&
+    (!requiresGuardianDetails ||
+      (selectedGuardian !== null
+        ? guardianRelationship.trim().length > 0
+        : guardianMode === "draft"
+          ? guardianName.trim().length > 0 &&
+            guardianDateOfBirth.trim().length > 0 &&
+            guardianRelationship.trim().length > 0
+          : guardianName.trim().length > 0 &&
+            guardianRelationship.trim().length > 0 &&
+            (guardianNic.trim().length > 0 || guardianPhone.trim().length > 0)));
+  const canSaveRecord = Boolean(
     hasDoctorWorkspaceAccess &&
-    !!currentUserQuery.data &&
-    hasPermission(currentUserQuery.data, "appointment.update") &&
-    selectedPatientId !== null &&
-    selectedAppointmentId !== null &&
-    selectedAppointmentStatus !== "completed" &&
-    selectedAppointmentStatus !== "cancelled";
-  const canTransitionAppointments =
-    hasDoctorWorkspaceAccess &&
-    !!currentUserQuery.data &&
-    hasPermission(currentUserQuery.data, "appointment.update") &&
-    selectedPatientId !== null &&
-    selectedAppointmentStatus !== "completed" &&
-    selectedAppointmentStatus !== "cancelled";
-  const visitActionLabel =
-    selectedAppointmentStatus === "waiting" || selectedAppointmentStatus === "in_consultation"
-      ? "Continue Visit"
-      : "Start Visit";
-  const visitModeLabel =
-    selectedVisitMode === "queue"
-      ? "Queue Visit"
-      : selectedVisitMode === "walk_in"
-        ? "Walk-In"
-        : "No Visit";
-  const canEditVitals =
-    !!currentUserQuery.data &&
-    selectedPatientId !== null &&
-    hasPermission(currentUserQuery.data, "patient.vital.write");
-  const canEditAllergies =
-    !!currentUserQuery.data &&
-    selectedPatientId !== null &&
-    hasPermission(currentUserQuery.data, "patient.allergy.write");
+      !!currentUserQuery.data &&
+      hasPermission(currentUserQuery.data, "appointment.update") &&
+      (selectedPatientId !== null || hasValidDraftPatient)
+  );
+  const isCreatingPatientInline = Boolean(selectedPatientId === null && hasDraftPatient);
+  const canEditVitals = selectedPatientId !== null || isCreatingPatientInline;
+  const canEditAllergies = selectedPatientId !== null || isCreatingPatientInline;
   const saveDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
-      ? "Checking doctor access before encounter submission."
+      ? "Checking doctor access before consultation save."
       : currentUserQuery.data && !isDoctorRole
-        ? "Doctor role is required before submitting encounters."
+        ? "Doctor role is required before saving consultations."
         : currentUserQuery.data && !hasDoctorWorkspaceAccess
-          ? "Doctor workspace access is required before submitting encounters."
+          ? "Doctor workspace access is required before saving consultations."
         : currentUserQuery.data && !hasPermission(currentUserQuery.data, "appointment.update")
-          ? "Appointment update permission is required before saving encounters."
-        : !selectedPatientId || !selectedAppointmentId
-          ? "Start or resume a visit before saving the encounter."
-          : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
-            ? "Completed or cancelled appointments cannot be updated from the doctor workspace."
+          ? "Appointment update permission is required before saving consultations."
+        : selectedPatientId === null && !hasDraftPatient
+          ? "Search for a patient or enter quick-create details before saving."
+          : selectedPatientId === null && (!patientFirstName.trim() || !patientLastName.trim())
+            ? "Enter the patient first and last name before saving."
+            : selectedPatientId === null && !patientDateOfBirth.trim()
+              ? "Enter the patient date of birth before saving."
+              : selectedPatientId === null &&
+                  requiresGuardianDetails &&
+                  selectedGuardian === null &&
+                  guardianMode === "draft" &&
+                  !guardianName.trim()
+                ? "Guardian full name is required before creating a guardian profile."
+                : selectedPatientId === null &&
+                    requiresGuardianDetails &&
+                    selectedGuardian === null &&
+                    guardianMode === "draft" &&
+                    !guardianDateOfBirth.trim()
+                  ? "Guardian date of birth is required before creating a guardian profile."
+                : selectedPatientId === null &&
+                    requiresGuardianDetails &&
+                    !guardianRelationship.trim()
+                  ? "Select the guardian relationship before saving."
+                : selectedPatientId === null &&
+                    requiresGuardianDetails &&
+                    selectedGuardian === null &&
+                    guardianMode === "quick" &&
+                    !guardianName.trim()
+                  ? "Guardian name or selected guardian is required for minors without a NIC."
+                : selectedPatientId === null &&
+                    requiresGuardianDetails &&
+                    guardianMode === "quick" &&
+                    !selectedGuardian?.phone &&
+                    !(selectedGuardian?.nic && selectedGuardian.nic !== "No NIC") &&
+                    !guardianNic.trim() &&
+                    !guardianPhone.trim()
+                  ? "Guardian NIC or guardian phone is required for minors without a NIC."
             : null;
-  const transitionDisabledReason =
-    currentUserQuery.isPending || currentUserQuery.isFetching
-      ? "Checking doctor access before starting the active visit."
-      : currentUserQuery.data && !isDoctorRole
-        ? "Doctor role is required before starting the active visit."
-        : currentUserQuery.data && !hasDoctorWorkspaceAccess
-          ? "Doctor workspace access is required before starting the active visit."
-        : currentUserQuery.data && !hasPermission(currentUserQuery.data, "appointment.update")
-          ? "Appointment update permission is required before starting the active visit."
-        : !selectedPatientId
-          ? "Select a patient before starting the active visit."
-          : selectedAppointmentStatus === "completed" || selectedAppointmentStatus === "cancelled"
-              ? "Completed or cancelled visits cannot be continued from the doctor workspace."
-              : null;
   const vitalsDisabledReason =
-    !selectedPatientId
-      ? "Select a patient before updating vitals."
-      : currentUserQuery.isPending || currentUserQuery.isFetching
-        ? "Checking doctor access before updating vitals."
-        : currentUserQuery.data && !hasPermission(currentUserQuery.data, "patient.vital.write")
-          ? "Patient vital write permission is required before updating vitals."
+    !canEditVitals
+      ? "Search for a patient or enter quick-create details before recording vitals."
           : null;
   const allergiesDisabledReason =
-    !selectedPatientId
-      ? "Select a patient before updating allergies."
-      : currentUserQuery.isPending || currentUserQuery.isFetching
-        ? "Checking doctor access before updating allergies."
-        : currentUserQuery.data && !hasPermission(currentUserQuery.data, "patient.allergy.write")
-          ? "Patient allergy write permission is required before updating allergies."
+    !canEditAllergies
+      ? "Search for a patient or enter quick-create details before adding allergies."
           : null;
 
   const clearSaveState = () => {
     setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
-  };
-
-  const clearTransitionState = () => {
-    setTransitionState((current) => (current.status === "idle" ? current : idleMutationState()));
   };
 
   const clearVitalsSaveState = () => {
@@ -797,43 +978,132 @@ export function useDoctorWorkspaceData(
 
   const setSearch = (value: string) => {
     clearSaveState();
-    clearTransitionState();
     clearPatientLookupNotice();
     setSearchState(value);
   };
 
   const setPatientName = (value: string) => {
     clearSaveState();
-    clearTransitionState();
     clearPatientLookupNotice();
     setPatientNameState(value);
+    const parts = splitPatientNameParts(value);
+    setPatientFirstNameState(parts.firstName);
+    setPatientLastNameState(parts.lastName);
+  };
+
+  const setPatientFirstName = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setPatientFirstNameState(value);
+    setPatientNameState(`${value.trim()} ${patientLastName.trim()}`.trim());
+  };
+
+  const setPatientLastName = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setPatientLastNameState(value);
+    setPatientNameState(`${patientFirstName.trim()} ${value.trim()}`.trim());
   };
 
   const setPatientAge = (value: string) => {
     clearSaveState();
-    clearTransitionState();
     clearPatientLookupNotice();
     setPatientAgeState(value);
   };
 
+  const setPatientDateOfBirth = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setPatientDateOfBirthState(value);
+    setPatientAgeState(value ? String(toAge(value)) : "");
+  };
+
   const setPatientCode = (value: string) => {
     clearSaveState();
-    clearTransitionState();
     clearPatientLookupNotice();
     setPatientCodeState(value);
   };
 
   const setNicNumber = (value: string) => {
     clearSaveState();
-    clearTransitionState();
     clearPatientLookupNotice();
     setNicIdentityLabel(null);
     setNicNumberState(value);
   };
 
+  const setPhoneNumber = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setPhoneNumberState(value);
+  };
+
+  const setGuardianName = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(null);
+    setGuardianNameState(value);
+  };
+
+  const setGuardianNic = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(null);
+    setGuardianNicState(value);
+  };
+
+  const setGuardianPhone = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(null);
+    setGuardianPhoneState(value);
+  };
+
+  const setGuardianRelationship = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setGuardianRelationshipState(value);
+  };
+
+  const setGuardianMode = (value: GuardianCaptureMode) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(null);
+    setGuardianModeState(value);
+  };
+
+  const setGuardianDateOfBirth = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(null);
+    setGuardianDateOfBirthState(value);
+  };
+
+  const setGuardianGender = (value: PatientGender) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(null);
+    setGuardianGenderState(value);
+  };
+
+  const setGuardianSearch = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setGuardianSearchState(value);
+  };
+
+  const handleGuardianSelect = (guardian: Patient) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedGuardianId(guardian.patientId ?? null);
+    setGuardianModeState("quick");
+    setGuardianSearchState("");
+    setGuardianNameState(guardian.name);
+    setGuardianNicState(guardian.nic === "No NIC" ? "" : guardian.nic);
+    setGuardianPhoneState(guardian.phone ?? "");
+  };
+
   const setGender = (value: PatientGender) => {
     clearSaveState();
-    clearTransitionState();
     clearPatientLookupNotice();
     setGenderState(value);
   };
@@ -845,9 +1115,6 @@ export function useDoctorWorkspaceData(
 
   const setAllergyNameDraft = (value: string) => {
     clearAllergySaveState();
-    if (editingAllergyName && normalizeLookupValue(value) !== normalizeLookupValue(editingAllergyName)) {
-      setEditingAllergyName(null);
-    }
     setAllergyDraftName(value);
   };
 
@@ -858,16 +1125,28 @@ export function useDoctorWorkspaceData(
 
   const clearSelectedPatientContext = () => {
     setPatientNameState("");
+    setPatientFirstNameState("");
+    setPatientLastNameState("");
     setPatientAgeState("");
+    setPatientDateOfBirthState("");
     setPatientCodeState("");
     setNicNumberState("");
+    setPhoneNumberState("");
     setNicIdentityLabel(null);
-    setGenderState("Male");
+    setGuardianNameState("");
+    setGuardianNicState("");
+    setGuardianPhoneState("");
+    setGuardianRelationshipState("");
+    setGuardianModeState("quick");
+    setGuardianDateOfBirthState("");
+    setGuardianGenderState("Female");
+    setGuardianSearchState("");
+    setSelectedGuardianId(null);
+    setGenderState("Unspecified");
     setSelectedPatientId(null);
     setSelectedAppointmentId(null);
     setSelectedDoctorId(null);
     setSelectedAppointmentStatus(null);
-    setSelectedVisitMode(null);
     setVitalDrafts({
       bloodPressure: "",
       heartRate: "",
@@ -876,33 +1155,45 @@ export function useDoctorWorkspaceData(
     });
     setAllergyDraftName("");
     setAllergyDraftSeverity("moderate");
-    setEditingAllergyName(null);
+    setConsultationAllergies([]);
     clearVitalsSaveState();
     clearAllergySaveState();
   };
 
-  const handlePatientSelect = (patient: Patient) => {
+  const handlePatientSelect = useCallback((patient: Patient) => {
     const identityField = resolveIdentityField(patient);
-    clearSaveState();
-    clearTransitionState();
-    clearPatientLookupNotice();
-    setPatientName(patient.name);
-    setPatientAge(patient.age ? String(patient.age) : "");
-    setPatientCode(patient.patientCode);
+    setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
+    setPatientLookupNotice(null);
+    setPatientNameState(patient.name);
+    const patientNameParts = splitPatientNameParts(patient.name);
+    setPatientFirstNameState(patientNameParts.firstName);
+    setPatientLastNameState(patientNameParts.lastName);
+    setPatientAgeState(patient.age ? String(patient.age) : "");
+    setPatientDateOfBirthState(patient.dateOfBirth ?? "");
+    setPatientCodeState(patient.patientCode);
     setNicNumberState(identityField.value);
+    setPhoneNumberState(patient.phone ?? "");
     setNicIdentityLabel(identityField.label);
-    setGender(patient.gender === "Female" ? "Female" : "Male");
+    setGuardianNameState(patient.guardianName ?? "");
+    setGuardianNicState(patient.guardianNic ?? "");
+    setGuardianPhoneState(patient.guardianPhone ?? "");
+    setGuardianRelationshipState(patient.guardianRelationship ?? "");
+    setGuardianModeState("quick");
+    setGuardianDateOfBirthState("");
+    setGuardianGenderState("Female");
+    setGuardianSearchState("");
+    setSelectedGuardianId(null);
+    setGenderState(
+      patient.gender === "Female" ? "Female" : patient.gender === "Male" ? "Male" : "Unspecified"
+    );
     setSelectedPatientId(patient.patientId ?? null);
     setSelectedAppointmentId(patient.appointmentId ?? null);
     setSelectedDoctorId(patient.doctorId ?? null);
     setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
-    setSelectedVisitMode(
-      patient.appointmentId && patient.appointmentStatus ? "queue" : "walk_in"
-    );
     setSearchState("");
-    clearVitalsSaveState();
-    clearAllergySaveState();
-  };
+    setVitalsSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
+    setAllergySaveState((current) => (current.status === "idle" ? current : idleMutationState()));
+  }, []);
 
   useEffect(() => {
     if (!selectedPatientId || !selectedPatientProfile) {
@@ -920,13 +1211,36 @@ export function useDoctorWorkspaceData(
       selectedPatientProfile.dob
     );
     const resolvedIdentity = resolveIdentityFromProfile(selectedPatientProfile);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) {
+        return;
+      }
+      setPatientNameState(resolvedName);
+      const resolvedNameParts = splitPatientNameParts(resolvedName);
+      setPatientFirstNameState(resolvedNameParts.firstName);
+      setPatientLastNameState(resolvedNameParts.lastName);
+      setPatientCodeState(resolvedPatientCode);
+      setPatientAgeState(resolvedAge ? String(resolvedAge) : "");
+      setPatientDateOfBirthState(
+        normalizeIsoDate(selectedPatientProfile.date_of_birth ?? selectedPatientProfile.dob)
+      );
+      setNicNumberState(resolvedIdentity.value);
+      setNicIdentityLabel(resolvedIdentity.label);
+      setPhoneNumberState(getString(selectedPatientProfile.phone));
+      setGuardianNameState(getString(selectedPatientProfile.guardian_name));
+      setGuardianNicState(getString(selectedPatientProfile.guardian_nic));
+      setGuardianPhoneState(getString(selectedPatientProfile.guardian_phone));
+      setGuardianRelationshipState(getString(selectedPatientProfile.guardian_relationship));
+      setGuardianModeState("quick");
+      setGuardianDateOfBirthState("");
+      setGuardianGenderState("Female");
+      setGenderState(normalizeProfileGender(selectedPatientProfile.gender));
+    });
 
-    setPatientNameState(resolvedName);
-    setPatientCodeState(resolvedPatientCode);
-    setPatientAgeState(resolvedAge ? String(resolvedAge) : "");
-    setNicNumberState(resolvedIdentity.value);
-    setNicIdentityLabel(resolvedIdentity.label);
-    setGenderState(normalizeProfileGender(selectedPatientProfile.gender));
+    return () => {
+      cancelled = true;
+    };
   }, [patientCode, patientName, selectedPatientId, selectedPatientProfile]);
 
   useEffect(() => {
@@ -934,7 +1248,16 @@ export function useDoctorWorkspaceData(
       return;
     }
 
-    setVitalDrafts(buildVitalDrafts(patientVitals));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setVitalDrafts(buildVitalDrafts(patientVitals));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [patientVitals, selectedPatientId]);
 
   useEffect(() => {
@@ -1005,8 +1328,9 @@ export function useDoctorWorkspaceData(
     }
 
     clearSelectedPatientContext();
+    setPatientNameState(query);
     setPatientLookupNotice(
-      `No patient records were found for "${query}". Create the patient first, then start the visit to continue treatment.`
+      `No patient records were found for "${query}". Enter quick-create details below and save the consultation in one step.`
     );
   };
 
@@ -1033,28 +1357,13 @@ export function useDoctorWorkspaceData(
     ]);
   };
 
-  const refreshSelectedPatientAllergies = async () => {
-    if (!selectedPatientId) {
-      return;
-    }
-
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.patients.allergies(selectedPatientId),
-    });
-  };
-
   const handleSaveRecord = async () => {
     if (!canSaveRecord) {
       setSaveState(
         errorMutationState(
-          saveDisabledReason ?? "Doctor permission is required before saving an encounter."
+          saveDisabledReason ?? "Doctor permission is required before saving a consultation."
         )
       );
-      return;
-    }
-
-    if (!selectedPatientId || !selectedAppointmentId) {
-      setSaveState(errorMutationState("Select a waiting appointment before saving encounter."));
       return;
     }
 
@@ -1066,120 +1375,215 @@ export function useDoctorWorkspaceData(
 
     try {
       setSaveState(pendingMutationState());
-      await createEncounter({
-        appointmentId: selectedAppointmentId,
-        patientId: selectedPatientId,
-        doctorId,
+      const parsedVitals = parseVitalDrafts(vitalDrafts);
+      const consultationAllergyPayload = buildConsultationAllergyPayload(
+        consultationAllergies,
+        allergyDraftName,
+        allergyDraftSeverity
+      );
+      if (
+        parsedVitals.bloodPressureText &&
+        (parsedVitals.bpSystolic === undefined || parsedVitals.bpDiastolic === undefined)
+      ) {
+        setSaveState(
+          errorMutationState("Blood pressure must use systolic/diastolic format, like 120/80.")
+        );
+        return;
+      }
+
+      const payload = {
+        ...(selectedPatientId === null &&
+        requiresGuardianDetails &&
+        selectedGuardian === null &&
+        guardianMode === "draft"
+          ? {
+              guardianDraft: {
+                name: guardianName.trim(),
+                dateOfBirth: guardianDateOfBirth.trim(),
+                ...(guardianNic.trim() ? { nic: guardianNic.trim() } : {}),
+                ...(guardianGender === "Male"
+                  ? { gender: "male" as const }
+                  : guardianGender === "Female"
+                    ? { gender: "female" as const }
+                    : {}),
+                ...(guardianPhone.trim() ? { phone: guardianPhone.trim() } : {}),
+              },
+            }
+          : {}),
+        ...(selectedPatientId !== null
+          ? { patientId: selectedPatientId }
+          : {
+              patientDraft: {
+                name: patientName.trim(),
+                dateOfBirth: patientDateOfBirth.trim(),
+                ...(nicNumber.trim() ? { nic: nicNumber.trim() } : {}),
+                ...(gender === "Male"
+                  ? { gender: "male" as const }
+                  : gender === "Female"
+                    ? { gender: "female" as const }
+                    : {}),
+                ...(phoneNumber.trim() ? { phone: phoneNumber.trim() } : {}),
+                ...(requiresGuardianDetails
+                  ? selectedGuardian?.patientId && selectedGuardian.familyId
+                    ? {
+                        guardianPatientId: selectedGuardian.patientId,
+                        ...(guardianRelationship.trim()
+                          ? { guardianRelationship: guardianRelationship.trim() }
+                          : {}),
+                      }
+                    : guardianMode === "draft"
+                      ? {
+                          ...(guardianRelationship.trim()
+                            ? { guardianRelationship: guardianRelationship.trim() }
+                            : {}),
+                        }
+                      : {
+                          guardianName: (selectedGuardian?.name ?? guardianName).trim(),
+                          ...((guardianNic.trim()
+                            ? {
+                                guardianNic: (
+                                  selectedGuardian?.nic === "No NIC"
+                                    ? ""
+                                    : selectedGuardian?.nic ?? guardianNic
+                                ).trim(),
+                              }
+                            : {})),
+                          ...((guardianPhone.trim()
+                            ? {
+                                guardianPhone: (selectedGuardian?.phone ?? guardianPhone).trim(),
+                              }
+                            : {})),
+                          ...(guardianRelationship.trim()
+                            ? { guardianRelationship: guardianRelationship.trim() }
+                            : {}),
+                        }
+                  : {}),
+              },
+            }),
         checkedAt: new Date().toISOString(),
-        notes:
-          clinicalWorkflow.selectedDiseases.join(", ") ||
-          "Clinical note recorded from doctor panel.",
-        nextVisitDate: toEncounterDate(visitPlanner.nextVisitDate),
-        diagnoses: clinicalWorkflow.selectedDiseases.map((diagnosisName) => ({
-          diagnosisName,
-          icd10Code: "",
+        reason: selectedPatientId !== null ? "Walk-in consultation" : "Walk-in consultation",
+        priority: "normal" as const,
+        ...(visitPlanner.notes.trim() ? { notes: visitPlanner.notes.trim() } : {}),
+        ...(visitPlanner.notes.trim() ? { clinicalSummary: visitPlanner.notes.trim() } : {}),
+        diagnoses: clinicalWorkflow.selectedDiseases.map((diagnosis) => ({
+          ...toDiagnosisPayloadEntry(diagnosis),
+          ...(clinicalWorkflow.persistedConditionDiagnoses.has(
+            typeof diagnosis === "string" ? diagnosis : diagnosis.code
+          )
+            ? { persistAsCondition: true }
+            : {}),
         })),
-        tests: clinicalWorkflow.selectedTests.map((testName) => ({
-          testName,
-          status: "ordered",
-        })),
-        prescription: {
-          items: clinicalWorkflow.rxRows
-            .map((row) => ({
-              drugName: row.drug,
-              dose: row.dose,
-              frequency: row.terms,
-              duration: "As prescribed",
-              quantity: getNumber(row.amount) ?? 0,
-              source: (
-                row.source.toLowerCase() === "outside" ? "outside" : "clinical"
-              ) as "outside" | "clinical",
-            }))
-            .filter((row) => row.quantity > 0),
-        },
-      });
-      await updateAppointment(selectedAppointmentId, {
-        status: "completed",
-      });
+        ...(clinicalWorkflow.selectedTests.length > 0
+          ? {
+              tests: clinicalWorkflow.selectedTests.map((test) => ({
+                testName: typeof test === "string" ? test : test.display,
+                status: "ordered" as const,
+              })),
+            }
+          : {}),
+        ...(parsedVitals.hasAnySupportedVital
+          ? {
+              vitals: {
+                ...(parsedVitals.bpSystolic !== undefined ? { bpSystolic: parsedVitals.bpSystolic } : {}),
+                ...(parsedVitals.bpDiastolic !== undefined ? { bpDiastolic: parsedVitals.bpDiastolic } : {}),
+                ...(parsedVitals.heartRate !== undefined ? { heartRate: parsedVitals.heartRate } : {}),
+                ...(parsedVitals.temperatureC !== undefined
+                  ? { temperatureC: parsedVitals.temperatureC }
+                  : {}),
+                ...(parsedVitals.spo2 !== undefined ? { spo2: parsedVitals.spo2 } : {}),
+              },
+            }
+          : {}),
+        ...(consultationAllergyPayload.length > 0 ? { allergies: consultationAllergyPayload } : {}),
+        ...(clinicalWorkflow.rxRows.length > 0
+          ? {
+              prescription: {
+                items: clinicalWorkflow.rxRows
+                  .map((row) => ({
+                    drugName: row.drug,
+                    dose: row.dose,
+                    frequency: row.terms,
+                    duration: "As prescribed",
+                    quantity: getNumber(row.amount) ?? 0,
+                    source: (
+                      row.source.toLowerCase() === "outside" ? "outside" : "clinical"
+                    ) as "outside" | "clinical",
+                  }))
+                  .filter((row) => row.quantity > 0),
+              },
+            }
+          : {}),
+      };
+
+      const response = await saveConsultation(payload);
+      const resolvedPatientId = getResolvedPatientId(response);
+      if (resolvedPatientId !== null) {
+        setSelectedPatientId(resolvedPatientId);
+      }
+      setSelectedDoctorId(doctorId);
       setSelectedAppointmentStatus("completed");
-      setSaveState(successMutationState("Encounter saved to backend."));
+      setConsultationAllergies([]);
+      setAllergyDraftName("");
+      setAllergyDraftSeverity("moderate");
+      setSaveState(successMutationState("Consultation saved successfully."));
       await refreshDoctorQueries();
+      if (resolvedPatientId !== null) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.patients.profile(resolvedPatientId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.patients.vitals(resolvedPatientId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.patients.allergies(resolvedPatientId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.patients.timeline(resolvedPatientId) }),
+        ]);
+      } else if (selectedPatientId) {
+        await refreshSelectedPatientDetails();
+      }
     } catch (error) {
       setSaveState(
-        errorMutationState((error as ApiClientError)?.message ?? "Failed to save encounter.")
+        errorMutationState((error as ApiClientError)?.message ?? "Failed to save consultation.")
       );
     }
   };
 
   const handleSaveVitals = async () => {
-    if (!canEditVitals || !selectedPatientId) {
+    if (!canEditVitals) {
       setVitalsSaveState(
         errorMutationState(
-          vitalsDisabledReason ?? "Select a patient with vital write access before updating vitals."
+          vitalsDisabledReason ?? "Search for a patient or enter quick-create details before recording vitals."
         )
       );
       return;
     }
 
-    const bloodPressureText = vitalDrafts.bloodPressure.trim();
-    const heartRateText = vitalDrafts.heartRate.trim();
-    const temperatureText = vitalDrafts.temperature.trim();
-    const spo2Text = vitalDrafts.spo2.trim();
+    const parsedVitals = parseVitalDrafts(vitalDrafts);
 
-    const bloodPressureMatch = bloodPressureText.match(/^\s*(\d{2,3})\s*\/\s*(\d{2,3})\s*$/);
-    const bpSystolic = bloodPressureMatch ? Number(bloodPressureMatch[1]) : undefined;
-    const bpDiastolic = bloodPressureMatch ? Number(bloodPressureMatch[2]) : undefined;
-    const heartRateMatch = heartRateText.match(/\d+(?:\.\d+)?/);
-    const heartRate = heartRateMatch ? Number(heartRateMatch[0]) : undefined;
-    const temperatureMatch = temperatureText.match(/\d+(?:\.\d+)?/);
-    const temperatureC = temperatureMatch ? Number(temperatureMatch[0]) : undefined;
-    const spo2Match = spo2Text.match(/\d+(?:\.\d+)?/);
-    const spo2 = spo2Match ? Number(spo2Match[0]) : undefined;
-
-    const hasAnySupportedVital =
-      bpSystolic !== undefined ||
-      bpDiastolic !== undefined ||
-      heartRate !== undefined ||
-      temperatureC !== undefined ||
-      spo2 !== undefined;
-
-    if (!hasAnySupportedVital) {
-      setVitalsSaveState(errorMutationState("Enter at least one vital value before saving."));
+    if (!parsedVitals.hasAnySupportedVital) {
+      setVitalsSaveState(
+        successMutationState("Vitals captured locally. They will be sent when you save the consultation.")
+      );
       return;
     }
 
-    if (bloodPressureText && (bpSystolic === undefined || bpDiastolic === undefined)) {
+    if (
+      parsedVitals.bloodPressureText &&
+      (parsedVitals.bpSystolic === undefined || parsedVitals.bpDiastolic === undefined)
+    ) {
       setVitalsSaveState(
         errorMutationState("Blood pressure must use systolic/diastolic format, like 120/80.")
       );
       return;
     }
 
-    try {
-      setVitalsSaveState(pendingMutationState());
-      await createPatientVital(selectedPatientId, {
-        ...(bpSystolic !== undefined ? { bpSystolic } : {}),
-        ...(bpDiastolic !== undefined ? { bpDiastolic } : {}),
-        ...(heartRate !== undefined ? { heartRate } : {}),
-        ...(temperatureC !== undefined ? { temperatureC } : {}),
-        ...(spo2 !== undefined ? { spo2 } : {}),
-        recordedAt: new Date().toISOString(),
-      });
-      await refreshSelectedPatientDetails();
-      setVitalsSaveState(successMutationState("Patient vitals updated."));
-    } catch (error) {
-      setVitalsSaveState(
-        errorMutationState((error as ApiClientError)?.message ?? "Failed to update patient vitals.")
-      );
-    }
+    setVitalsSaveState(
+      successMutationState("Vitals captured locally. They will be sent when you save the consultation.")
+    );
   };
 
   const handleAddOrUpdateAllergy = async () => {
-    if (!canEditAllergies || !selectedPatientId) {
+    if (!canEditAllergies) {
       setAllergySaveState(
         errorMutationState(
           allergiesDisabledReason ??
-            "Select a patient with allergy write access before updating allergies."
+            "Search for a patient or enter quick-create details before adding allergies."
         )
       );
       return;
@@ -1191,126 +1595,100 @@ export function useDoctorWorkspaceData(
       return;
     }
 
-    try {
-      setAllergySaveState(pendingMutationState());
-      await createPatientAllergy(selectedPatientId, {
-        allergyName: name,
-        severity: allergyDraftSeverity,
-      });
-      await refreshSelectedPatientAllergies();
-      setAllergyDraftName("");
-      setEditingAllergyName(null);
-      setAllergySaveState(successMutationState("Patient allergy updated."));
-    } catch (error) {
-      setAllergySaveState(
-        errorMutationState((error as ApiClientError)?.message ?? "Failed to update patient allergy.")
+    setConsultationAllergies((current) => {
+      const next = current.filter(
+        (entry) => normalizeLookupValue(entry.allergyName) !== normalizeLookupValue(name)
       );
-    }
+      return [...next, { allergyName: name, severity: allergyDraftSeverity, isActive: true }];
+    });
+    setAllergyDraftName("");
+    setAllergySaveState(successMutationState("Allergy added to the consultation draft."));
   };
 
   const handleEditAllergy = (allergy: AllergyAlert) => {
     clearAllergySaveState();
-    setEditingAllergyName(allergy.name);
     setAllergyDraftName(allergy.name);
     setAllergyDraftSeverity(allergy.severityKey);
   };
 
   const handleClearAllergyDraft = () => {
     clearAllergySaveState();
-    setEditingAllergyName(null);
     setAllergyDraftName("");
     setAllergyDraftSeverity("moderate");
   };
 
-  const handleStartConsultation = async () => {
-    if (!canTransitionAppointments) {
-      setTransitionState(
-        errorMutationState(
-          transitionDisabledReason ??
-            "Doctor permission is required before starting the active visit."
-        )
-      );
-      return;
-    }
-
-    if (!selectedPatientId) {
-      setTransitionState(errorMutationState("Select a patient before starting the active visit."));
-      return;
-    }
-
-    try {
-      setTransitionState(pendingMutationState());
-      const response = await startVisit({
-        patientId: selectedPatientId,
-        reason: "Walk-in consultation",
-        priority: "normal",
-      });
-      const visitId = getNumber(response.visit.id);
-      const visitDoctorId = getNumber(response.visit.doctorId ?? response.visit.doctor_id);
-      const visitStatus = getString(response.visit.status).toLowerCase();
-
-      setSelectedAppointmentId(visitId);
-      setSelectedDoctorId(visitDoctorId);
-      setSelectedAppointmentStatus(
-        visitStatus === "waiting" ||
-          visitStatus === "in_consultation" ||
-          visitStatus === "completed" ||
-          visitStatus === "cancelled"
-          ? (visitStatus as AppointmentLifecycleStatus)
-          : "in_consultation"
-      );
-      setSelectedVisitMode((current) => current ?? "walk_in");
-      await refreshDoctorQueries();
-      setTransitionState(
-        successMutationState(response.reused ? "Active visit resumed." : "Visit started.")
-      );
-    } catch (error) {
-      setTransitionState(
-        errorMutationState(
-          (error as ApiClientError)?.message ?? "Failed to start the active visit."
-        )
-      );
-    }
-  };
-
   const saveFeedback = getMutationFeedback(saveState, {
-    pendingMessage: "Submitting encounter...",
-    errorMessage: "Failed to save encounter.",
-  });
-  const transitionFeedback = getMutationFeedback(transitionState, {
-    pendingMessage: "Starting visit...",
-    errorMessage: "Failed to start visit.",
+    pendingMessage: "Saving consultation...",
+    errorMessage: "Failed to save consultation.",
   });
   const vitalsFeedback = getMutationFeedback(vitalsSaveState, {
-    pendingMessage: "Saving patient vitals...",
-    errorMessage: "Failed to update patient vitals.",
+    pendingMessage: "Capturing vitals...",
+    errorMessage: "Failed to prepare vitals.",
   });
   const allergyFeedback = getMutationFeedback(allergySaveState, {
-    pendingMessage: "Saving patient allergy...",
-    errorMessage: "Failed to update patient allergy.",
+    pendingMessage: "Adding allergy...",
+    errorMessage: "Failed to prepare allergy.",
   });
+  const editingAllergyName = null;
+  const transitionState = idleMutationState();
+  const transitionFeedback = null;
+  const canTransitionAppointments = false;
+  const visitActionLabel = "Save Consultation";
+  const visitModeLabel = selectedPatientId !== null ? "Existing Patient" : isCreatingPatientInline ? "Quick Create" : "No Selection";
+  const transitionDisabledReason: string | null =
+    "Consultation save now handles visit creation and reuse automatically.";
 
   return {
     search,
     setSearch,
     patientName,
     setPatientName,
+    patientFirstName,
+    setPatientFirstName,
+    patientLastName,
+    setPatientLastName,
     patientAge,
     setPatientAge,
+    patientDateOfBirth,
+    setPatientDateOfBirth,
     patientCode,
     setPatientCode,
     patientLookupNotice,
     nicNumber,
     nicIdentityLabel,
     setNicNumber,
+    phoneNumber,
+    setPhoneNumber,
+    guardianName,
+    setGuardianName,
+    guardianNic,
+    setGuardianNic,
+    guardianPhone,
+    setGuardianPhone,
+    guardianRelationship,
+    setGuardianRelationship,
+    guardianMode,
+    setGuardianMode,
+    guardianDateOfBirth,
+    setGuardianDateOfBirth,
+    guardianGender,
+    setGuardianGender,
+    guardianSearch,
+    setGuardianSearch,
+    guardianSearchMatches,
+    selectedGuardian,
+    handleGuardianSelect,
     gender,
     setGender,
+    isCreatingPatientInline,
+    requiresGuardianDetails,
     handleSearchCommit: handleHeaderLookup,
     searchMatches,
     selectedPatientProfileId: selectedPatientId ? String(selectedPatientId) : null,
     selectedPatientLabel: patientName || null,
     patientVitals: selectedPatientId ? patientVitals : [],
     patientAllergies: selectedPatientId ? patientAllergies : [],
+    consultationAllergies,
     vitalDrafts,
     setVitalDraft,
     canEditVitals,
@@ -1330,6 +1708,12 @@ export function useDoctorWorkspaceData(
     allergySaveState,
     allergyFeedback,
     handleAddOrUpdateAllergy,
+    removeConsultationAllergy: (allergyName: string) =>
+      setConsultationAllergies((current) =>
+        current.filter(
+          (entry) => normalizeLookupValue(entry.allergyName) !== normalizeLookupValue(allergyName)
+        )
+      ),
     queueState,
     patientDetailsState,
     canSaveRecord,
@@ -1344,7 +1728,7 @@ export function useDoctorWorkspaceData(
     transitionState,
     transitionFeedback,
     handlePatientSelect,
-    handleStartConsultation,
+    handleStartConsultation: handleSaveRecord,
     handleSaveRecord,
     reload: () => {
       void Promise.all([

@@ -38,47 +38,26 @@ vi.mock("../../../lib/query-hooks", () => ({
 vi.mock("../components/DoctorSidebar", () => ({
   DoctorSidebar: ({
     onOpenPatientHistory,
-    onStartConsultation,
-    visitActionLabel,
-    visitModeLabel,
     onSaveRecord,
-    canTransitionAppointments,
-    transitionDisabledReason,
     canSaveRecord,
     saveDisabledReason,
-    isTransitioningAppointment,
     isSavingRecord,
     selectedPatientProfileId,
   }: {
     onOpenPatientHistory: () => void;
-    onStartConsultation: () => void;
     onSaveRecord: () => void;
-    canTransitionAppointments?: boolean;
-    transitionDisabledReason?: string | null;
     canSaveRecord?: boolean;
     saveDisabledReason?: string | null;
-    isTransitioningAppointment?: boolean;
     isSavingRecord?: boolean;
-    visitActionLabel?: string;
-    visitModeLabel?: string;
     selectedPatientProfileId?: string | null;
   }) => (
     <div>
-      <div>{visitModeLabel ?? "No Visit"}</div>
       <button type="button" onClick={onOpenPatientHistory} disabled={!selectedPatientProfileId}>
         View Patient History
       </button>
-      <button
-        type="button"
-        onClick={onStartConsultation}
-        disabled={isTransitioningAppointment || !canTransitionAppointments}
-      >
-        {isTransitioningAppointment ? "Starting visit..." : visitActionLabel ?? "Start Visit"}
-      </button>
       <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
-        {isSavingRecord ? "Saving record..." : "Save & Print Record"}
+        {isSavingRecord ? "Saving consultation..." : "Save Consultation"}
       </button>
-      {transitionDisabledReason ? <p>{transitionDisabledReason}</p> : null}
       {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
     </div>
   ),
@@ -145,8 +124,14 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     setSearch: vi.fn(),
     patientName: "Jane Doe",
     setPatientName: vi.fn(),
+    patientFirstName: "Jane",
+    setPatientFirstName: vi.fn(),
+    patientLastName: "Doe",
+    setPatientLastName: vi.fn(),
     patientAge: "31",
     setPatientAge: vi.fn(),
+    patientDateOfBirth: "1995-03-01",
+    setPatientDateOfBirth: vi.fn(),
     patientCode: "P-0007",
     setPatientCode: vi.fn(),
     selectedPatientProfileId: "7",
@@ -155,12 +140,36 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     nicNumber: "990011223V",
     nicIdentityLabel: "Patient NIC" as const,
     setNicNumber: vi.fn(),
+    phoneNumber: "",
+    setPhoneNumber: vi.fn(),
+    guardianName: "",
+    setGuardianName: vi.fn(),
+    guardianNic: "",
+    setGuardianNic: vi.fn(),
+    guardianPhone: "",
+    setGuardianPhone: vi.fn(),
+    guardianRelationship: "",
+    setGuardianRelationship: vi.fn(),
+    guardianMode: "quick" as const,
+    setGuardianMode: vi.fn(),
+    guardianDateOfBirth: "",
+    setGuardianDateOfBirth: vi.fn(),
+    guardianGender: "Female" as const,
+    setGuardianGender: vi.fn(),
+    guardianSearch: "",
+    setGuardianSearch: vi.fn(),
+    guardianSearchMatches: [],
+    selectedGuardian: null,
+    handleGuardianSelect: vi.fn(),
     gender: "Female" as const,
     setGender: vi.fn(),
+    isCreatingPatientInline: false,
+    requiresGuardianDetails: false,
     handleSearchCommit: vi.fn(),
     searchMatches: [],
     patientVitals: [{ label: "BP", value: "120/80" }],
     patientAllergies: [],
+    consultationAllergies: [],
     vitalDrafts: {
       bloodPressure: "120/80",
       heartRate: "",
@@ -185,14 +194,15 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     allergySaveState: idleMutationState(),
     allergyFeedback: null,
     handleAddOrUpdateAllergy: vi.fn(),
+    removeConsultationAllergy: vi.fn(),
     queueState: readyLoadState(),
     patientDetailsState: emptyLoadState(),
     canSaveRecord: true,
-    canTransitionAppointments: true,
-    visitActionLabel: "Continue Visit",
-    visitModeLabel: "Queue Visit",
+    canTransitionAppointments: false,
+    visitActionLabel: "Save Consultation",
+    visitModeLabel: "Existing Patient",
     saveDisabledReason: null,
-    transitionDisabledReason: null,
+    transitionDisabledReason: "",
     selectedAppointmentStatus: "waiting" as const,
     saveState: idleMutationState(),
     saveFeedback: null,
@@ -211,8 +221,10 @@ describe("DoctorSection", () => {
     vi.clearAllMocks();
     mockedUseDoctorClinicalWorkflow.mockReturnValue({
       selectedDiseases: [],
+      persistedConditionDiagnoses: new Set(),
       selectedTests: [],
       rxRows: [],
+      togglePersistAsCondition: vi.fn(),
     } as unknown as ReturnType<typeof useDoctorClinicalWorkflow>);
     mockedUseVisitPlanner.mockReturnValue({
       nextVisitDate: "2026-03-07",
@@ -253,11 +265,10 @@ describe("DoctorSection", () => {
     const user = userEvent.setup();
     const openProfile = vi.fn();
     const handlePatientSelect = vi.fn();
-    const handleStartConsultation = vi.fn();
     const handleSaveRecord = vi.fn();
 
     mockedUseDoctorWorkspaceData.mockReturnValue(
-      buildWorkspaceState({ handlePatientSelect, handleStartConsultation, handleSaveRecord })
+      buildWorkspaceState({ handlePatientSelect, handleSaveRecord })
     );
     mockedUsePatientProfilePopup.mockReturnValue({
       selectedProfileId: "7",
@@ -269,17 +280,15 @@ describe("DoctorSection", () => {
 
     await user.click(screen.getByRole("button", { name: /select patient/i }));
     await user.click(screen.getByRole("button", { name: /view patient history/i }));
-    await user.click(screen.getByRole("button", { name: /continue visit/i }));
-    await user.click(screen.getByRole("button", { name: /save & print record/i }));
+    await user.click(screen.getByRole("button", { name: /save consultation/i }));
 
     expect(handlePatientSelect).toHaveBeenCalledTimes(1);
-    expect(handleStartConsultation).toHaveBeenCalledTimes(1);
     expect(openProfile).toHaveBeenCalledWith("7");
     expect(handleSaveRecord).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("doctor-workspace")).toHaveTextContent("7");
   });
 
-  it("shows the save pending label while encounter submission is in flight", () => {
+  it("shows the save pending label while consultation submission is in flight", () => {
     mockedUseDoctorWorkspaceData.mockReturnValue(
       buildWorkspaceState({
         saveState: pendingMutationState(),
@@ -288,10 +297,10 @@ describe("DoctorSection", () => {
 
     render(<DoctorSection />);
 
-    expect(screen.getByRole("button", { name: /saving record/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /saving consultation/i })).toBeDisabled();
   });
 
-  it("shows the consultation transition pending label while appointment status updates are in flight", () => {
+  it("keeps only the unified save action visible", () => {
     mockedUseDoctorWorkspaceData.mockReturnValue(
       buildWorkspaceState({
         transitionState: pendingMutationState(),
@@ -300,29 +309,23 @@ describe("DoctorSection", () => {
 
     render(<DoctorSection />);
 
-    expect(screen.getByRole("button", { name: /starting visit/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /start visit/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save consultation/i })).toBeInTheDocument();
   });
 
-  it("disables encounter submission when the active role cannot save records", () => {
+  it("disables consultation submission when the active role cannot save records", () => {
     mockedUseDoctorWorkspaceData.mockReturnValue(
       buildWorkspaceState({
         canSaveRecord: false,
-        canTransitionAppointments: false,
-        saveDisabledReason: "Doctor workspace access is required before submitting encounters.",
-        transitionDisabledReason:
-          "Doctor workspace access is required before updating appointment status.",
+        saveDisabledReason: "Doctor workspace access is required before saving consultations.",
       })
     );
 
     render(<DoctorSection />);
 
-    expect(screen.getByRole("button", { name: /continue visit/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /save & print record/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /save consultation/i })).toBeDisabled();
     expect(
-      screen.getByText(/doctor workspace access is required before updating appointment status/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/doctor workspace access is required before submitting encounters/i)
+      screen.getByText(/doctor workspace access is required before saving consultations/i)
     ).toBeInTheDocument();
   });
 

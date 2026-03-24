@@ -35,7 +35,8 @@ export type KnownAppPermission =
   | "patient.vital.write"
   | "user.read"
   | "user.write"
-  | "clinical.icd10.read";
+  | "clinical.icd10.read"
+  | "clinical.tests.read";
 
 export type AppPermission = KnownAppPermission | (string & {});
 
@@ -139,6 +140,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "user.read",
     "user.write",
     "clinical.icd10.read",
+    "clinical.tests.read",
   ],
   doctor: [
     "doctor.workspace.view",
@@ -157,6 +159,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "appointment.update",
     "prescription.dispense",
     "clinical.icd10.read",
+    "clinical.tests.read",
   ],
   assistant: [
     "assistant.workspace.view",
@@ -172,6 +175,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "patient.history.read",
     "patient.history.write",
     "clinical.icd10.read",
+    "clinical.tests.read",
   ],
 };
 

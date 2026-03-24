@@ -69,4 +69,35 @@ describe("RxEditor", () => {
     expect(screen.getByRole("button", { name: /outside/i })).toBeInTheDocument();
     expect(screen.queryByText(/use standard medical frequency abbreviations/i)).not.toBeInTheDocument();
   });
+
+  it("submits the prescription row from the add button when required fields are present", async () => {
+    const user = userEvent.setup();
+    const onAddClinicalDrug = vi.fn();
+
+    render(
+      <RxEditor
+        rxRows={[]}
+        clinicalDrugForm={{
+          name: "Amoxicillin",
+          doseValue: "500",
+          doseUnit: "mg",
+          frequencyCode: "TDS",
+          amount: "12",
+          source: "Clinical",
+        }}
+        filteredDrugSuggestions={[]}
+        onDrugFormChange={vi.fn()}
+        onAddClinicalDrug={onAddClinicalDrug}
+        onDrugFormKeyDown={vi.fn()}
+        onUpdateRxRow={vi.fn()}
+        onRemoveRxRow={vi.fn()}
+        onDemoFill={vi.fn()}
+        onClear={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /add drug/i }));
+
+    expect(onAddClinicalDrug).toHaveBeenCalledTimes(1);
+  });
 });

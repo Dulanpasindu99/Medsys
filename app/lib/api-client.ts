@@ -9,6 +9,58 @@ type ApiContractError = ApiClientError;
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
 export type ApiRecord = Record<string, unknown>;
 export type VisitStartPriority = "low" | "normal" | "high" | "critical";
+export type ConsultationPriority = VisitStartPriority;
+export type ConsultationSavePayload = {
+  patientId?: number;
+  patientDraft?: {
+    name: string;
+    dateOfBirth: string;
+    nic?: string;
+    gender?: "male" | "female";
+    phone?: string;
+    guardianPatientId?: number;
+    guardianName?: string;
+    guardianNic?: string;
+    guardianPhone?: string;
+    guardianRelationship?: string;
+  };
+  guardianDraft?: {
+    name: string;
+    dateOfBirth: string;
+    nic?: string;
+    gender?: "male" | "female";
+    phone?: string;
+  };
+  checkedAt: string;
+  reason?: string;
+  priority?: ConsultationPriority;
+  notes?: string;
+  diagnoses: Array<{ diagnosisName: string; icd10Code: string; persistAsCondition?: boolean }>;
+  tests?: Array<{ testName: string; status: "ordered" | "in_progress" | "completed" | "cancelled" }>;
+  vitals?: {
+    heartRate?: number;
+    temperatureC?: number;
+    spo2?: number;
+    bpSystolic?: number;
+    bpDiastolic?: number;
+  };
+  allergies?: Array<{
+    allergyName: string;
+    severity: "low" | "moderate" | "high";
+    isActive: boolean;
+  }>;
+  clinicalSummary?: string;
+  prescription?: {
+    items: Array<{
+      drugName: string;
+      dose: string;
+      frequency: string;
+      duration: string;
+      quantity: number;
+      source: "clinical" | "outside";
+    }>;
+  };
+};
 
 const DEFAULT_API_BASE = "/api/backend";
 const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
@@ -429,6 +481,13 @@ export async function createEncounter(input: {
   };
 }) {
   return apiFetch("/api/encounters", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function saveConsultation(input: ConsultationSavePayload) {
+  return apiFetch<ApiRecord>("/api/consultations/save", {
     method: "POST",
     body: JSON.stringify(input),
   });

@@ -69,17 +69,17 @@ export function RxEditor({
   onDemoFill,
   onClear,
 }: RxEditorProps) {
-  const controlHeightClass = "h-12";
-  const rowControlClass = "h-12 rounded-xl";
+  const controlHeightClass = "h-10";
+  const rowControlClass = "h-10 rounded-xl";
   const muiSelectSx = {
     borderRadius: "0.75rem",
     backgroundColor: "#f8fafc",
     fontSize: "0.75rem",
     fontWeight: 700,
-    minHeight: 48,
-    height: 48,
+    minHeight: 40,
+    height: 40,
     "& .MuiSelect-select": {
-      minHeight: "48px",
+      minHeight: "40px",
       display: "flex",
       alignItems: "center",
       boxSizing: "border-box",
@@ -110,9 +110,14 @@ export function RxEditor({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
+  const canAddDrug =
+    clinicalDrugForm.name.trim().length > 0 &&
+    clinicalDrugForm.doseValue.trim().length > 0 &&
+    clinicalDrugForm.amount.trim().length > 0;
+
   return (
-    <div className="relative z-0 flex flex-col gap-4 rounded-[28px] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.95)_100%)] p-4 shadow-[0_20px_42px_rgba(148,163,184,0.12)] ring-1 ring-white/70">
-      <div className="flex items-center justify-between">
+    <div className="relative z-0 flex h-full min-h-0 flex-col gap-3 rounded-[28px] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.95)_100%)] p-3 shadow-[0_20px_42px_rgba(148,163,184,0.12)] ring-1 ring-white/70">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
           Prescription / Drugs
         </p>
@@ -134,9 +139,16 @@ export function RxEditor({
         </div>
       </div>
 
-      <div className="rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_12px_28px_rgba(148,163,184,0.12)]">
-        <div className="grid gap-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_155px_minmax(0,1.85fr)_92px_168px_48px] xl:items-end">
+      <form
+        className="rounded-[24px] border border-slate-200/80 bg-white/95 p-3 shadow-[0_12px_28px_rgba(148,163,184,0.12)]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onAddClinicalDrug();
+          setIsSuggestionMenuOpen(false);
+        }}
+      >
+        <div className="grid gap-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_220px_minmax(0,1.4fr)_108px_150px_44px] xl:items-end">
             <div className="relative min-w-0" ref={suggestionContainerRef}>
               <label
                 htmlFor={drugNameInputId}
@@ -193,7 +205,7 @@ export function RxEditor({
               >
                 Dose
               </label>
-              <div className="grid grid-cols-[1fr_92px] gap-2">
+              <div className="grid grid-cols-[1.2fr_96px] gap-2">
                 <input
                   id={doseValueInputId}
                   className={`${controlHeightClass} w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-semibold outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100`}
@@ -291,7 +303,7 @@ export function RxEditor({
                         onDrugFormChange({ source });
                       }
                     }}
-                    className={`${controlHeightClass} rounded-xl px-2 text-[0.75rem] font-bold uppercase tracking-[0.14em] transition ${
+                    className={`${controlHeightClass} rounded-xl px-2 text-[11px] font-bold uppercase tracking-[0.12em] transition ${
                       clinicalDrugForm.source === source
                         ? source === "Clinical"
                           ? "bg-emerald-500 text-white shadow-[0_12px_24px_rgba(16,185,129,0.25)]"
@@ -310,19 +322,25 @@ export function RxEditor({
                 Add
               </span>
               <button
-                type="button"
-                onClick={onAddClinicalDrug}
+                type="submit"
                 aria-label="Add drug"
-                className="flex h-11 w-11 items-center justify-center self-end rounded-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 text-white shadow-[0_14px_28px_rgba(59,130,246,0.28)] transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(59,130,246,0.32)] active:translate-y-0"
+                disabled={!canAddDrug}
+                className="flex h-10 w-10 items-center justify-center self-end rounded-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 text-white shadow-[0_14px_28px_rgba(59,130,246,0.28)] transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(59,130,246,0.32)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:shadow-[0_14px_28px_rgba(59,130,246,0.18)]"
               >
                 <FiPlus aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
           </div>
+          {!canAddDrug ? (
+            <p className="text-xs font-medium text-slate-500">
+              Enter drug name, dose, and total quantity to add the prescription row.
+            </p>
+          ) : null}
         </div>
-      </div>
+      </form>
 
-      <div className="flex flex-col gap-2">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-2">
         {rxRows.length === 0 && (
           <div className="py-4 text-center text-sm italic text-slate-400">
             No drugs added yet.
@@ -331,7 +349,7 @@ export function RxEditor({
         {rxRows.map((row, index) => (
           <div
             key={`${row.drug}-${index}`}
-            className="group grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-sky-200 hover:shadow-md lg:grid-cols-[minmax(0,1.5fr)_180px_96px_210px_110px] lg:items-center"
+            className="group grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-sky-200 hover:shadow-md md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_180px_96px_210px_110px] xl:items-center"
           >
             <div className="flex min-w-0 flex-[2] flex-col justify-center">
               <span className="text-sm font-bold text-slate-900">
@@ -372,12 +390,13 @@ export function RxEditor({
             <button
               type="button"
               onClick={() => onRemoveRxRow(index)}
-              className={`${rowControlClass} border border-rose-200 bg-rose-50 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-100 hover:text-rose-700`}
+              className={`${rowControlClass} border border-rose-200 bg-rose-50 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-100 hover:text-rose-700 md:col-span-2 xl:col-span-1`}
             >
               Remove
             </button>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

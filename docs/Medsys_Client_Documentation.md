@@ -2,8 +2,8 @@
 
 Client Overview, Scope, and Requirements Baseline
 
-Version: 1.1
-Date: March 16, 2026
+Version: 1.2
+Date: March 24, 2026
 Document Status: Client Issue Copy
 System Version: Frontend `0.1.0`
 Audience: Clients, sponsors, business stakeholders, delivery management
@@ -150,7 +150,8 @@ Current important policy example:
 3. Doctor selects a patient from the queue.
 4. Patient context, vitals, and allergies are loaded when available.
 5. Doctor records notes, diagnoses, tests, prescriptions, and next-visit information.
-6. Encounter is submitted to the backend.
+6. Diagnosis search uses backend clinical terminology, medical test search uses backend clinical terminology, and diagnosis-driven recommended tests can be added quickly.
+7. Encounter is submitted to the backend.
 
 ## 8.3 Assistant Workflow
 
@@ -209,6 +210,9 @@ The current functional requirements baseline includes the following major capabi
 - encounter notes
 - diagnoses
 - tests
+- backend-backed diagnosis search
+- backend-backed lab and clinical observation test search
+- diagnosis-driven recommended tests
 - prescription entry
 - next visit entry
 - encounter submission
@@ -241,7 +245,9 @@ The current functional requirements baseline includes the following major capabi
 - inventory listing and movement creation
 - analytics overview
 - AI insight generation
-- ICD-10 suggestion access
+- clinical diagnosis suggestion access
+- clinical test suggestion access
+- diagnosis-driven recommended test suggestions
 
 ## 10. Non-Functional Requirements Baseline
 
@@ -310,13 +316,14 @@ Current known limitations include:
 - no complete audit-governance program at enterprise depth
 - some workflows still require future backend policy refinement
 - some advanced clinical safety and interoperability capabilities are not yet implemented
+- imaging and procedure catalog search is still separate future scope from the current lab and observation test search
 
 ## 13. Version And Document Control
 
 Document issue details:
 
-- document version: `1.1`
-- document date: `March 16, 2026`
+- document version: `1.2`
+- document date: `March 24, 2026`
 - system version referenced: `Frontend 0.1.0`
 - status: `client issue copy`
 

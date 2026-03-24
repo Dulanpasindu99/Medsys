@@ -11,11 +11,15 @@ export type Patient = {
   appointmentId?: number;
   doctorId?: number;
   appointmentStatus?: AppointmentLifecycleStatus;
+  familyId?: number;
   name: string;
   patientCode: string;
   nic: string;
+  phone?: string;
+  dateOfBirth?: string;
   guardianName?: string;
   guardianNic?: string;
+  guardianPhone?: string;
   guardianRelationship?: string;
   time: string;
   reason: string;
@@ -24,7 +28,25 @@ export type Patient = {
   profileId?: string;
 };
 
-export type PatientGender = "Male" | "Female";
+export type PatientGender = "Male" | "Female" | "Unspecified";
+export type GuardianCaptureMode = "quick" | "draft";
+
+export type ClinicalDiagnosisOption = {
+  code: string;
+  codeSystem: string;
+  display: string;
+};
+
+export type ClinicalDiagnosisSelection = ClinicalDiagnosisOption & {
+  persistAsCondition?: boolean;
+};
+
+export type ClinicalTestOption = {
+  code: string;
+  codeSystem: string;
+  display: string;
+  category?: string | null;
+};
 
 export type PatientVital = {
   label: string;

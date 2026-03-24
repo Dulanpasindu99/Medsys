@@ -2,8 +2,8 @@
 
 Architecture, Implementation, and Delivery Status
 
-Version: 1.1
-Date: March 16, 2026
+Version: 1.2
+Date: March 24, 2026
 Document Status: Developer Reference
 System Version: Frontend `0.1.0`
 Audience: Frontend developers, backend developers, QA, technical leads, solution architects
@@ -92,7 +92,9 @@ Current browser-facing routes are backend-backed through dedicated BFF routes or
 - inventory
 - analytics overview
 - audit logs
-- ICD-10
+- clinical diagnoses
+- clinical tests
+- diagnosis-driven recommended tests
 
 ## 5. Repository Layout
 
@@ -258,7 +260,7 @@ From the frontend perspective:
 
 - browser production-path calls are on `/api/...`
 - BFF routes forward to backend `/v1/...`
-- ICD-10 is backend-aligned
+- clinical terminology search is backend-aligned
 - active prototype persistence is retired
 - frontend BE-020 is closed
 
@@ -279,7 +281,9 @@ Backend alignment is strongest for:
 - inventory
 - analytics overview
 - audit logs
-- ICD-10
+- clinical diagnoses
+- clinical tests
+- diagnosis-driven recommended tests
 
 Backend alignment areas still treated as ongoing:
 
@@ -318,6 +322,9 @@ Current primary browser-facing BFF route families:
 - `/api/analytics/overview`
 - `/api/audit/logs`
 - `/api/clinical/icd10`
+- `/api/clinical/diagnoses`
+- `/api/clinical/tests`
+- `/api/clinical/diagnoses/:code/recommended-tests`
 
 ## 9. Testing Status
 
@@ -330,8 +337,8 @@ Current quality gate:
 
 Current implemented verification baseline:
 
-- 31 passing test files
-- 155 passing tests
+- 35 passing test files
+- 161 passing tests
 
 Current note:
 
@@ -344,6 +351,9 @@ Implemented in active frontend scope:
 - login, logout, auth status, current-user resolution
 - role-based shell access
 - doctor encounter workflow
+- backend-backed diagnosis search and normalized diagnosis selection
+- backend-backed clinical test search for lab tests and observations
+- diagnosis-driven recommended test suggestions
 - assistant intake and dispense workflow
 - patient directory and profile
 - owner staff list/create via backend users API
@@ -354,7 +364,8 @@ Implemented in active frontend scope:
 - analytics overview
 - AI insight summary view
 - audit log visibility
-- backend-backed ICD-10 suggestions
+- backend-backed diagnosis and clinical-test suggestions
+- backend-backed diagnosis recommended-test suggestions
 
 ## 11. Not Yet Implemented Or Not Fully Mature
 
@@ -363,6 +374,7 @@ Not fully implemented or not yet enterprise-complete:
 - patient self-service portal
 - billing and claims
 - laboratory and imaging integrations
+- persistent test-code storage in saved encounter test rows
 - deep compliance controls and governance workflows
 - advanced audit governance tooling
 - full backend permission-name parity across every domain action

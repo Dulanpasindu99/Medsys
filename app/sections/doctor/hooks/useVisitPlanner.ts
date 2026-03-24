@@ -14,6 +14,7 @@ function getNextVisitDate(option: VisitOption) {
 export function useVisitPlanner() {
   const [nextVisitOption, setNextVisitOption] = useState<VisitOption>("TwoWeeks");
   const [nextVisitDate, setNextVisitDate] = useState(() => getNextVisitDate("TwoWeeks"));
+  const [notes, setNotes] = useState("");
 
   const handleNextVisitSelect = (option: VisitOption) => {
     setNextVisitOption(option);
@@ -23,6 +24,8 @@ export function useVisitPlanner() {
   return {
     nextVisitOption,
     nextVisitDate,
+    notes,
+    setNotes,
     setNextVisitDate,
     handleNextVisitSelect,
   };

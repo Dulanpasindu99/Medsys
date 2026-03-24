@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { DIAGNOSIS_MAPPING } from "../../../data/diagnosisMapping";
 import type { ClinicalDrug, ClinicalDrugForm, DrugDoseUnit, DrugFrequencyCode } from "../types";
+import type {
+  ClinicalDiagnosisOption,
+  ClinicalDiagnosisSelection,
+  ClinicalTestOption,
+} from "../types";
 
 const SUGGESTED_DRUG_NAMES = [
   "Ibuprofen",
@@ -42,6 +47,9 @@ const FREQUENCY_LABELS: Record<DrugFrequencyCode, string> = {
   PRN: "PRN - as needed",
 };
 
+const CLINICAL_SEARCH_DEBOUNCE_MS = 300;
+const CLINICAL_RESULT_LIMIT = 8;
+
 function formatDose(value: string, unit: DrugDoseUnit) {
   const normalizedValue = value.trim();
   if (!normalizedValue) {
@@ -66,6 +74,9 @@ function formatDose(value: string, unit: DrugDoseUnit) {
 
 export function useDoctorClinicalWorkflow() {
   const [rxRows, setRxRows] = useState<ClinicalDrug[]>([]);
+  const [persistedConditionDiagnoses, setPersistedConditionDiagnoses] = useState<Set<string>>(
+    () => new Set()
+  );
 
   const suggestedDrugNames = useMemo(() => [...SUGGESTED_DRUG_NAMES], []);
 
@@ -166,63 +177,105 @@ export function useDoctorClinicalWorkflow() {
     setRxRows((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const preSavedTests = useMemo(
-    () => [
-      "F.B.C",
-      "Cholesterol",
-      "Lipid Profile",
-      "Thyroid Panel",
-      "D-Dimer",
-      "Vitamin D",
-      "Electrolyte Panel",
-      "MRI Brain",
-      "X-Ray Chest",
-      "Blood Sugar Fasting",
-    ],
-    []
-  );
-
-  const [selectedTests, setSelectedTests] = useState<string[]>([]);
+  const [selectedTests, setSelectedTests] = useState<ClinicalTestOption[]>([]);
   const [testQuery, setTestQuery] = useState("");
+  const [debouncedTestQuery, setDebouncedTestQuery] = useState("");
+  const [testSuggestions, setTestSuggestions] = useState<ClinicalTestOption[]>([]);
+  const [isFetchingTests, setIsFetchingTests] = useState(false);
+  const [testSearchFeedback, setTestSearchFeedback] = useState<string | null>(null);
   const [highlightedTestIndex, setHighlightedTestIndex] = useState(-1);
   const [testChipsPendingRemoval, setTestChipsPendingRemoval] = useState<Set<string>>(new Set());
   const testChipsPendingRemovalRef = useRef(testChipsPendingRemoval);
 
-  const filteredTestOptions = useMemo(() => {
-    const available = preSavedTests.filter((test) => !selectedTests.includes(test));
-    const q = testQuery.trim().toLowerCase();
-    if (!q) {
-      return available.slice(0, 5);
-    }
-    return available.filter((test) => test.toLowerCase().includes(q));
-  }, [preSavedTests, selectedTests, testQuery]);
+  const filteredTestOptions = useMemo(
+    () =>
+      testSuggestions
+        .filter((test) => !selectedTests.some((selected) => selected.code === test.code))
+        .slice(0, CLINICAL_RESULT_LIMIT),
+    [selectedTests, testSuggestions]
+  );
 
   useEffect(() => {
     const shouldHighlight = testQuery.trim().length > 0;
     setHighlightedTestIndex(shouldHighlight && filteredTestOptions.length ? 0 : -1);
   }, [filteredTestOptions, testQuery]);
 
-  const addMedicalTest = (test: string) => {
-    const trimmed = test.trim();
-    if (!trimmed) return;
-    setSelectedTests((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedTestQuery(testQuery.trim());
+    }, CLINICAL_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [testQuery]);
+
+  useEffect(() => {
+    const q = debouncedTestQuery.trim();
+    if (q.length < 2) {
+      setTestSuggestions([]);
+      setTestSearchFeedback(null);
+      setHighlightedTestIndex(-1);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchSuggestions = async () => {
+      try {
+        setIsFetchingTests(true);
+        setTestSearchFeedback(null);
+        const response = await fetch(`/api/clinical/tests?terms=${encodeURIComponent(q)}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(String(response.status));
+        }
+
+        const payload = (await response.json()) as { tests?: ClinicalTestOption[] };
+        const suggestions = Array.isArray(payload.tests) ? payload.tests.slice(0, CLINICAL_RESULT_LIMIT) : [];
+        setTestSuggestions(suggestions);
+        setHighlightedTestIndex(suggestions.length ? 0 : -1);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const status = error instanceof Error ? error.message : "";
+          if (status === "503") {
+            setTestSearchFeedback("Medical test search is temporarily unavailable. Try again shortly.");
+          } else {
+            console.error("Error fetching medical test suggestions", error);
+            setTestSearchFeedback("Unable to load medical test suggestions right now.");
+          }
+          setTestSuggestions([]);
+          setHighlightedTestIndex(-1);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsFetchingTests(false);
+        }
+      }
+    };
+
+    fetchSuggestions();
+    return () => controller.abort();
+  }, [debouncedTestQuery]);
+
+  const addMedicalTest = (test: ClinicalTestOption) => {
+    if (!test.code || !test.display.trim()) return;
+    setSelectedTests((prev) => (prev.some((entry) => entry.code === test.code) ? prev : [...prev, test]));
     setTestChipsPendingRemoval((prev) => {
       const next = new Set(prev);
-      next.delete(trimmed);
+      next.delete(test.code);
       return next;
     });
     setTestQuery("");
     setHighlightedTestIndex(-1);
   };
 
-  const toggleTestChipRemovalState = (test: string) => {
+  const toggleTestChipRemovalState = (testCode: string) => {
     setTestChipsPendingRemoval((prev) => {
       const next = new Set(prev);
-      if (next.has(test)) {
-        next.delete(test);
-        setSelectedTests((current) => current.filter((entry) => entry !== test));
+      if (next.has(testCode)) {
+        next.delete(testCode);
+        setSelectedTests((current) => current.filter((entry) => entry.code !== testCode));
       } else {
-        next.add(test);
+        next.add(testCode);
       }
       return next;
     });
@@ -263,24 +316,41 @@ export function useDoctorClinicalWorkflow() {
 
     if (event.key === "Enter") {
       event.preventDefault();
+      if (filteredTestOptions.length === 0) {
+        const immediateQuery = testQuery.trim();
+        if (immediateQuery.length >= 2 && immediateQuery !== debouncedTestQuery) {
+          setDebouncedTestQuery(immediateQuery);
+          return;
+        }
+      }
       const selected =
-        (highlightedTestIndex >= 0 && filteredTestOptions[highlightedTestIndex]) || filteredTestOptions[0] || testQuery;
+        (highlightedTestIndex >= 0 && filteredTestOptions[highlightedTestIndex]) || filteredTestOptions[0];
       if (selected) {
         addMedicalTest(selected);
       }
     }
   };
 
-  const [selectedDiseases, setSelectedDiseases] = useState<string[]>([]);
+  const [selectedDiseases, setSelectedDiseases] = useState<ClinicalDiagnosisSelection[]>([]);
   const [diseaseQuery, setDiseaseQuery] = useState("");
-  const [diseaseSuggestions, setDiseaseSuggestions] = useState<string[]>([]);
+  const [debouncedDiseaseQuery, setDebouncedDiseaseQuery] = useState("");
+  const [diseaseSuggestions, setDiseaseSuggestions] = useState<ClinicalDiagnosisOption[]>([]);
+  const [recommendedTests, setRecommendedTests] = useState<ClinicalTestOption[]>([]);
   const [highlightedDiseaseIndex, setHighlightedDiseaseIndex] = useState(-1);
   const [isFetchingDiseases, setIsFetchingDiseases] = useState(false);
   const [chipsPendingRemoval, setChipsPendingRemoval] = useState<Set<string>>(new Set());
   const chipsPendingRemovalRef = useRef(chipsPendingRemoval);
 
   useEffect(() => {
-    const q = diseaseQuery.trim();
+    const timer = window.setTimeout(() => {
+      setDebouncedDiseaseQuery(diseaseQuery.trim());
+    }, CLINICAL_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [diseaseQuery]);
+
+  useEffect(() => {
+    const q = debouncedDiseaseQuery.trim();
     if (q.length < 2) {
       setDiseaseSuggestions([]);
       setHighlightedDiseaseIndex(-1);
@@ -291,18 +361,21 @@ export function useDoctorClinicalWorkflow() {
     const fetchSuggestions = async () => {
       try {
         setIsFetchingDiseases(true);
-        const response = await fetch(`/api/clinical/icd10?terms=${encodeURIComponent(q)}`, { signal: controller.signal });
+        const response = await fetch(`/api/clinical/diagnoses?terms=${encodeURIComponent(q)}&limit=10`, { signal: controller.signal });
         if (!response.ok) {
-          throw new Error(`Failed to fetch suggestions: ${response.status}`);
+          throw new Error(String(response.status));
         }
 
-        const payload = (await response.json()) as { suggestions?: string[] };
-        const suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+        const payload = (await response.json()) as { diagnoses?: ClinicalDiagnosisOption[] };
+        const suggestions = Array.isArray(payload.diagnoses) ? payload.diagnoses : [];
         setDiseaseSuggestions(suggestions);
         setHighlightedDiseaseIndex(suggestions.length ? 0 : -1);
       } catch (error) {
         if (!controller.signal.aborted) {
-          console.error("Error fetching disease suggestions", error);
+          const status = error instanceof Error ? error.message : "";
+          if (status !== "503") {
+            console.error("Error fetching disease suggestions", error);
+          }
           setDiseaseSuggestions([]);
           setHighlightedDiseaseIndex(-1);
         }
@@ -315,20 +388,23 @@ export function useDoctorClinicalWorkflow() {
 
     fetchSuggestions();
     return () => controller.abort();
-  }, [diseaseQuery]);
+  }, [debouncedDiseaseQuery]);
 
-  const addDisease = (disease: string) => {
-    const trimmed = disease.trim();
-    if (!trimmed) return;
+  const addDisease = (disease: ClinicalDiagnosisOption) => {
+    if (!disease.code || !disease.display.trim()) return;
 
-    setSelectedDiseases((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setSelectedDiseases((prev) =>
+      prev.some((entry) => entry.code === disease.code)
+        ? prev
+        : [...prev, { ...disease, persistAsCondition: false }]
+    );
     setChipsPendingRemoval((prev) => {
       const next = new Set(prev);
-      next.delete(trimmed);
+      next.delete(disease.code);
       return next;
     });
 
-    const lowerCaseDisease = trimmed.toLowerCase();
+    const lowerCaseDisease = disease.display.toLowerCase();
     const drugsToAdd: ClinicalDrug[] = [];
     Object.entries(DIAGNOSIS_MAPPING).forEach(([key, drugs]) => {
       if (lowerCaseDisease.includes(key.toLowerCase())) {
@@ -349,17 +425,94 @@ export function useDoctorClinicalWorkflow() {
     setHighlightedDiseaseIndex(-1);
   };
 
-  const toggleChipRemovalState = (disease: string) => {
+  const toggleChipRemovalState = (diagnosisCode: string) => {
     setChipsPendingRemoval((prev) => {
       const next = new Set(prev);
-      if (next.has(disease)) {
-        next.delete(disease);
-        setSelectedDiseases((current) => current.filter((entry) => entry !== disease));
+      if (next.has(diagnosisCode)) {
+        next.delete(diagnosisCode);
+        setSelectedDiseases((current) => current.filter((entry) => entry.code !== diagnosisCode));
+        setPersistedConditionDiagnoses((current) => {
+          const updated = new Set(current);
+          updated.delete(diagnosisCode);
+          return updated;
+        });
       } else {
-        next.add(disease);
+        next.add(diagnosisCode);
       }
       return next;
     });
+  };
+
+  const togglePersistAsCondition = (diagnosisCode: string) => {
+    setPersistedConditionDiagnoses((current) => {
+      const next = new Set(current);
+      if (next.has(diagnosisCode)) {
+        next.delete(diagnosisCode);
+      } else {
+        next.add(diagnosisCode);
+      }
+      return next;
+    });
+    setSelectedDiseases((current) =>
+      current.map((entry) =>
+        entry.code === diagnosisCode
+          ? { ...entry, persistAsCondition: !entry.persistAsCondition }
+          : entry
+      )
+    );
+  };
+
+  useEffect(() => {
+    const latestDiagnosis = selectedDiseases[selectedDiseases.length - 1];
+    if (!latestDiagnosis?.code) {
+      setRecommendedTests([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchRecommendedTests = async () => {
+      try {
+        const response = await fetch(
+          `/api/clinical/diagnoses/${encodeURIComponent(latestDiagnosis.code)}/recommended-tests`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch recommended tests: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as { tests?: ClinicalTestOption[] };
+        const tests = Array.isArray(payload.tests) ? payload.tests : [];
+        setRecommendedTests(
+          tests.filter((test) => !selectedTests.some((selected) => selected.code === test.code))
+        );
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("Error fetching recommended tests", error);
+          setRecommendedTests([]);
+        }
+      }
+    };
+
+    fetchRecommendedTests();
+    return () => controller.abort();
+  }, [selectedDiseases, selectedTests]);
+
+  const addRecommendedTests = () => {
+    if (!recommendedTests.length) return;
+    setSelectedTests((current) => {
+      const seen = new Set(current.map((entry) => entry.code));
+      return [
+        ...current,
+        ...recommendedTests.filter((entry) => {
+          if (seen.has(entry.code)) {
+            return false;
+          }
+          seen.add(entry.code);
+          return true;
+        }),
+      ];
+    });
+    setRecommendedTests([]);
   };
 
   useEffect(() => {
@@ -390,10 +543,17 @@ export function useDoctorClinicalWorkflow() {
       setHighlightedDiseaseIndex((prev) => (prev - 1 + diseaseSuggestions.length) % diseaseSuggestions.length);
     } else if (event.key === "Enter") {
       event.preventDefault();
+      if (diseaseSuggestions.length === 0) {
+        const immediateQuery = diseaseQuery.trim();
+        if (immediateQuery.length >= 2 && immediateQuery !== debouncedDiseaseQuery) {
+          setDebouncedDiseaseQuery(immediateQuery);
+          return;
+        }
+      }
       const selected =
         highlightedDiseaseIndex >= 0 && diseaseSuggestions[highlightedDiseaseIndex]
           ? diseaseSuggestions[highlightedDiseaseIndex]
-          : diseaseQuery;
+          : null;
       if (selected) {
         addDisease(selected);
       }
@@ -413,6 +573,7 @@ export function useDoctorClinicalWorkflow() {
     updateRxRow,
     removeRxRow,
     selectedDiseases,
+    persistedConditionDiagnoses,
     diseaseQuery,
     setDiseaseQuery,
     diseaseSuggestions,
@@ -420,16 +581,21 @@ export function useDoctorClinicalWorkflow() {
     isFetchingDiseases,
     chipsPendingRemoval,
     addDisease,
+    togglePersistAsCondition,
     toggleChipRemovalState,
     handleDiseaseKeyDown,
     selectedTests,
     testQuery,
     setTestQuery,
+    isFetchingTests,
+    testSearchFeedback,
     filteredTestOptions,
     highlightedTestIndex,
     testChipsPendingRemoval,
     addMedicalTest,
     toggleTestChipRemovalState,
     handleMedicalTestKeyDown,
+    recommendedTests,
+    addRecommendedTests,
   };
 }

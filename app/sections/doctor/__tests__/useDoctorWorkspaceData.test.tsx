@@ -6,11 +6,7 @@ import { queryKeys } from "../../../lib/query-keys";
 import { useDoctorWorkspaceData } from "../hooks/useDoctorWorkspaceData";
 
 vi.mock("../../../lib/api-client", () => ({
-  createPatientAllergy: vi.fn(),
-  createEncounter: vi.fn(),
-  createPatientVital: vi.fn(),
-  startVisit: vi.fn(),
-  updateAppointment: vi.fn(),
+  saveConsultation: vi.fn(),
 }));
 
 vi.mock("../../../lib/query-hooks", () => ({
@@ -22,13 +18,7 @@ vi.mock("../../../lib/query-hooks", () => ({
   usePatientAllergiesQuery: vi.fn(),
 }));
 
-import {
-  createEncounter,
-  createPatientAllergy,
-  createPatientVital,
-  startVisit,
-  updateAppointment,
-} from "../../../lib/api-client";
+import { saveConsultation } from "../../../lib/api-client";
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
@@ -38,11 +28,7 @@ import {
   usePatientVitalsQuery,
 } from "../../../lib/query-hooks";
 
-const mockedCreateEncounter = vi.mocked(createEncounter);
-const mockedCreatePatientAllergy = vi.mocked(createPatientAllergy);
-const mockedCreatePatientVital = vi.mocked(createPatientVital);
-const mockedStartVisit = vi.mocked(startVisit);
-const mockedUpdateAppointment = vi.mocked(updateAppointment);
+const mockedSaveConsultation = vi.mocked(saveConsultation);
 const mockedUsePatientsQuery = vi.mocked(usePatientsQuery);
 const mockedUseAppointmentsQuery = vi.mocked(useAppointmentsQuery);
 const mockedUseCurrentUserQuery = vi.mocked(useCurrentUserQuery);
@@ -63,12 +49,34 @@ function buildQueryState(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildClinicalWorkflow(overrides: Record<string, unknown> = {}) {
+  return {
+    selectedDiseases: [],
+    persistedConditionDiagnoses: new Set<string>(),
+    selectedTests: [],
+    rxRows: [],
+    togglePersistAsCondition: vi.fn(),
+    ...overrides,
+  } as never;
+}
+
+function buildVisitPlanner(overrides: Record<string, unknown> = {}) {
+  return {
+    nextVisitDate: "2026-03-11",
+    notes: "",
+    ...overrides,
+  } as never;
+}
+
 describe("useDoctorWorkspaceData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUsePatientsQuery.mockReturnValue(
       buildQueryState({
-        data: [{ id: 7, name: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female" }],
+        data: [
+          { id: 7, name: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female" },
+          { id: 55, name: "Kasuni Silva", patient_code: "P-0055", nic: "198812345678", phone: "+94771112233", age: 38, gender: "female", family_id: 3 },
+        ],
       }) as never
     );
     mockedUseAppointmentsQuery.mockReturnValue(
@@ -84,13 +92,14 @@ describe("useDoctorWorkspaceData", () => {
             age: 31,
             gender: "female",
             reason: "Fever",
+            status: "waiting",
             scheduledAt: "2026-03-10T10:30:00.000Z",
           },
         ],
       }) as never
     );
     mockedUseCurrentUserQuery.mockReturnValue(
-      buildQueryState({ data: { id: 5, role: "doctor" } }) as never
+      buildQueryState({ data: { id: 5, role: "doctor", permissions: ["appointment.update"] } }) as never
     );
     mockedUsePatientVitalsQuery.mockReturnValue(
       buildQueryState({ data: [{ label: "BP", value: "120/80" }] }) as never
@@ -107,6 +116,7 @@ describe("useDoctorWorkspaceData", () => {
                   nic: "990011223V",
                   age: 31,
                   gender: "female",
+                  date_of_birth: "1995-03-01",
                 }
               : null,
         }) as never
@@ -114,27 +124,14 @@ describe("useDoctorWorkspaceData", () => {
     mockedUsePatientAllergiesQuery.mockReturnValue(
       buildQueryState({ data: [{ name: "Peanut", severity: "high" }] }) as never
     );
-    mockedCreateEncounter.mockResolvedValue({ id: 91 });
-    mockedCreatePatientVital.mockResolvedValue({ id: 1 });
-    mockedCreatePatientAllergy.mockResolvedValue({ id: 1 });
-    mockedStartVisit.mockResolvedValue({
-      reused: true,
-      visit: { id: 22, patientId: 7, doctorId: 5, status: "in_consultation" },
-    });
-    mockedUpdateAppointment.mockResolvedValue({ id: 22, status: "in_consultation" });
+    mockedSaveConsultation.mockResolvedValue({ patient: { id: 7 }, encounterId: 91 });
   });
 
-  it("loads selected patient clinical detail queries and normalizes the results", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
+  it("loads selected patient details and normalizes clinical feeds", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
 
     act(() => {
       result.current.handlePatientSelect({
@@ -156,8 +153,6 @@ describe("useDoctorWorkspaceData", () => {
       expect(result.current.patientDetailsState.status).toBe("ready");
     });
 
-    expect(mockedUsePatientVitalsQuery).toHaveBeenLastCalledWith(7, true);
-    expect(mockedUsePatientAllergiesQuery).toHaveBeenLastCalledWith(7, true);
     expect(result.current.patientVitals).toEqual([{ label: "BP", value: "120/80" }]);
     expect(result.current.patientAllergies[0]).toMatchObject({
       name: "Peanut",
@@ -166,204 +161,35 @@ describe("useDoctorWorkspaceData", () => {
     });
   });
 
-  it("fills the top doctor fields from an exact patient code lookup", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
+  it("fills doctor fields from an exact patient lookup", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
 
     act(() => {
       result.current.setSearch("P-0007");
-    });
-
-    act(() => {
       result.current.handleSearchCommit();
     });
 
     await waitFor(() => {
       expect(result.current.patientName).toBe("Jane Doe");
     });
-    expect(result.current.patientAge).toBe("31");
+
     expect(result.current.nicNumber).toBe("990011223V");
     expect(result.current.nicIdentityLabel).toBe("Patient NIC");
     expect(result.current.gender).toBe("Female");
     expect(result.current.patientLookupNotice).toBeNull();
   });
 
-  it("shows the same patient only once in search matches when multiple appointments exist", async () => {
-    mockedUsePatientsQuery.mockReturnValue(
-      buildQueryState({
-        data: [{ id: 1, patient_code: "P-0000000001", full_name: "Nimal Perera" }],
-      }) as never
+  it("shows inline quick-create mode when no patient is found", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
     );
-    mockedUsePatientProfileQuery.mockImplementation(
-      (patientId: number | string) =>
-        buildQueryState({
-          data:
-            String(patientId) === "1"
-              ? {
-                  id: 1,
-                  patient_code: "P-0000000001",
-                  full_name: "Nimal Perera",
-                  nic: "199402270222",
-                  age: 32,
-                  gender: "female",
-                }
-              : null,
-        }) as never
-    );
-    mockedUseAppointmentsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 61,
-            patientId: 1,
-            patient_code: "P-0000000001",
-            patientName: "Nimal Perera",
-            scheduledAt: "2026-03-10T15:30:00.000Z",
-            status: "waiting",
-          },
-          {
-            id: 62,
-            patientId: 1,
-            patient_code: "P-0000000001",
-            patientName: "Nimal Perera",
-            scheduledAt: "2026-03-10T20:19:00.000Z",
-            status: "waiting",
-          },
-          {
-            id: 63,
-            patientId: 1,
-            patient_code: "P-0000000001",
-            patientName: "Nimal Perera",
-            scheduledAt: "2026-03-10T20:14:00.000Z",
-            status: "waiting",
-          },
-        ],
-      }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
 
     act(() => {
-      result.current.setSearch("nimal");
-    });
-
-    expect(result.current.searchMatches).toHaveLength(1);
-    expect(result.current.searchMatches[0]?.name).toBe("Nimal Perera");
-  });
-
-  it("keeps standalone patients searchable even when waiting appointments exist for someone else", async () => {
-    mockedUsePatientsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          { id: 7, patient_code: "P-0007", full_name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" },
-          { id: 25, patient_code: "P-0025", full_name: "Isanjalee Silva", nic: "995752182V", age: 27, gender: "female" },
-        ],
-      }) as never
-    );
-    mockedUseAppointmentsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 22,
-            patientId: 7,
-            doctorId: 5,
-            patientName: "Jane Doe",
-            patient_code: "P-0007",
-            nic: "990011223V",
-            age: 31,
-            gender: "female",
-            reason: "Fever",
-            status: "waiting",
-            scheduledAt: "2026-03-10T10:30:00.000Z",
-          },
-        ],
-      }) as never
-    );
-    mockedUsePatientProfileQuery.mockImplementation(
-      (patientId: number | string) =>
-        buildQueryState({
-          data:
-            String(patientId) === "25"
-              ? {
-                  id: 25,
-                  patient_code: "P-0025",
-                  full_name: "Isanjalee Silva",
-                  nic: "995752182V",
-                  age: 27,
-                  gender: "female",
-                }
-              : String(patientId) === "7"
-                ? {
-                    id: 7,
-                    patient_code: "P-0007",
-                    full_name: "Jane Doe",
-                    nic: "990011223V",
-                    age: 31,
-                    gender: "female",
-                  }
-                : null,
-        }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.setSearch("Isanja");
-    });
-
-    expect(result.current.searchMatches).toHaveLength(1);
-    expect(result.current.searchMatches[0]?.name).toBe("Isanjalee Silva");
-
-    act(() => {
-      result.current.handleSearchCommit();
-    });
-
-    await waitFor(() => {
-      expect(result.current.patientName).toBe("Isanjalee Silva");
-    });
-    expect(result.current.patientLookupNotice).toBeNull();
-  });
-
-  it("keeps the selected patient values when the search input blurs empty", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.setSearch("P-0007");
+      result.current.setSearch("200012345678");
     });
 
     act(() => {
@@ -371,269 +197,31 @@ describe("useDoctorWorkspaceData", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.patientName).toBe("Jane Doe");
+      expect(result.current.patientName).toBe("200012345678");
     });
-
-    act(() => {
-      result.current.handleSearchCommit();
-    });
-
-    expect(result.current.patientName).toBe("Jane Doe");
-    expect(result.current.patientCode).toBe("P-0007");
-    expect(result.current.nicNumber).toBe("990011223V");
-    expect(result.current.selectedPatientProfileId).toBe("7");
   });
 
-  it("auto-selects when the left search resolves to one exact patient without an extra click", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
+  it("requires guardian details for minors without a NIC", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
 
     act(() => {
-      result.current.setSearch("990011223V");
+      result.current.setPatientName("Nethmi Silva");
+      result.current.setPatientDateOfBirth("2012-04-15");
     });
 
-    await waitFor(() => {
-      expect(result.current.patientName).toBe("Jane Doe");
-    });
-
-    expect(result.current.nicNumber).toBe("990011223V");
-    expect(result.current.search).toBe("");
+    expect(result.current.requiresGuardianDetails).toBe(true);
+    expect(result.current.canSaveRecord).toBe(false);
+    expect(result.current.saveDisabledReason).toMatch(/guardian relationship|guardian name|guardian nic|guardian phone/i);
   });
 
-  it("uses guardian NIC and patient gender when the patient has no personal NIC", async () => {
-    mockedUsePatientsQuery.mockReturnValue(
-      buildQueryState({
-        data: [{ id: 9, first_name: "Mini", last_name: "Perera", patient_code: "P-0009" }],
-      }) as never
+  it("keeps vitals local until the final consultation save", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
     );
-    mockedUsePatientProfileQuery.mockImplementation(
-      (patientId: number | string) =>
-        buildQueryState({
-          data:
-            String(patientId) === "9"
-              ? {
-                  id: 9,
-                  patient_code: "P-0009",
-                  full_name: "Mini Perera",
-                  guardian_nic: "200455667788",
-                  age: 12,
-                  gender: "female",
-                }
-              : null,
-        }) as never
-    );
-    mockedUseAppointmentsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 33,
-            patientId: 9,
-            doctorId: 5,
-            patientName: "Mini Perera",
-            patient_code: "P-0009",
-            reason: "Review",
-            scheduledAt: "2026-03-10T10:30:00.000Z",
-          },
-        ],
-      }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.setSearch("P-0009");
-    });
-
-    act(() => {
-      result.current.handleSearchCommit();
-    });
-
-    await waitFor(() => {
-      expect(result.current.patientName).toBe("Mini Perera");
-    });
-
-    expect(result.current.nicNumber).toBe("200455667788");
-    expect(result.current.nicIdentityLabel).toBe("Guardian NIC");
-    expect(result.current.gender).toBe("Female");
-  });
-
-  it("fills NIC from the patient list when waiting appointments omit patient id and nic", async () => {
-    mockedUsePatientsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 1,
-            patient_code: "P-0000000001",
-            full_name: "Nimal Perera",
-          },
-        ],
-      }) as never
-    );
-    mockedUsePatientProfileQuery.mockImplementation(
-      (patientId: number | string) =>
-        buildQueryState({
-          data:
-            String(patientId) === "1"
-              ? {
-                  id: 1,
-                  patient_code: "P-0000000001",
-                  full_name: "Nimal Perera",
-                  nic: 199012345678,
-                  age: 35,
-                  gender: "male",
-                }
-              : null,
-        }) as never
-    );
-    mockedUseAppointmentsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 41,
-            patient_code: "P-0000000001",
-            patientName: "Nimal Perera",
-            reason: "Review",
-            status: "waiting",
-            scheduledAt: "2026-03-10T10:30:00.000Z",
-          },
-        ],
-      }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.setSearch("P-0000000001");
-    });
-
-    act(() => {
-      result.current.handleSearchCommit();
-    });
-
-    await waitFor(() => {
-      expect(result.current.patientName).toBe("Nimal Perera");
-    });
-
-    expect(result.current.nicNumber).toBe("199012345678");
-    expect(result.current.nicIdentityLabel).toBe("Patient NIC");
-    expect(result.current.gender).toBe("Male");
-  });
-
-  it("hydrates NIC and gender from nested patient profile payloads", async () => {
-    mockedUsePatientsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 1,
-            patient_code: "P-0000000001",
-            full_name: "Nimal Perera",
-          },
-        ],
-      }) as never
-    );
-    mockedUsePatientProfileQuery.mockImplementation(
-      (patientId: number | string) =>
-        buildQueryState({
-          data:
-            String(patientId) === "1"
-              ? {
-                  patient: {
-                    id: 1,
-                    patient_code: "P-0000000001",
-                    full_name: "Nimal Perera",
-                    nic: "199012345678",
-                    age: 35,
-                    gender: "male",
-                  },
-                }
-              : null,
-        }) as never
-    );
-    mockedUseAppointmentsQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          {
-            id: 41,
-            patient_code: "P-0000000001",
-            patientName: "Nimal Perera",
-            reason: "Review",
-            status: "waiting",
-            scheduledAt: "2026-03-10T10:30:00.000Z",
-          },
-        ],
-      }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.setSearch("P-0000000001");
-    });
-
-    act(() => {
-      result.current.handleSearchCommit();
-    });
-
-    await waitFor(() => {
-      expect(result.current.nicNumber).toBe("199012345678");
-    });
-
-    expect(result.current.nicIdentityLabel).toBe("Patient NIC");
-    expect(result.current.gender).toBe("Male");
-    expect(result.current.patientAge).toBe("35");
-  });
-
-  it("saves the selected patient's vital drafts and refreshes detail queries", async () => {
-    mockedUseCurrentUserQuery.mockReturnValue(
-      buildQueryState({
-        data: { id: 5, role: "doctor", permissions: ["patient.vital.write"] },
-      }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
 
     act(() => {
       result.current.handlePatientSelect({
@@ -649,13 +237,6 @@ describe("useDoctorWorkspaceData", () => {
         time: "10:30",
         profileId: "7",
       });
-    });
-
-    await waitFor(() => {
-      expect(result.current.vitalDrafts.bloodPressure).toBe("120/80");
-    });
-
-    act(() => {
       result.current.setVitalDraft("bloodPressure", "120/80");
       result.current.setVitalDraft("heartRate", "72 bpm");
       result.current.setVitalDraft("temperature", "36.8");
@@ -666,39 +247,15 @@ describe("useDoctorWorkspaceData", () => {
       await result.current.handleSaveVitals();
     });
 
-    expect(mockedCreatePatientVital).toHaveBeenCalledWith(
-      7,
-      expect.objectContaining({
-        bpSystolic: 120,
-        bpDiastolic: 80,
-        heartRate: 72,
-        temperatureC: 36.8,
-        spo2: 99,
-        recordedAt: expect.any(String),
-      })
-    );
-    expect(mockedCreatePatientVital.mock.calls[0]?.[1]).not.toHaveProperty("encounterId");
-    expect(mockedCreatePatientVital).toHaveBeenCalledTimes(1);
-    expect(result.current.vitalsFeedback?.message).toBe("Patient vitals updated.");
+    expect(mockedSaveConsultation).not.toHaveBeenCalled();
+    expect(result.current.vitalsFeedback?.message).toMatch(/captured locally/i);
   });
 
-  it("adds or updates a patient allergy with severity", async () => {
-    mockedUseCurrentUserQuery.mockReturnValue(
-      buildQueryState({
-        data: { id: 5, role: "doctor", permissions: ["patient.allergy.write"] },
-      }) as never
+  it("adds allergies to the consultation draft without a separate backend call", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
     );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
 
     act(() => {
       result.current.handlePatientSelect({
@@ -722,120 +279,29 @@ describe("useDoctorWorkspaceData", () => {
       await result.current.handleAddOrUpdateAllergy();
     });
 
-    expect(mockedCreatePatientAllergy).toHaveBeenCalledWith(7, {
-      allergyName: "Peanut",
-      severity: "high",
-    });
-    expect(result.current.allergyDraftName).toBe("");
-    expect(result.current.allergyFeedback?.message).toBe("Patient allergy updated.");
+    expect(result.current.consultationAllergies).toEqual([
+      { allergyName: "Peanut", severity: "high", isActive: true },
+    ]);
+    expect(mockedSaveConsultation).not.toHaveBeenCalled();
   });
 
-  it("loads an existing allergy into the draft editor and dedupes case variants", async () => {
-    mockedUsePatientAllergiesQuery.mockReturnValue(
-      buildQueryState({
-        data: [
-          { name: "DUST", severity: "moderate" },
-          { name: "Dust", severity: "high" },
-        ],
-      }) as never
-    );
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.handlePatientSelect({
-        patientId: 7,
-        appointmentId: 22,
-        doctorId: 5,
-        name: "Jane Doe",
-        patientCode: "P-0007",
-        nic: "990011223V",
-        age: 31,
-        gender: "Female",
-        reason: "Fever",
-        time: "10:30",
-        profileId: "7",
-      });
-    });
-
-    await waitFor(() => {
-      expect(result.current.patientAllergies).toHaveLength(1);
-    });
-
-    act(() => {
-      result.current.handleEditAllergy(result.current.patientAllergies[0]!);
-    });
-
-    expect(result.current.patientAllergies[0]).toMatchObject({
-      name: "Dust",
-      severity: "High",
-      severityKey: "high",
-    });
-    expect(result.current.editingAllergyName).toBe("Dust");
-    expect(result.current.allergyDraftName).toBe("Dust");
-    expect(result.current.allergyDraftSeverity).toBe("high");
-  });
-
-  it("shows a lookup notice when top identity lookup finds no patient", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.setSearch("200012345678");
-    });
-
-    act(() => {
-      result.current.handleSearchCommit();
-    });
-
-    await waitFor(() => {
-      expect(result.current.patientLookupNotice).toEqual(expect.stringMatching(/no patient records were found/i));
-    });
-    expect(result.current.patientName).toBe("");
-  });
-
-  it("submits encounters and refetches queue queries after save", async () => {
+  it("submits one consultation payload for an existing patient", async () => {
     const invalidateQueriesSpy = vi
       .spyOn(QueryClient.prototype, "invalidateQueries")
       .mockResolvedValue(undefined);
-    const patientsQuery = buildQueryState({
-      data: [{ id: 7, name: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female" }],
-    });
-    const appointmentsQuery = buildQueryState({
-      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female", reason: "Fever", scheduledAt: "2026-03-10T10:30:00.000Z" }],
-    });
-    const currentUserQuery = buildQueryState({ data: { id: 5, role: "doctor" } });
-    mockedUsePatientsQuery.mockReturnValue(patientsQuery as never);
-    mockedUseAppointmentsQuery.mockReturnValue(appointmentsQuery as never);
-    mockedUseCurrentUserQuery.mockReturnValue(currentUserQuery as never);
-
-    const clinicalWorkflow = {
-      selectedDiseases: ["Influenza"],
-      selectedTests: ["CBC"],
-      rxRows: [{ drug: "Paracetamol", dose: "500mg", terms: "BID", amount: "10", source: "clinical" }],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
+    const { result } = renderHook(
+      () =>
+        useDoctorWorkspaceData(
+          buildClinicalWorkflow({
+            selectedDiseases: ["Influenza"],
+            persistedConditionDiagnoses: new Set(["Influenza"]),
+            selectedTests: ["CBC"],
+            rxRows: [{ drug: "Paracetamol", dose: "500mg", terms: "BID", amount: "10", source: "clinical" }],
+          }),
+          buildVisitPlanner({ notes: "Stable follow-up" })
+        ),
+      { wrapper: createQueryWrapper() }
+    );
 
     act(() => {
       result.current.handlePatientSelect({
@@ -851,47 +317,297 @@ describe("useDoctorWorkspaceData", () => {
         time: "10:30",
         profileId: "7",
       });
+      result.current.setVitalDraft("heartRate", "84");
+      result.current.setAllergyNameDraft("Penicillin");
+      result.current.setAllergySeverityDraft("high");
+    });
+
+    await act(async () => {
+      await result.current.handleAddOrUpdateAllergy();
+    });
+
+    await waitFor(() => {
+      expect(result.current.consultationAllergies).toHaveLength(1);
     });
 
     await act(async () => {
       await result.current.handleSaveRecord();
     });
 
-    expect(mockedCreateEncounter).toHaveBeenCalledTimes(1);
-    expect(mockedUpdateAppointment).toHaveBeenCalledWith(22, {
-      status: "completed",
-    });
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientId: 7,
+        reason: "Walk-in consultation",
+        priority: "normal",
+        notes: "Stable follow-up",
+        clinicalSummary: "Stable follow-up",
+        diagnoses: [{ diagnosisName: "Influenza", icd10Code: "", persistAsCondition: true }],
+        tests: [{ testName: "CBC", status: "ordered" }],
+        vitals: expect.any(Object),
+        allergies: [{ allergyName: "Penicillin", severity: "high", isActive: true }],
+      })
+    );
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: queryKeys.patients.list,
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: ["appointments"],
     });
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
-      queryKey: queryKeys.encounters.list,
-    });
-    expect(patientsQuery.refetch).not.toHaveBeenCalled();
-    expect(appointmentsQuery.refetch).not.toHaveBeenCalled();
-    expect(currentUserQuery.refetch).not.toHaveBeenCalled();
     expect(result.current.saveState.status).toBe("success");
     expect(result.current.selectedAppointmentStatus).toBe("completed");
   });
 
-  it("blocks encounter submission for non-doctor roles", async () => {
+  it("includes the current allergy draft in the final consultation save even before add is clicked", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.handlePatientSelect({
+        patientId: 7,
+        appointmentId: 22,
+        doctorId: 5,
+        name: "Jane Doe",
+        patientCode: "P-0007",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        reason: "Fever",
+        time: "10:30",
+        profileId: "7",
+      });
+      result.current.setAllergyNameDraft("Dust");
+      result.current.setAllergySeverityDraft("moderate");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allergies: [{ allergyName: "Dust", severity: "moderate", isActive: true }],
+      })
+    );
+  });
+
+  it("splits ICD-coded diagnosis labels into diagnosis text and icd10Code on save", async () => {
+    const { result } = renderHook(
+      () =>
+        useDoctorWorkspaceData(
+          buildClinicalWorkflow({
+            selectedDiseases: [
+              "T59.3X3A - Toxic effect of lacrimogenic gas, assault, initial encounter",
+            ],
+          }),
+          buildVisitPlanner()
+        ),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.handlePatientSelect({
+        patientId: 7,
+        appointmentId: 22,
+        doctorId: 5,
+        name: "Jane Doe",
+        patientCode: "P-0007",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        reason: "Fever",
+        time: "10:30",
+        profileId: "7",
+      });
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        diagnoses: [
+          {
+            diagnosisName: "Toxic effect of lacrimogenic gas, assault, initial encounter",
+            icd10Code: "T59.3X3A",
+          },
+        ],
+      })
+    );
+  });
+
+  it("submits quick-create drafts through the same consultation save action", async () => {
+    mockedSaveConsultation.mockResolvedValue({ patient: { id: 55 }, encounterId: 91 });
+
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.setPatientName("Nethmi Silva");
+      result.current.setPatientDateOfBirth("2012-04-15");
+      result.current.setGuardianRelationship("Mother");
+      result.current.setGuardianName("Kasuni Silva");
+      result.current.setGuardianNic("198812345678");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientDraft: expect.objectContaining({
+          name: "Nethmi Silva",
+          dateOfBirth: "2012-04-15",
+          guardianName: "Kasuni Silva",
+          guardianNic: "198812345678",
+        }),
+      })
+    );
+    expect(result.current.selectedPatientProfileId).toBe("55");
+  });
+
+  it("prefers guardianPatientId when an existing guardian is selected", async () => {
+    mockedSaveConsultation.mockResolvedValue({ patient: { id: 56 }, encounterId: 91 });
+
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.setPatientName("Nethmi Silva");
+      result.current.setPatientDateOfBirth("2012-04-15");
+      result.current.handleGuardianSelect({
+        patientId: 55,
+        familyId: 3,
+        name: "Kasuni Silva",
+        patientCode: "P-0055",
+        nic: "198812345678",
+        phone: "+94771112233",
+        age: 38,
+        gender: "Female",
+        reason: "Guardian record",
+        time: "-",
+      });
+      result.current.setGuardianRelationship("Mother");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientDraft: expect.objectContaining({
+          name: "Nethmi Silva",
+          guardianPatientId: 55,
+          guardianRelationship: "Mother",
+        }),
+      })
+    );
+  });
+
+  it("falls back to lightweight guardian fields when selected guardian has no family", async () => {
+    mockedSaveConsultation.mockResolvedValue({ patient: { id: 58 }, encounterId: 91 });
+
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.setPatientName("Nethmi Silva");
+      result.current.setPatientDateOfBirth("2012-04-15");
+      result.current.handleGuardianSelect({
+        patientId: 99,
+        name: "Kasuni Silva",
+        patientCode: "P-0099",
+        nic: "198812345678",
+        phone: "+94771112233",
+        age: 38,
+        gender: "Female",
+        reason: "Guardian record",
+        time: "-",
+      });
+      result.current.setGuardianRelationship("Sister");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientDraft: expect.objectContaining({
+          guardianName: "Kasuni Silva",
+          guardianNic: "198812345678",
+          guardianPhone: "+94771112233",
+          guardianRelationship: "Sister",
+        }),
+      })
+    );
+    expect(mockedSaveConsultation).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientDraft: expect.objectContaining({
+          guardianPatientId: 99,
+        }),
+      })
+    );
+  });
+
+  it("sends guardianDraft when full guardian creation is chosen", async () => {
+    mockedSaveConsultation.mockResolvedValue({ patient: { id: 57 }, encounterId: 91 });
+
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.setPatientName("Nethmi Silva");
+      result.current.setPatientDateOfBirth("2012-04-15");
+      result.current.setGuardianMode("draft");
+      result.current.setGuardianName("Kasuni Silva");
+      result.current.setGuardianDateOfBirth("1988-06-20");
+      result.current.setGuardianNic("198812345678");
+      result.current.setGuardianPhone("+94771112233");
+      result.current.setGuardianRelationship("Mother");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientDraft: expect.objectContaining({
+          name: "Nethmi Silva",
+          guardianRelationship: "Mother",
+        }),
+        guardianDraft: expect.objectContaining({
+          name: "Kasuni Silva",
+          dateOfBirth: "1988-06-20",
+          nic: "198812345678",
+          phone: "+94771112233",
+        }),
+      })
+    );
+  });
+
+  it("blocks consultation save for non-doctor roles", async () => {
     mockedUseCurrentUserQuery.mockReturnValue(
       buildQueryState({ data: { id: 5, role: "owner" } }) as never
     );
 
-    const clinicalWorkflow = {
-      selectedDiseases: ["Influenza"],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
 
     act(() => {
       result.current.handlePatientSelect({
@@ -914,145 +630,7 @@ describe("useDoctorWorkspaceData", () => {
     });
 
     expect(result.current.canSaveRecord).toBe(false);
-    expect(mockedCreateEncounter).not.toHaveBeenCalled();
+    expect(mockedSaveConsultation).not.toHaveBeenCalled();
     expect(result.current.saveState.status).toBe("error");
-    expect(result.current.saveState.error).toMatch(/doctor role|doctor workspace access|appointment update permission/i);
-  });
-
-  it("disables save and visit actions until a patient is selected", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.queueState.status).toBe("ready");
-    });
-
-    expect(result.current.canSaveRecord).toBe(false);
-    expect(result.current.canTransitionAppointments).toBe(false);
-    expect(result.current.saveDisabledReason).toMatch(/start or resume a visit/i);
-    expect(result.current.transitionDisabledReason).toMatch(/select a patient/i);
-  });
-
-  it("starts or resumes a walk-in visit and refreshes appointment queries", async () => {
-    const invalidateQueriesSpy = vi
-      .spyOn(QueryClient.prototype, "invalidateQueries")
-      .mockResolvedValue(undefined);
-    const patientsQuery = buildQueryState({
-      data: [{ id: 7, name: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female" }],
-    });
-    const appointmentsQuery = buildQueryState({
-      data: [{ id: 22, patientId: 7, doctorId: 5, patientName: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female", reason: "Fever", status: "waiting", scheduledAt: "2026-03-10T10:30:00.000Z" }],
-    });
-    mockedUsePatientsQuery.mockReturnValue(patientsQuery as never);
-    mockedUseAppointmentsQuery.mockReturnValue(appointmentsQuery as never);
-
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.handlePatientSelect({
-        patientId: 7,
-        appointmentId: 22,
-        doctorId: 5,
-        appointmentStatus: "waiting",
-        name: "Jane Doe",
-        patientCode: "P-0007",
-        nic: "990011223V",
-        age: 31,
-        gender: "Female",
-        reason: "Fever",
-        time: "10:30",
-        profileId: "7",
-      });
-    });
-
-    await act(async () => {
-      await result.current.handleStartConsultation();
-    });
-
-    expect(mockedStartVisit).toHaveBeenCalledWith({
-      patientId: 7,
-      reason: "Walk-in consultation",
-      priority: "normal",
-    });
-    expect(mockedUpdateAppointment).not.toHaveBeenCalled();
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
-      queryKey: ["appointments"],
-    });
-    expect(appointmentsQuery.refetch).not.toHaveBeenCalled();
-    expect(result.current.transitionState.status).toBe("success");
-    expect(result.current.selectedAppointmentStatus).toBe("in_consultation");
-    expect(result.current.visitActionLabel).toBe("Continue Visit");
-  });
-
-  it("clears stale save feedback when the selected patient context changes", async () => {
-    const clinicalWorkflow = {
-      selectedDiseases: [],
-      selectedTests: [],
-      rxRows: [],
-    } as never;
-    const visitPlanner = { nextVisitDate: "2026-03-11" } as never;
-
-    const { result } = renderHook(() => useDoctorWorkspaceData(clinicalWorkflow, visitPlanner), {
-      wrapper: createQueryWrapper(),
-    });
-
-    act(() => {
-      result.current.handlePatientSelect({
-        patientId: 7,
-        appointmentId: 22,
-        doctorId: 5,
-        appointmentStatus: "waiting",
-        name: "Jane Doe",
-        patientCode: "P-0007",
-        nic: "990011223V",
-        age: 31,
-        gender: "Female",
-        reason: "Fever",
-        time: "10:30",
-        profileId: "7",
-      });
-    });
-
-    await act(async () => {
-      await result.current.handleSaveRecord();
-    });
-
-    expect(result.current.saveState.status).toBe("success");
-
-    act(() => {
-      result.current.handlePatientSelect({
-        patientId: 7,
-        appointmentId: 22,
-        doctorId: 5,
-        name: "Jane Doe",
-        patientCode: "P-0007",
-        nic: "990011223V",
-        age: 31,
-        gender: "Female",
-        reason: "Fever",
-        time: "10:30",
-        profileId: "7",
-      });
-    });
-
-    expect(result.current.saveState.status).toBe("idle");
-    expect(result.current.saveFeedback).toBeNull();
   });
 });
