@@ -10,6 +10,7 @@ import {
   listFamilies,
   listPatients,
   listPendingDispenseQueue,
+  searchInventory,
 } from "../../../lib/api-client";
 import { createQueryWrapper } from "../../../lib/test-query-client";
 import { useAssistantWorkflow } from "../hooks/useAssistantWorkflow";
@@ -24,6 +25,7 @@ vi.mock("../../../lib/api-client", () => ({
   listFamilies: vi.fn(),
   listPatients: vi.fn(),
   listPendingDispenseQueue: vi.fn(),
+  searchInventory: vi.fn(),
 }));
 
 const mockedCreateAppointment = vi.mocked(createAppointment);
@@ -35,6 +37,7 @@ const mockedListAppointments = vi.mocked(listAppointments);
 const mockedListFamilies = vi.mocked(listFamilies);
 const mockedListPatients = vi.mocked(listPatients);
 const mockedListPendingDispenseQueue = vi.mocked(listPendingDispenseQueue);
+const mockedSearchInventory = vi.mocked(searchInventory);
 
 function buildPatientFixture(input: {
   id: number;
@@ -80,6 +83,7 @@ describe("useAssistantWorkflow", () => {
       name: "Assistant",
       permissions: ["patient.write", "appointment.create", "prescription.dispense"],
     });
+    mockedSearchInventory.mockResolvedValue([]);
     mockedCreatePatient.mockResolvedValue({
       id: 99,
       name: "Created Patient",
@@ -174,6 +178,72 @@ describe("useAssistantWorkflow", () => {
     );
     expect(result.current.filteredCompleted[0]?.time).toEqual(expect.any(String));
     expect(result.current.stats).toEqual({ total: 12, male: 7, female: 5, existing: 10, new: 2 });
+  });
+
+  it("normalizes the backend pending-dispense queue shape with nullable inventory ids", async () => {
+    mockedListPendingDispenseQueue.mockResolvedValue([
+      {
+        id: 101,
+        prescriptionId: 101,
+        appointmentId: 123,
+        encounterId: 55,
+        patientId: 55,
+        patientName: "Kasun Samarakoon",
+        patient_code: "P-000000024",
+        nic: "200001150555",
+        diagnosis: "Hypertensive heart disease without heart failure",
+        items: [
+          {
+            drugName: "Paracetamol",
+            dose: "500mg",
+            frequency: "TID",
+            duration: "3 days",
+            quantity: "6",
+            source: "clinical",
+            inventoryItemId: null,
+          },
+        ],
+      },
+    ]);
+    mockedListPatients.mockResolvedValue([]);
+    mockedGetAnalyticsOverview.mockResolvedValue({});
+    mockedListAppointments.mockImplementation(async (input?: { status?: string }) => {
+      if (input?.status === "completed") {
+        return [];
+      }
+      return [];
+    });
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingPatients).toHaveLength(1);
+    });
+
+    expect(result.current.activePrescription).toEqual(
+      expect.objectContaining({
+        prescriptionId: 101,
+        appointmentId: 123,
+        encounterId: 55,
+        patientId: 55,
+        patient: "Kasun Samarakoon",
+        patientCode: "P-000000024",
+        nic: "200001150555",
+        diagnosis: "Hypertensive heart disease without heart failure",
+        clinical: [
+          {
+            name: "Paracetamol",
+            dose: "500mg",
+            terms: "TID",
+            amount: 6,
+          },
+        ],
+        outside: [],
+        dispenseItems: [],
+      })
+    );
   });
 
   it("sends address, family code, and Sri Lankan phone format in patient create requests", async () => {
@@ -481,12 +551,7 @@ describe("useAssistantWorkflow", () => {
   });
 
   it("blocks assistant workflow actions for read-only roles", async () => {
-    mockedGetCurrentUser.mockResolvedValue({
-      id: 5,
-      role: "doctor",
-      email: "doctor@medsys.test",
-      name: "Doctor",
-    });
+    mockedGetCurrentUser.mockRejectedValue(new Error("Session unavailable"));
 
     const { result } = renderHook(() => useAssistantWorkflow(), {
       wrapper: createQueryWrapper(),
@@ -500,7 +565,7 @@ describe("useAssistantWorkflow", () => {
       await result.current.addPatient();
     });
 
-    expect(result.current.canManageAssistantWorkflow).toBe(false);
+    expect(result.current.canCreatePatientsInWorkflow).toBe(false);
     expect(mockedCreatePatient).not.toHaveBeenCalled();
     expect(result.current.createPatientState.error).toMatch(/patient registration access/i);
   });
@@ -525,6 +590,49 @@ describe("useAssistantWorkflow", () => {
     expect(result.current.canManageAssistantWorkflow).toBe(true);
     expect(result.current.canCreatePatientsInWorkflow).toBe(true);
     expect(result.current.canCreateAppointmentsInWorkflow).toBe(true);
+  });
+
+  it("starts a dispense cooldown after a 429 response", async () => {
+    mockedListPendingDispenseQueue.mockResolvedValue([
+      {
+        id: 101,
+        prescriptionId: 101,
+        patientId: 7,
+        patientName: "Jane Doe",
+        diagnosis: "Viral fever",
+        items: [
+          {
+            name: "Paracetamol",
+            dose: "500mg",
+            frequency: "BID",
+            quantity: 10,
+            source: "clinical",
+            inventoryItemId: 99,
+          },
+        ],
+      },
+    ]);
+    mockedDispensePrescription.mockRejectedValue({
+      status: 429,
+      message: "Too many requests.",
+      retryAfterSeconds: 12,
+    });
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.pendingPatients).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.markDoneAndNext();
+    });
+
+    expect(result.current.canSubmitDispense).toBe(false);
+    expect(result.current.dispenseState.error).toMatch(/try again in 12 seconds/i);
+    expect(result.current.dispenseActionDisabledReason).toMatch(/try again in/i);
   });
 
   it("schedules appointments through the backend-backed appointments API", async () => {

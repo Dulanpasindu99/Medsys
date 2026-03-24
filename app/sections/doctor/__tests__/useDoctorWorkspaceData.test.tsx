@@ -13,6 +13,7 @@ vi.mock("../../../lib/query-hooks", () => ({
   usePatientsQuery: vi.fn(),
   useAppointmentsQuery: vi.fn(),
   useCurrentUserQuery: vi.fn(),
+  useInventoryQuery: vi.fn(),
   usePatientProfileQuery: vi.fn(),
   usePatientVitalsQuery: vi.fn(),
   usePatientAllergiesQuery: vi.fn(),
@@ -22,6 +23,7 @@ import { saveConsultation } from "../../../lib/api-client";
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
+  useInventoryQuery,
   usePatientAllergiesQuery,
   usePatientProfileQuery,
   usePatientsQuery,
@@ -32,6 +34,7 @@ const mockedSaveConsultation = vi.mocked(saveConsultation);
 const mockedUsePatientsQuery = vi.mocked(usePatientsQuery);
 const mockedUseAppointmentsQuery = vi.mocked(useAppointmentsQuery);
 const mockedUseCurrentUserQuery = vi.mocked(useCurrentUserQuery);
+const mockedUseInventoryQuery = vi.mocked(useInventoryQuery);
 const mockedUsePatientProfileQuery = vi.mocked(usePatientProfileQuery);
 const mockedUsePatientVitalsQuery = vi.mocked(usePatientVitalsQuery);
 const mockedUsePatientAllergiesQuery = vi.mocked(usePatientAllergiesQuery);
@@ -100,6 +103,14 @@ describe("useDoctorWorkspaceData", () => {
     );
     mockedUseCurrentUserQuery.mockReturnValue(
       buildQueryState({ data: { id: 5, role: "doctor", permissions: ["appointment.update"] } }) as never
+    );
+    mockedUseInventoryQuery.mockReturnValue(
+      buildQueryState({
+        data: [
+          { id: 1, name: "Paracetamol", quantity: 24 },
+          { id: 2, name: "Penicillin", quantity: 12 },
+        ],
+      }) as never
     );
     mockedUsePatientVitalsQuery.mockReturnValue(
       buildQueryState({ data: [{ label: "BP", value: "120/80" }] }) as never
@@ -336,14 +347,16 @@ describe("useDoctorWorkspaceData", () => {
 
     expect(mockedSaveConsultation).toHaveBeenCalledWith(
       expect.objectContaining({
+        workflowType: "appointment",
+        appointmentId: 22,
         patientId: 7,
-        reason: "Walk-in consultation",
+        reason: "Appointment consultation",
         priority: "normal",
         notes: "Stable follow-up",
         clinicalSummary: "Stable follow-up",
         diagnoses: [{ diagnosisName: "Influenza", icd10Code: "", persistAsCondition: true }],
         tests: [{ testName: "CBC", status: "ordered" }],
-        vitals: expect.any(Object),
+        vitals: { bpSystolic: 120, bpDiastolic: 80 },
         allergies: [{ allergyName: "Penicillin", severity: "high", isActive: true }],
       })
     );
@@ -354,7 +367,7 @@ describe("useDoctorWorkspaceData", () => {
       queryKey: ["appointments"],
     });
     expect(result.current.saveState.status).toBe("success");
-    expect(result.current.selectedAppointmentStatus).toBe("completed");
+    expect(result.current.selectedAppointmentStatus).toBeNull();
   });
 
   it("includes the current allergy draft in the final consultation save even before add is clicked", async () => {

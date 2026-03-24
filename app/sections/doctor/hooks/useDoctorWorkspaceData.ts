@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  getPrescriptionById,
   saveConsultation,
   type ApiClientError,
 } from "../../../lib/api-client";
@@ -21,6 +22,7 @@ import {
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
+  useInventoryQuery,
   usePatientAllergiesQuery,
   usePatientProfileQuery,
   usePatientsQuery,
@@ -115,6 +117,137 @@ function getDateLabel(value: unknown) {
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return raw;
   return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function getDateTimeLabel(value: unknown) {
+  const raw = getString(value);
+  if (!raw) return "";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleString("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getResolvedPrescriptionId(value: unknown): number | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  return (
+    getNumber(record.prescriptionId ?? record.prescription_id) ??
+    getNumber(asRecord(record.prescription)?.id) ??
+    null
+  );
+}
+
+function buildPrescriptionPrintHtml(input: {
+  prescriptionId: number;
+  patientName: string;
+  patientCode?: string;
+  nic?: string;
+  diagnosis: string;
+  notes?: string;
+  doctorName: string;
+  issuedAt: string;
+  items: Array<{ name: string; dose: string; frequency: string; quantity: string; source: string }>;
+}) {
+  const rows = input.items
+    .map(
+      (item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(item.dose)}</td>
+          <td>${escapeHtml(item.frequency)}</td>
+          <td>${escapeHtml(item.quantity)}</td>
+          <td>${escapeHtml(item.source)}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  return `<!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <title>Prescription ${escapeHtml(String(input.prescriptionId))}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 32px; color: #0f172a; }
+        h1, h2, p { margin: 0; }
+        .header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
+        .brand { font-size: 26px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+        .meta { text-align: right; font-size: 12px; color: #475569; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin-bottom: 20px; }
+        .label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; margin-bottom: 4px; }
+        .value { font-size: 15px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-size: 14px; vertical-align: top; }
+        th { background: #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; }
+        .notes { margin-top: 18px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>
+          <p class="brand">Medlink Prescription</p>
+          <p>Doctor consultation medication order</p>
+        </div>
+        <div class="meta">
+          <p>Prescription ID: ${escapeHtml(String(input.prescriptionId))}</p>
+          <p>Issued: ${escapeHtml(input.issuedAt)}</p>
+          <p>Doctor: ${escapeHtml(input.doctorName)}</p>
+        </div>
+      </div>
+      <div class="grid">
+        <div>
+          <span class="label">Patient</span>
+          <div class="value">${escapeHtml(input.patientName || "-")}</div>
+        </div>
+        <div>
+          <span class="label">Patient Code</span>
+          <div class="value">${escapeHtml(input.patientCode || "-")}</div>
+        </div>
+        <div>
+          <span class="label">NIC</span>
+          <div class="value">${escapeHtml(input.nic || "-")}</div>
+        </div>
+        <div>
+          <span class="label">Diagnosis</span>
+          <div class="value">${escapeHtml(input.diagnosis || "Consultation treatment")}</div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Drug</th>
+            <th>Dose</th>
+            <th>Frequency</th>
+            <th>Quantity</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="6">No prescription items found.</td></tr>'}</tbody>
+      </table>
+      ${
+        input.notes
+          ? `<div class="notes"><span class="label">Clinical Notes</span><div class="value">${escapeHtml(input.notes)}</div></div>`
+          : ""
+      }
+    </body>
+  </html>`;
 }
 
 function normalizeGender(value: unknown): PatientGender {
@@ -592,6 +725,26 @@ function normalizeLookupValue(value: string) {
   return value.trim().toLowerCase();
 }
 
+function matchesInventoryDrugName(inventoryName: string, prescriptionDrugName: string) {
+  const normalizedInventory = normalizeLookupValue(inventoryName);
+  const normalizedDrug = normalizeLookupValue(prescriptionDrugName);
+
+  if (!normalizedInventory || !normalizedDrug) {
+    return false;
+  }
+
+  if (normalizedInventory === normalizedDrug) {
+    return true;
+  }
+
+  return (
+    normalizedInventory.startsWith(`${normalizedDrug} `) ||
+    normalizedInventory.includes(` ${normalizedDrug} `) ||
+    normalizedInventory.endsWith(` ${normalizedDrug}`) ||
+    normalizedDrug.startsWith(`${normalizedInventory} `)
+  );
+}
+
 function normalizeProfileGender(value: unknown): PatientGender {
   const raw = getString(value).toLowerCase();
   if (raw === "female") return "Female";
@@ -679,6 +832,7 @@ export function useDoctorWorkspaceData(
   const patientsQuery = usePatientsQuery();
   const waitingAppointmentsQuery = useAppointmentsQuery({ status: "waiting" });
   const currentUserQuery = useCurrentUserQuery();
+  const inventoryQuery = useInventoryQuery();
   const [search, setSearchState] = useState("");
   const [patientName, setPatientNameState] = useState("");
   const [patientFirstName, setPatientFirstNameState] = useState("");
@@ -702,10 +856,15 @@ export function useDoctorWorkspaceData(
   const [selectedGuardianId, setSelectedGuardianId] = useState<number | null>(null);
   const [gender, setGenderState] = useState<PatientGender>("Unspecified");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
-  const [, setSelectedAppointmentId] = useState<number | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
     useState<AppointmentLifecycleStatus | null>(null);
+  const [workflowStatusLabel, setWorkflowStatusLabel] = useState<string | null>(null);
+  const [dispenseStatusLabel, setDispenseStatusLabel] = useState<string | null>(null);
+  const [lastClinicalItemCount, setLastClinicalItemCount] = useState<number>(0);
+  const [lastOutsideItemCount, setLastOutsideItemCount] = useState<number>(0);
+  const [lastSavedPrescriptionId, setLastSavedPrescriptionId] = useState<number | null>(null);
   const [patientLookupNotice, setPatientLookupNotice] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<MutationState>(idleMutationState());
   const [vitalDrafts, setVitalDrafts] = useState<Record<VitalDraftKey, string>>({
@@ -723,6 +882,7 @@ export function useDoctorWorkspaceData(
   const [allergySaveState, setAllergySaveState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
+  const rawInventory = inventoryQuery.data ?? EMPTY_ROWS;
   const currentUserId = currentUserQuery.data?.id ?? null;
   const patientDetailsEnabled = selectedPatientId !== null;
   const patientProfileQuery = usePatientProfileQuery(
@@ -739,6 +899,7 @@ export function useDoctorWorkspaceData(
     () => dedupePatientsByIdentity(normalizePatients(rawPatients, rawWaitingAppointments)),
     [rawPatients, rawWaitingAppointments]
   );
+  const inventoryItems = useMemo(() => asArray(rawInventory), [rawInventory]);
 
   const searchMatches = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -876,6 +1037,8 @@ export function useDoctorWorkspaceData(
     selectedPatientId,
   ]);
   const isDoctorRole = currentUserQuery.data?.role === "doctor";
+  const workflowType: "appointment" | "walk_in" =
+    selectedAppointmentId !== null ? "appointment" : "walk_in";
   const hasDoctorWorkspaceAccess =
     !!currentUserQuery.data &&
     isDoctorRole &&
@@ -905,6 +1068,43 @@ export function useDoctorWorkspaceData(
   const isCreatingPatientInline = Boolean(selectedPatientId === null && hasDraftPatient);
   const canEditVitals = selectedPatientId !== null || isCreatingPatientInline;
   const canEditAllergies = selectedPatientId !== null || isCreatingPatientInline;
+  const hasPrescriptionRows = clinicalWorkflow.rxRows.some((row) => (getNumber(row.amount) ?? 0) > 0);
+  const doctorDirectDispenseItems = useMemo(() => {
+    if (workflowType !== "walk_in" || !hasPrescriptionRows) {
+      return [];
+    }
+
+      return clinicalWorkflow.rxRows
+        .filter((row) => row.source.toLowerCase() === "clinical")
+        .map((row) => {
+          const quantity = getNumber(row.amount) ?? 0;
+          const match = inventoryItems.find((item) => {
+            const inventoryName = getString(item.name);
+            return matchesInventoryDrugName(inventoryName, row.drug);
+          });
+
+        return {
+          drugName: row.drug,
+          quantity,
+          inventoryItemId: getNumber(match?.id),
+        };
+      });
+  }, [clinicalWorkflow.rxRows, hasPrescriptionRows, inventoryItems, workflowType]);
+  const canDirectDispense =
+    workflowType === "walk_in" &&
+    hasPrescriptionRows &&
+    doctorDirectDispenseItems.length > 0 &&
+    doctorDirectDispenseItems.every(
+      (item) => item.quantity > 0 && item.inventoryItemId !== null
+    );
+  const directDispenseDisabledReason =
+    workflowType !== "walk_in"
+      ? "Direct doctor dispense is available only for walk-in consultations."
+      : !hasPrescriptionRows
+        ? "Add prescription items before using doctor-direct dispense."
+        : doctorDirectDispenseItems.some((item) => item.inventoryItemId === null)
+          ? "Each clinical prescription item must match an inventory item before direct dispense."
+          : null;
   const saveDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking doctor access before consultation save."
@@ -962,6 +1162,8 @@ export function useDoctorWorkspaceData(
 
   const clearSaveState = () => {
     setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
+    setWorkflowStatusLabel(null);
+    setDispenseStatusLabel(null);
   };
 
   const clearVitalsSaveState = () => {
@@ -1341,7 +1543,74 @@ export function useDoctorWorkspaceData(
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
       queryClient.invalidateQueries({ queryKey: queryKeys.encounters.list }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.pendingDispenseQueue }),
     ]);
+  };
+
+  const handlePrintPrescription = async () => {
+    if (lastSavedPrescriptionId === null || typeof window === "undefined") {
+      setSaveState(errorMutationState("Save a consultation with prescription items before printing."));
+      return;
+    }
+
+    try {
+      const detail = await getPrescriptionById(lastSavedPrescriptionId);
+      const detailRecord = asRecord(detail) ?? {};
+      const detailPatient = asRecord(detailRecord.patient) ?? null;
+      const itemRows = asArray(detailRecord.items ?? detailRecord.prescriptionItems ?? detailRecord.drugs);
+      const diagnosisText =
+        clinicalWorkflow.selectedDiseases
+          .map((entry) =>
+            typeof entry === "string" ? toDiagnosisPayloadEntry(entry).diagnosisName : entry.display
+          )
+          .filter(Boolean)
+          .join(", ") || "Consultation treatment";
+      const popup = window.open("", "_blank", "width=960,height=720");
+
+      if (!popup) {
+        setSaveState(errorMutationState("Allow pop-ups to print the prescription."));
+        return;
+      }
+
+      const html = buildPrescriptionPrintHtml({
+        prescriptionId: lastSavedPrescriptionId,
+        patientName:
+          getString(detailPatient?.name ?? detailRecord.patientName).trim() || patientName.trim() || "-",
+        patientCode:
+          getString(detailPatient?.patient_code ?? detailRecord.patientCode ?? detailRecord.patient_code).trim() ||
+          patientCode.trim(),
+        nic:
+          getString(detailPatient?.nic ?? detailRecord.nic ?? detailRecord.patientNic ?? detailRecord.patient_nic).trim() ||
+          nicNumber.trim(),
+        diagnosis: diagnosisText,
+        notes: visitPlanner.notes.trim() || undefined,
+        doctorName: currentUserQuery.data?.name ?? "Doctor",
+        issuedAt: getDateTimeLabel(
+          detailRecord.issuedAt ?? detailRecord.createdAt ?? detailRecord.updatedAt ?? new Date().toISOString()
+        ),
+        items: itemRows.map((item, index) => ({
+          name: getString(item.drugName ?? item.name, `Drug ${index + 1}`),
+          dose: getString(item.dose, "-"),
+          frequency: getString(item.frequency ?? item.terms ?? item.duration, "-"),
+          quantity: getString(item.quantity ?? item.amount, "-"),
+          source: getString(item.source ?? item.drugSource, "clinical"),
+        })),
+      });
+
+      popup.document.open();
+      popup.document.write(html);
+      popup.document.close();
+      popup.focus();
+      window.setTimeout(() => {
+        popup.print();
+      }, 250);
+    } catch (error) {
+      setSaveState(
+        errorMutationState(
+          (error as ApiClientError)?.message ?? "Unable to load prescription details for printing."
+        )
+      );
+    }
   };
 
   const refreshSelectedPatientDetails = async () => {
@@ -1357,7 +1626,7 @@ export function useDoctorWorkspaceData(
     ]);
   };
 
-  const handleSaveRecord = async () => {
+  const handleSaveRecord = async (saveMode: "standard" | "doctor_direct" = "standard") => {
     if (!canSaveRecord) {
       setSaveState(
         errorMutationState(
@@ -1391,7 +1660,22 @@ export function useDoctorWorkspaceData(
         return;
       }
 
+      if (saveMode === "doctor_direct" && !canDirectDispense) {
+        setSaveState(
+          errorMutationState(
+            directDispenseDisabledReason ??
+              "Doctor-direct dispense is not ready for this consultation."
+          )
+        );
+        return;
+      }
+
+      const checkedAt = new Date().toISOString();
       const payload = {
+        workflowType,
+        ...(workflowType === "appointment" && selectedAppointmentId !== null
+          ? { appointmentId: selectedAppointmentId }
+          : {}),
         ...(selectedPatientId === null &&
         requiresGuardianDetails &&
         selectedGuardian === null &&
@@ -1460,8 +1744,11 @@ export function useDoctorWorkspaceData(
                   : {}),
               },
             }),
-        checkedAt: new Date().toISOString(),
-        reason: selectedPatientId !== null ? "Walk-in consultation" : "Walk-in consultation",
+        checkedAt,
+        reason:
+          workflowType === "appointment"
+            ? "Appointment consultation"
+            : "Walk-in consultation",
         priority: "normal" as const,
         ...(visitPlanner.notes.trim() ? { notes: visitPlanner.notes.trim() } : {}),
         ...(visitPlanner.notes.trim() ? { clinicalSummary: visitPlanner.notes.trim() } : {}),
@@ -1513,20 +1800,76 @@ export function useDoctorWorkspaceData(
               },
             }
           : {}),
+        ...(saveMode === "doctor_direct" && canDirectDispense
+          ? {
+              dispense: {
+                mode: "doctor_direct" as const,
+                dispensedAt: new Date().toISOString(),
+                notes: "Handed directly by doctor",
+                items: doctorDirectDispenseItems
+                  .filter((item) => item.inventoryItemId !== null && item.quantity > 0)
+                  .map((item) => ({
+                    inventoryItemId: item.inventoryItemId as number,
+                    quantity: item.quantity,
+                  })),
+              },
+            }
+          : {}),
       };
 
       const response = await saveConsultation(payload);
       const resolvedPatientId = getResolvedPatientId(response);
+      const resolvedPrescriptionId = getResolvedPrescriptionId(response);
       if (resolvedPatientId !== null) {
         setSelectedPatientId(resolvedPatientId);
       }
+      setLastSavedPrescriptionId(resolvedPrescriptionId);
       setSelectedDoctorId(doctorId);
-      setSelectedAppointmentStatus("completed");
+      const responseRecord = asRecord(response);
+      const responseWorkflowStatus = getString(
+        responseRecord?.workflow_status ?? responseRecord?.workflowStatus
+      );
+      const responseDispenseStatus = getString(
+        responseRecord?.dispense_status ?? responseRecord?.dispenseStatus
+      );
+      const responseClinicalItemCount = Math.max(
+        0,
+        getNumber(responseRecord?.clinical_item_count ?? responseRecord?.clinicalItemCount) ?? 0
+      );
+      const responseOutsideItemCount = Math.max(
+        0,
+        getNumber(responseRecord?.outside_item_count ?? responseRecord?.outsideItemCount) ?? 0
+      );
+      setLastClinicalItemCount(responseClinicalItemCount);
+      setLastOutsideItemCount(responseOutsideItemCount);
+      setWorkflowStatusLabel(responseWorkflowStatus || null);
+      setDispenseStatusLabel(responseDispenseStatus || null);
       setConsultationAllergies([]);
       setAllergyDraftName("");
       setAllergyDraftSeverity("moderate");
-      setSaveState(successMutationState("Consultation saved successfully."));
+      const prescriptionSummary =
+        responseClinicalItemCount > 0 && responseOutsideItemCount > 0
+          ? `${responseClinicalItemCount} clinical and ${responseOutsideItemCount} outside item(s) saved.`
+          : responseClinicalItemCount > 0
+            ? `${responseClinicalItemCount} clinical item(s) saved.`
+            : responseOutsideItemCount > 0
+              ? `${responseOutsideItemCount} outside item(s) saved.`
+              : "";
+      const successMessage =
+        responseClinicalItemCount === 0 && responseOutsideItemCount > 0
+          ? `Consultation completed. Outside prescription does not require clinic dispensing. ${prescriptionSummary}`.trim()
+          : responseWorkflowStatus === "doctor_completed"
+            ? `Consultation saved. Doctor step is complete and clinical dispensing is pending. ${prescriptionSummary}`.trim()
+            : responseWorkflowStatus === "ready_for_dispense"
+              ? `Consultation saved. Clinical items are ready for dispensing. ${prescriptionSummary}`.trim()
+              : responseWorkflowStatus === "completed"
+                ? `Consultation completed successfully. ${prescriptionSummary}`.trim()
+                : `Consultation saved successfully. ${prescriptionSummary}`.trim();
+      setSaveState(successMutationState(successMessage));
       await refreshDoctorQueries();
+      if (responseDispenseStatus === "completed") {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.inventory.list });
+      }
       if (resolvedPatientId !== null) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: queryKeys.patients.profile(resolvedPatientId) }),
@@ -1633,7 +1976,13 @@ export function useDoctorWorkspaceData(
   const transitionState = idleMutationState();
   const transitionFeedback = null;
   const canTransitionAppointments = false;
-  const visitActionLabel = "Save Consultation";
+  const handleSaveAndComplete = async () => {
+    await handleSaveRecord("doctor_direct");
+  };
+  const visitActionLabel =
+    workflowType === "walk_in" && hasPrescriptionRows
+      ? "Save Or Complete Walk-In"
+      : "Save Consultation";
   const visitModeLabel = selectedPatientId !== null ? "Existing Patient" : isCreatingPatientInline ? "Quick Create" : "No Selection";
   const transitionDisabledReason: string | null =
     "Consultation save now handles visit creation and reuse automatically.";
@@ -1723,6 +2072,14 @@ export function useDoctorWorkspaceData(
     saveDisabledReason,
     transitionDisabledReason,
     selectedAppointmentStatus,
+    workflowType,
+    workflowStatusLabel,
+    dispenseStatusLabel,
+    lastClinicalItemCount,
+    lastOutsideItemCount,
+    canPrintPrescription: lastSavedPrescriptionId !== null,
+    canDirectDispense,
+    directDispenseDisabledReason,
     saveState,
     saveFeedback,
     transitionState,
@@ -1730,6 +2087,8 @@ export function useDoctorWorkspaceData(
     handlePatientSelect,
     handleStartConsultation: handleSaveRecord,
     handleSaveRecord,
+    handleSaveAndComplete,
+    handlePrintPrescription,
     reload: () => {
       void Promise.all([
         refreshDoctorQueries(),

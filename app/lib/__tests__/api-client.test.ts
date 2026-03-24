@@ -19,6 +19,7 @@ import {
   getPatientProfile,
   getPrescriptionById,
   listInventory,
+  searchInventory,
   listInventoryMovements,
   listEncounters,
   listPatientAllergies,
@@ -361,6 +362,7 @@ describe("api client backend compatibility", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const payload = {
+      workflowType: "walk_in" as const,
       patientId: 7,
       checkedAt: "2026-03-24T10:30:00Z",
       reason: "Walk-in consultation",
@@ -533,6 +535,26 @@ describe("api client backend compatibility", () => {
       { id: 1, name: "Paracetamol", quantity: 24 },
     ]);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/inventory");
+  });
+
+  it("searches inventory through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([{ id: 12, name: "Paracetamol 500mg", quantity: 149 }]),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      searchInventory({ q: "Paracetamol", limit: 10, category: "medicine" })
+    ).resolves.toEqual([{ id: 12, name: "Paracetamol 500mg", quantity: 149 }]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "/api/inventory/search?q=Paracetamol&limit=10&category=medicine"
+    );
   });
 
   it("writes inventory mutations through the dedicated BFF routes", async () => {

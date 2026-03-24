@@ -1,10 +1,11 @@
-import { type SetStateAction, useMemo, useState } from "react";
+import { type SetStateAction, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createAppointment,
   createPatient,
   dispensePrescription,
   type ApiClientError,
+  searchInventory,
 } from "../../../lib/api-client";
 import { hasPermission } from "../../../lib/authorization";
 import {
@@ -38,9 +39,11 @@ import type {
   AssistantScheduleFormState,
   CompletedPatient,
   Prescription,
+  PrescriptionDrugEntry,
 } from "../types";
 
 type AnyRecord = Record<string, unknown>;
+type InventorySearchOption = { id: number; name: string; quantity: number; category?: string };
 const EMPTY_ROWS: unknown[] = [];
 
 function asRecord(value: unknown): AnyRecord | null {
@@ -112,6 +115,23 @@ function toDisplayTime(value: unknown) {
   return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+function normalizeLookupValue(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function buildDispenseDrugKey(
+  prescriptionId: number | undefined,
+  item: Pick<PrescriptionDrugEntry, "name" | "dose" | "terms" | "amount">
+) {
+  return [
+    prescriptionId ?? "draft",
+    normalizeLookupValue(item.name),
+    normalizeLookupValue(item.dose),
+    normalizeLookupValue(item.terms),
+    item.amount,
+  ].join("::");
+}
+
 function normalizeSriLankanPhone(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -165,6 +185,7 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
   return asArray(rawQueue).map((row, index) => {
     const prescriptionId = toNumber(row.id ?? row.prescriptionId ?? row.prescription_id) ?? undefined;
     const appointmentId = toNumber(row.appointmentId ?? row.appointment_id) ?? undefined;
+    const encounterId = toNumber(row.encounterId ?? row.encounter_id) ?? undefined;
     const patientId =
       toNumber(row.patientId ?? row.patient_id ?? asRecord(row.patient)?.id) ?? undefined;
     const patientRow = patientId ? patientById.get(patientId) : null;
@@ -250,10 +271,22 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
 
     const clinical = normalizedItems
       .filter((item) => item.source === "clinical")
-      .map((item) => ({ name: item.name, dose: item.dose, terms: item.terms, amount: item.amount }));
+      .map((item) => ({
+        name: item.name,
+        dose: item.dose,
+        terms: item.terms,
+        amount: item.amount,
+        ...(item.inventoryItemId !== null ? { inventoryItemId: item.inventoryItemId } : {}),
+      }));
     const outside = normalizedItems
       .filter((item) => item.source === "outside")
-      .map((item) => ({ name: item.name, dose: item.dose, terms: item.terms, amount: item.amount }));
+      .map((item) => ({
+        name: item.name,
+        dose: item.dose,
+        terms: item.terms,
+        amount: item.amount,
+        ...(item.inventoryItemId !== null ? { inventoryItemId: item.inventoryItemId } : {}),
+      }));
 
     const allergyRows = asArray(row.allergies);
     const allergies = allergyRows.length
@@ -267,6 +300,7 @@ function normalizePendingQueue(rawQueue: unknown, patientById: Map<number, AnyRe
     return {
       prescriptionId,
       appointmentId,
+      encounterId,
       patientId,
       patient,
       patientCode,
@@ -521,6 +555,14 @@ export function useAssistantWorkflow() {
     [analyticsOverviewQuery.data, rawPatients]
   );
   const currentUserId = currentUserQuery.data?.id ?? null;
+  const [inventorySearchOptions, setInventorySearchOptions] = useState<
+    Record<string, InventorySearchOption[]>
+  >({});
+  const [resolvedInventorySelections, setResolvedInventorySelections] = useState<Record<string, number>>(
+    {}
+  );
+  const [dispenseCooldownUntil, setDispenseCooldownUntil] = useState<number | null>(null);
+  const [dispenseCooldownSeconds, setDispenseCooldownSeconds] = useState(0);
   const canCreatePatientsInWorkflow =
     !!currentUserQuery.data && hasPermission(currentUserQuery.data, "patient.write");
   const patientActionDisabledReason =
@@ -537,6 +579,56 @@ export function useAssistantWorkflow() {
       : currentUserQuery.data && !canManageAssistantWorkflow
         ? "Prescription-dispense permission is required before completing pickup actions."
         : null;
+  const activePrescription =
+    pendingPatients[
+      pendingPatients.length ? Math.min(activeIndex, pendingPatients.length - 1) : 0
+    ];
+  const activeClinicalResolutionRows = useMemo(
+    () =>
+      (activePrescription?.clinical ?? []).map((item) => {
+        const key = buildDispenseDrugKey(activePrescription?.prescriptionId, item);
+        const resolvedInventoryItemId =
+          item.inventoryItemId ?? resolvedInventorySelections[key] ?? null;
+        return {
+          key,
+          item,
+          resolvedInventoryItemId,
+          options: inventorySearchOptions[key] ?? [],
+        };
+      }),
+    [activePrescription, inventorySearchOptions, resolvedInventorySelections]
+  );
+  const dispensePayloadItems = useMemo(
+    () =>
+      activeClinicalResolutionRows
+        .filter((entry) => entry.resolvedInventoryItemId !== null && entry.item.amount > 0)
+        .map((entry) => ({
+          inventoryItemId: entry.resolvedInventoryItemId as number,
+          quantity: entry.item.amount,
+        })),
+    [activeClinicalResolutionRows]
+  );
+  const hasClinicalItemsToResolve = activeClinicalResolutionRows.length > 0;
+  const canSubmitDispense =
+    canManageAssistantWorkflow &&
+    !!activePrescription?.prescriptionId &&
+    dispenseCooldownSeconds === 0 &&
+    (!hasClinicalItemsToResolve ||
+      (dispensePayloadItems.length > 0 &&
+        activeClinicalResolutionRows.every((entry) => entry.resolvedInventoryItemId !== null)));
+  const dispenseActionDisabledReason =
+    !activePrescription
+      ? "No prescription is selected for dispensing."
+      : dispenseCooldownSeconds > 0
+        ? `Too many dispense attempts. Try again in ${dispenseCooldownSeconds} seconds.`
+      : !canManageAssistantWorkflow
+        ? workflowActionDisabledReason
+        : hasClinicalItemsToResolve && dispensePayloadItems.length === 0
+          ? "Resolve at least one stock item before dispensing."
+          : hasClinicalItemsToResolve &&
+              activeClinicalResolutionRows.some((entry) => entry.resolvedInventoryItemId === null)
+            ? "Resolve every clinical drug to a stock item before dispensing."
+            : null;
   const canCreateAppointmentsInWorkflow =
     !!currentUserQuery.data &&
     hasPermission(currentUserQuery.data, "appointment.create") &&
@@ -863,6 +955,114 @@ export function useAssistantWorkflow() {
     }
   };
 
+  useEffect(() => {
+    const unresolvedEntries = activeClinicalResolutionRows.filter(
+      (entry) => entry.resolvedInventoryItemId === null
+    );
+    if (unresolvedEntries.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    void Promise.all(
+      unresolvedEntries.map(async (entry) => {
+        if (Object.prototype.hasOwnProperty.call(inventorySearchOptions, entry.key)) {
+          return;
+        }
+        try {
+          const results = await searchInventory({
+            q: entry.item.name,
+            limit: 10,
+            category: "medicine",
+          });
+          if (cancelled) {
+            return;
+          }
+          const normalized = results
+            .map((row): InventorySearchOption | null => {
+              const record = asRecord(row);
+              if (!record) {
+                return null;
+              }
+              const id = toNumber(record.id ?? record.inventoryId ?? record.inventory_id);
+              const name = toString(record.name ?? record.itemName, "").trim();
+              const quantity = toNumber(record.quantity ?? record.stockQuantity) ?? 0;
+              if (id === null || !name) {
+                return null;
+              }
+              return {
+                id,
+                name,
+                quantity,
+                ...(toString(record.category ?? record.type, "").trim()
+                  ? { category: toString(record.category ?? record.type, "").trim() }
+                  : {}),
+              };
+            })
+            .filter((option): option is InventorySearchOption => option !== null);
+
+          setInventorySearchOptions((current) => ({
+            ...current,
+            [entry.key]: normalized,
+          }));
+          if (normalized.length === 1) {
+            setResolvedInventorySelections((current) =>
+              current[entry.key] ? current : { ...current, [entry.key]: normalized[0]!.id }
+            );
+          }
+        } catch {
+          if (!cancelled) {
+            setInventorySearchOptions((current) => ({
+              ...current,
+              [entry.key]: [],
+            }));
+          }
+        }
+      })
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClinicalResolutionRows, inventorySearchOptions]);
+
+  useEffect(() => {
+    if (dispenseCooldownUntil === null) {
+      return;
+    }
+
+    const updateCountdown = () => {
+      const remainingSeconds = Math.max(
+        0,
+        Math.ceil((dispenseCooldownUntil - Date.now()) / 1000)
+      );
+      setDispenseCooldownSeconds(remainingSeconds);
+      if (remainingSeconds === 0) {
+        setDispenseCooldownUntil(null);
+      }
+      return remainingSeconds;
+    };
+
+    if (updateCountdown() === 0) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      updateCountdown();
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [dispenseCooldownUntil]);
+
+  const setResolvedInventoryItem = (drugKey: string, inventoryItemId: number) => {
+    setResolvedInventorySelections((current) => ({
+      ...current,
+      [drugKey]: inventoryItemId,
+    }));
+  };
+
   const markDoneAndNext = async () => {
     if (!canManageAssistantWorkflow) {
       setDispenseState(
@@ -874,16 +1074,20 @@ export function useAssistantWorkflow() {
       return;
     }
 
-    const activePrescription =
-      pendingPatients[
-        pendingPatients.length ? Math.min(activeIndex, pendingPatients.length - 1) : 0
-      ];
     if (!activePrescription) return;
     if (!activePrescription.prescriptionId || !currentUserId) {
       setDispenseState(
         errorMutationState("Prescription or session identity is missing for this queue item.")
       );
       setActiveIndex((prev) => (pendingPatients.length ? (prev + 1) % pendingPatients.length : 0));
+      return;
+    }
+    if (!canSubmitDispense) {
+      setDispenseState(
+        errorMutationState(
+          dispenseActionDisabledReason ?? "Resolve stock items before completing dispense."
+        )
+      );
       return;
     }
 
@@ -894,12 +1098,29 @@ export function useAssistantWorkflow() {
         dispensedAt: new Date().toISOString(),
         status: "completed",
         notes: "Dispensed from assistant queue",
-        items: activePrescription.dispenseItems ?? [],
+        items: dispensePayloadItems,
       });
       await refreshAssistantQueries();
+      setDispenseCooldownUntil(null);
+      setDispenseCooldownSeconds(0);
       setDispenseState(successMutationState("Prescription marked as dispensed."));
     } catch (error) {
-      const message = (error as ApiClientError)?.message ?? "Failed to mark dispense.";
+      const apiError = error as ApiClientError;
+      if (apiError?.status === 429) {
+        const retryAfterSeconds =
+          apiError.retryAfterSeconds && apiError.retryAfterSeconds > 0
+            ? apiError.retryAfterSeconds
+            : 10;
+        setDispenseCooldownUntil(Date.now() + retryAfterSeconds * 1000);
+        setDispenseCooldownSeconds(retryAfterSeconds);
+        setDispenseState(
+          errorMutationState(
+            `Too many dispense attempts. Try again in ${retryAfterSeconds} seconds.`
+          )
+        );
+        return;
+      }
+      const message = apiError?.message ?? "Failed to mark dispense.";
       setDispenseState(errorMutationState(message));
     }
   };
@@ -919,10 +1140,11 @@ export function useAssistantWorkflow() {
 
   return {
     pendingPatients,
-    activePrescription:
-      pendingPatients[
-        pendingPatients.length ? Math.min(activeIndex, pendingPatients.length - 1) : 0
-      ],
+    activePrescription,
+    activeClinicalResolutionRows,
+    canSubmitDispense,
+    dispenseActionDisabledReason,
+    setResolvedInventoryItem,
     formState,
     setFormState,
     completedSearch,

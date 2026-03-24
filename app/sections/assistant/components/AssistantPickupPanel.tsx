@@ -2,8 +2,17 @@ import type { Prescription } from '../types';
 
 type AssistantPickupPanelProps = {
     activePrescription?: Prescription;
+    activeClinicalResolutionRows?: Array<{
+        key: string;
+        item: { name: string; dose: string; terms: string; amount: number; inventoryItemId?: number };
+        resolvedInventoryItemId: number | null;
+        options: Array<{ id: number; name: string; quantity: number; category?: string }>;
+    }>;
     queueCount: number;
     onDoneAndNext: () => void;
+    onResolvedInventoryItemChange?: (drugKey: string, inventoryItemId: number) => void;
+    canSubmitDispense?: boolean;
+    dispenseActionDisabledReason?: string | null;
     canManageAssistantWorkflow?: boolean;
     workflowActionDisabledReason?: string | null;
     isSubmitting?: boolean;
@@ -46,8 +55,12 @@ function DrugColumn({
 
 export function AssistantPickupPanel({
     activePrescription,
+    activeClinicalResolutionRows = [],
     queueCount,
     onDoneAndNext,
+    onResolvedInventoryItemChange,
+    canSubmitDispense = true,
+    dispenseActionDisabledReason = null,
     canManageAssistantWorkflow = true,
     workflowActionDisabledReason = null,
     isSubmitting = false,
@@ -113,6 +126,50 @@ export function AssistantPickupPanel({
                         />
                     </div>
 
+                    {activeClinicalResolutionRows.some((entry) => entry.resolvedInventoryItemId === null) ? (
+                        <div className="space-y-3 rounded-[22px] border border-amber-200/90 bg-amber-50/80 p-3 text-sm text-slate-800">
+                            <div>
+                                <p className="font-semibold text-slate-900">Resolve stock items</p>
+                                <p className="text-xs text-slate-600">
+                                    Each clinical drug must be matched to an inventory medicine before assistant dispense.
+                                </p>
+                            </div>
+                            <div className="space-y-3">
+                                {activeClinicalResolutionRows
+                                    .filter((entry) => entry.resolvedInventoryItemId === null)
+                                    .map((entry) => (
+                                        <label key={entry.key} className="block space-y-1">
+                                            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                                {entry.item.name} {entry.item.dose ? `(${entry.item.dose})` : ""}
+                                            </span>
+                                            <select
+                                                value={entry.resolvedInventoryItemId ?? ""}
+                                                onChange={(event) => {
+                                                    const nextId = Number(event.target.value);
+                                                    if (Number.isInteger(nextId) && nextId > 0 && onResolvedInventoryItemChange) {
+                                                        onResolvedInventoryItemChange(entry.key, nextId);
+                                                    }
+                                                }}
+                                                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-sky-400"
+                                            >
+                                                <option value="">Select stock item</option>
+                                                {entry.options.map((option) => (
+                                                    <option key={option.id} value={option.id}>
+                                                        {option.name} | Qty {option.quantity}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {!entry.options.length ? (
+                                                <p className="text-xs font-semibold text-amber-700">
+                                                    No stock match found yet for this drug. Add or rename inventory items to continue.
+                                                </p>
+                                            ) : null}
+                                        </label>
+                                    ))}
+                            </div>
+                        </div>
+                    ) : null}
+
                     <div className="grid gap-3 lg:grid-cols-2">
                         <button
                             type="button"
@@ -125,13 +182,16 @@ export function AssistantPickupPanel({
                             type="button"
                             className="app-button app-button--primary app-button--full"
                             onClick={onDoneAndNext}
-                            disabled={isSubmitting || !canManageAssistantWorkflow}
+                            disabled={isSubmitting || !canManageAssistantWorkflow || !canSubmitDispense}
                         >
                             {isSubmitting ? 'Saving...' : 'Done & Next'}
                         </button>
                     </div>
                     {!canManageAssistantWorkflow && workflowActionDisabledReason ? (
                         <p className="text-sm font-semibold text-amber-700">{workflowActionDisabledReason}</p>
+                    ) : null}
+                    {canManageAssistantWorkflow && !canSubmitDispense && dispenseActionDisabledReason ? (
+                        <p className="text-sm font-semibold text-amber-700">{dispenseActionDisabledReason}</p>
                     ) : null}
                 </div>
             ) : (

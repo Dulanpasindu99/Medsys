@@ -4,6 +4,7 @@ import type { AppPermission } from "./authorization";
 export type ApiClientError = {
   message: string;
   status: number;
+  retryAfterSeconds?: number;
 };
 type ApiContractError = ApiClientError;
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
@@ -11,6 +12,8 @@ export type ApiRecord = Record<string, unknown>;
 export type VisitStartPriority = "low" | "normal" | "high" | "critical";
 export type ConsultationPriority = VisitStartPriority;
 export type ConsultationSavePayload = {
+  workflowType: "appointment" | "walk_in";
+  appointmentId?: number;
   patientId?: number;
   patientDraft?: {
     name: string;
@@ -60,6 +63,12 @@ export type ConsultationSavePayload = {
       source: "clinical" | "outside";
     }>;
   };
+  dispense?: {
+    mode: "doctor_direct";
+    dispensedAt: string;
+    notes?: string;
+    items: Array<{ inventoryItemId: number; quantity: number }>;
+  };
 };
 
 const DEFAULT_API_BASE = "/api/backend";
@@ -82,6 +91,26 @@ async function parseErrorMessage(response: Response) {
   }
 }
 
+function parseRetryAfterSeconds(response: Response) {
+  const raw = response.headers.get("Retry-After");
+  if (!raw) {
+    return undefined;
+  }
+
+  const asSeconds = Number(raw);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+    return Math.ceil(asSeconds);
+  }
+
+  const retryDate = new Date(raw);
+  if (Number.isNaN(retryDate.getTime())) {
+    return undefined;
+  }
+
+  const seconds = Math.ceil((retryDate.getTime() - Date.now()) / 1000);
+  return seconds > 0 ? seconds : undefined;
+}
+
 function toApiClientError(error: unknown): ApiClientError {
   const contractError = error as ApiContractError;
   if (typeof contractError?.message === "string" && typeof contractError?.status === "number") {
@@ -91,6 +120,7 @@ function toApiClientError(error: unknown): ApiClientError {
   return {
     message: "An unexpected API client error occurred.",
     status: 500,
+    retryAfterSeconds: undefined,
   };
 }
 
@@ -151,7 +181,11 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const message = await parseErrorMessage(response);
-    throw { message, status: response.status } satisfies ApiClientError;
+    throw {
+      message,
+      status: response.status,
+      retryAfterSeconds: parseRetryAfterSeconds(response),
+    } satisfies ApiClientError;
   }
 
   if (response.status === 204) {
@@ -516,6 +550,20 @@ export async function getAnalyticsOverview() {
 export async function listInventory() {
   const response = await apiFetch<unknown>("/api/inventory", { method: "GET" });
   return expectApiRecordArray(response, "inventory");
+}
+
+export async function searchInventory(input: {
+  q: string;
+  limit?: number;
+  category?: "medicine" | "consumable" | "equipment" | "other";
+}) {
+  const params = new URLSearchParams();
+  params.set("q", input.q);
+  if (typeof input.limit === "number") params.set("limit", String(input.limit));
+  if (input.category) params.set("category", input.category);
+  const query = `?${params.toString()}`;
+  const response = await apiFetch<unknown>(`/api/inventory/search${query}`, { method: "GET" });
+  return expectApiRecordArray(response, "inventory search");
 }
 
 export async function createInventoryItem(input: {

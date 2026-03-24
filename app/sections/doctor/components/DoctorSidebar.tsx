@@ -50,7 +50,17 @@ type DoctorSidebarProps = {
   allergyFeedback?: { tone: "info" | "success" | "error"; message: string } | null;
   onAddOrUpdateAllergy: () => void;
   onSaveRecord: () => void;
+  onSaveAndComplete?: () => void;
+  onPrintPrescription?: () => void;
   selectedAppointmentStatus?: AppointmentLifecycleStatus | null;
+  workflowType?: "appointment" | "walk_in";
+  workflowStatusLabel?: string | null;
+  dispenseStatusLabel?: string | null;
+  lastClinicalItemCount?: number;
+  lastOutsideItemCount?: number;
+  canDirectDispense?: boolean;
+  canPrintPrescription?: boolean;
+  directDispenseDisabledReason?: string | null;
   canSaveRecord?: boolean;
   saveDisabledReason?: string | null;
   saveFeedback?: { tone: "info" | "success" | "error"; message: string } | null;
@@ -113,7 +123,17 @@ export function DoctorSidebar({
   allergyFeedback = null,
   onAddOrUpdateAllergy,
   onSaveRecord,
+  onSaveAndComplete,
+  onPrintPrescription,
   selectedAppointmentStatus = null,
+  workflowType = "walk_in",
+  workflowStatusLabel = null,
+  dispenseStatusLabel = null,
+  lastClinicalItemCount = 0,
+  lastOutsideItemCount = 0,
+  canDirectDispense = false,
+  canPrintPrescription = false,
+  directDispenseDisabledReason = null,
   canSaveRecord = true,
   saveDisabledReason = null,
   saveFeedback,
@@ -451,11 +471,57 @@ export function DoctorSidebar({
               >
                 {isSavingRecord ? "Saving consultation..." : "Save Consultation"}
               </button>
+              {workflowType === "walk_in" ? (
+                <button
+                  type="button"
+                  onClick={onSaveAndComplete}
+                  disabled={isSavingRecord || !canDirectDispense}
+                  className="app-button app-button--secondary app-button--full uppercase tracking-wider"
+                >
+                  Save + Dispense + Complete
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onPrintPrescription}
+                disabled={isSavingRecord || !canPrintPrescription || !onPrintPrescription}
+                className="app-button app-button--secondary app-button--full uppercase tracking-wider"
+              >
+                Print Prescription
+              </button>
               <div className="space-y-2">
                 {!canSaveRecord && saveDisabledReason ? (
                   <p className="text-sm font-semibold text-amber-700">
                     {saveDisabledReason}
                   </p>
+                ) : null}
+                {workflowType === "walk_in" && !canDirectDispense && directDispenseDisabledReason ? (
+                  <p className="text-sm font-semibold text-amber-700">
+                    {directDispenseDisabledReason}
+                  </p>
+                ) : null}
+                {workflowStatusLabel ? (
+                  <p className="text-sm font-semibold text-slate-600">
+                    Workflow: {workflowStatusLabel}
+                  </p>
+                ) : null}
+                {dispenseStatusLabel ? (
+                  <p className="text-sm font-semibold text-slate-600">
+                    Dispense: {dispenseStatusLabel}
+                  </p>
+                ) : null}
+                {lastClinicalItemCount > 0 || lastOutsideItemCount > 0 ? (
+                  <p className="text-sm font-semibold text-slate-600">
+                    Prescription: {lastClinicalItemCount} clinical / {lastOutsideItemCount} outside
+                  </p>
+                ) : null}
+                {dispenseStatusLabel === "pending" && lastClinicalItemCount > 0 && assistantRegistrationHref ? (
+                  <a
+                    href={assistantRegistrationHref}
+                    className="inline-flex text-sm font-semibold text-sky-700 underline underline-offset-4"
+                  >
+                    Open Doctor Checked Patient Queue
+                  </a>
                 ) : null}
                 {saveFeedback ? (
                   <p

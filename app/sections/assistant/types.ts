@@ -5,9 +5,18 @@ export type AssistantAllergyEntry = {
   severity: AssistantAllergySeverity;
 };
 
+export type PrescriptionDrugEntry = {
+  name: string;
+  dose: string;
+  terms: string;
+  amount: number;
+  inventoryItemId?: number;
+};
+
 export interface Prescription {
   prescriptionId?: number;
   appointmentId?: number;
+  encounterId?: number;
   patientId?: number;
   patient: string;
   patientCode: string;
@@ -19,8 +28,8 @@ export interface Prescription {
   age: number;
   gender: "Male" | "Female";
   diagnosis: string;
-  clinical: { name: string; dose: string; terms: string; amount: number }[];
-  outside: { name: string; dose: string; terms: string; amount: number }[];
+  clinical: PrescriptionDrugEntry[];
+  outside: PrescriptionDrugEntry[];
   allergies: string[];
   dispenseItems?: { inventoryItemId: number; quantity: number }[];
 }

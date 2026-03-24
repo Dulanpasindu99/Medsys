@@ -2,7 +2,7 @@
 
 Architecture, Implementation, and Delivery Status
 
-Version: 1.2
+Version: 1.3
 Date: March 24, 2026
 Document Status: Developer Reference
 System Version: Frontend `0.1.0`
@@ -237,6 +237,10 @@ Implemented:
 - write-heavy workflows now clear stale feedback when context changes
 - inventory, doctor, assistant, and owner actions use tighter disabled states before invalid operations
 - duplicate-key list rendering issues in owner and assistant workflows are resolved and covered by tests
+- doctor consultation save supports appointment and walk-in modes through one payload
+- doctor workflow now supports prescription printing after a successful save
+- assistant dispense flow resolves unmapped clinical drugs through backend inventory search before submit
+- assistant dispense throttling now surfaces cooldown feedback from backend `Retry-After`
 
 Remaining:
 
@@ -313,10 +317,12 @@ Current primary browser-facing BFF route families:
 - `/api/families`
 - `/api/appointments`
 - `/api/encounters`
+- `/api/consultations/save`
 - `/api/prescriptions/queue/pending-dispense`
 - `/api/prescriptions/:id`
 - `/api/prescriptions/:id/dispense`
 - `/api/inventory`
+- `/api/inventory/search`
 - `/api/inventory/:id`
 - `/api/inventory/:id/movements`
 - `/api/analytics/overview`
@@ -351,21 +357,36 @@ Implemented in active frontend scope:
 - login, logout, auth status, current-user resolution
 - role-based shell access
 - doctor encounter workflow
+- appointment-mode and walk-in-mode doctor consultation save orchestration
 - backend-backed diagnosis search and normalized diagnosis selection
 - backend-backed clinical test search for lab tests and observations
 - diagnosis-driven recommended test suggestions
 - assistant intake and dispense workflow
+- assistant-side stock resolution for clinical queue items without an inventory mapping
 - patient directory and profile
 - owner staff list/create via backend users API
 - appointment list and creation
 - encounter list and submission
 - prescription queue, detail, and dispense
+- prescription print flow after doctor save
 - inventory list, item creation, update, and movements
 - analytics overview
 - AI insight summary view
 - audit log visibility
 - backend-backed diagnosis and clinical-test suggestions
 - backend-backed diagnosis recommended-test suggestions
+
+## 10. Workflow Notes
+
+- doctor save now sends one consultation payload containing either `patientId` or `patientDraft`
+- `workflowType` distinguishes appointment and walk-in save behavior
+- save responses may include `workflow_status`, `dispense_status`, `clinical_item_count`, and `outside_item_count`
+- doctor-side success messaging and assistant-handoff affordances now use those backend values
+- prescription item `source` is operationally meaningful:
+- `clinical` items drive queueing, dispense, stock lookup, and completion logic
+- `outside` items are preserved for print and history only
+- pending dispense queue is expected to contain prescriptions with clinical items only, and queue `items` should represent clinical items only
+- assistant dispense submit must never send an empty `items` array
 
 ## 11. Not Yet Implemented Or Not Fully Mature
 
@@ -399,6 +420,7 @@ Immediate next priorities:
 1. maintain shared query invalidation and permission-aligned affordances for newly added workflows
 2. trim remaining server-side contract-adapter debt as backend stabilizes
 3. keep the full lint, typecheck, and test gate green during feature delivery
+4. continue reducing documentation drift whenever workflow-state or dispense rules change
 
 ## 14. Environment And Runtime Notes
 

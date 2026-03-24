@@ -14,6 +14,7 @@ export default function AssistantSection() {
     const {
         pendingPatients,
         activePrescription,
+        activeClinicalResolutionRows,
         formState,
         setFormState,
         completedSearch,
@@ -29,6 +30,9 @@ export default function AssistantSection() {
         setScheduleForm,
         scheduleAppointment,
         markDoneAndNext,
+        canSubmitDispense,
+        dispenseActionDisabledReason,
+        setResolvedInventoryItem,
         loadState,
         createPatientState,
         createPatientFeedback,
@@ -93,8 +97,12 @@ export default function AssistantSection() {
                                     <AssistantPanelShell>
                                         <AssistantPickupPanel
                                             activePrescription={activePrescription}
+                                            activeClinicalResolutionRows={activeClinicalResolutionRows}
                                             queueCount={pendingPatients.length}
                                             onDoneAndNext={markDoneAndNext}
+                                            onResolvedInventoryItemChange={setResolvedInventoryItem}
+                                            canSubmitDispense={canSubmitDispense}
+                                            dispenseActionDisabledReason={dispenseActionDisabledReason}
                                             canManageAssistantWorkflow={canManageAssistantWorkflow}
                                             workflowActionDisabledReason={workflowActionDisabledReason}
                                             isSubmitting={dispenseState.status === 'pending'}

@@ -2,7 +2,7 @@
 
 Client Overview, Scope, and Requirements Baseline
 
-Version: 1.2
+Version: 1.3
 Date: March 24, 2026
 Document Status: Client Review Draft
 System Version: Frontend `0.1.0`
@@ -146,12 +146,14 @@ Current important policy example:
 ## 8.2 Doctor Workflow
 
 1. Doctor enters the doctor workspace.
-2. Waiting appointments are loaded.
-3. Doctor selects a patient from the queue.
+2. Waiting appointments are loaded, and doctor can also start a direct walk-in consultation from the same workspace.
+3. Appointment mode selects a patient from the queue. Walk-in mode allows inline patient search and quick-create on the doctor screen.
 4. Patient context, vitals, and allergies are loaded when available.
 5. Doctor records notes, diagnoses, tests, prescriptions, and next-visit information.
 6. Diagnosis search uses backend clinical terminology, medical test search uses backend clinical terminology, and diagnosis-driven recommended tests can be added quickly.
-7. Encounter is submitted to the backend.
+7. The consultation is submitted through one unified consultation-save request.
+8. Prescription items may be saved as `clinical` or `outside`.
+9. Only `clinical` items trigger clinic dispense workflow. `Outside` items remain part of prescription print and history only.
 
 ## 8.3 Assistant Workflow
 
@@ -160,7 +162,9 @@ Current important policy example:
 3. Assistant may register a new patient through intake.
 4. Assistant selects a pending prescription.
 5. Prescription details are displayed.
-6. Assistant completes dispensing using available inventory.
+6. Pending queue items now include clinic-dispensable medicines only.
+7. If a clinical item has no inventory mapping yet, assistant resolves it through inventory search before dispensing.
+8. Assistant completes dispensing only for clinical items. Outside-pharmacy items do not enter or block the queue.
 
 ## 8.4 Patient Directory And Profile Flow
 
@@ -214,6 +218,9 @@ The current functional requirements baseline includes the following major capabi
 - backend-backed lab and clinical observation test search
 - diagnosis-driven recommended tests
 - prescription entry
+- unified appointment and walk-in consultation save
+- prescription printing after successful save
+- prescription-source handling for `clinical` and `outside` items
 - next visit entry
 - encounter submission
 
@@ -223,6 +230,7 @@ The current functional requirements baseline includes the following major capabi
 - patient creation
 - pending dispense queue
 - prescription detail display
+- stock-item resolution for unmapped clinical dispense items
 - dispense action completion
 
 ## 9.4 Patient Functions
@@ -299,6 +307,8 @@ Current implementation position:
 - prototype persistence has been removed from the active frontend tree
 - query-based server-state infrastructure is in place across the main read-heavy sections
 - workflow hardening for the active owner, doctor, assistant, and inventory screens is complete
+- doctor save behavior is aligned to backend workflow status, dispense status, and prescription source counts
+- assistant dispense flow now resolves missing inventory mappings before submit and respects backend rate-limit cooldown messaging
 
 Current product maturity statement:
 
@@ -317,12 +327,13 @@ Current known limitations include:
 - some workflows still require future backend policy refinement
 - some advanced clinical safety and interoperability capabilities are not yet implemented
 - imaging and procedure catalog search is still separate future scope from the current lab and observation test search
+- outside-pharmacy prescription items are intentionally excluded from clinic dispense queue processing
 
 ## 13. Version And Document Control
 
 Document issue details:
 
-- document version: `1.2`
+- document version: `1.3`
 - document date: `March 24, 2026`
 - system version referenced: `Frontend 0.1.0`
 - status: `client review draft`

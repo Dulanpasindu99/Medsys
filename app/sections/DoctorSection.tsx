@@ -83,10 +83,20 @@ export default function DoctorSection() {
     canSaveRecord,
     saveDisabledReason,
     selectedAppointmentStatus,
+    workflowType,
+    workflowStatusLabel,
+    dispenseStatusLabel,
+    lastClinicalItemCount,
+    lastOutsideItemCount,
+    canDirectDispense,
+    directDispenseDisabledReason,
     saveState,
     saveFeedback,
     handlePatientSelect,
     handleSaveRecord,
+    handleSaveAndComplete,
+    handlePrintPrescription,
+    canPrintPrescription,
   } = useDoctorWorkspaceData(clinicalWorkflow, visitPlanner);
   const popup = usePatientProfilePopup();
   const canOpenAssistantRegistration =
@@ -165,7 +175,17 @@ export default function DoctorSection() {
                 allergyFeedback={allergyFeedback}
                 onAddOrUpdateAllergy={handleAddOrUpdateAllergy}
                 onSaveRecord={handleSaveRecord}
+                onSaveAndComplete={handleSaveAndComplete}
+                onPrintPrescription={handlePrintPrescription}
                 selectedAppointmentStatus={selectedAppointmentStatus}
+                workflowType={workflowType}
+                workflowStatusLabel={workflowStatusLabel}
+                dispenseStatusLabel={dispenseStatusLabel}
+                lastClinicalItemCount={lastClinicalItemCount}
+                lastOutsideItemCount={lastOutsideItemCount}
+                canDirectDispense={canDirectDispense}
+                canPrintPrescription={canPrintPrescription}
+                directDispenseDisabledReason={directDispenseDisabledReason}
                 canSaveRecord={canSaveRecord}
                 saveDisabledReason={saveDisabledReason}
                 saveFeedback={saveFeedback}

@@ -55,6 +55,7 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
       allergies: [],
       dispenseItems: [{ inventoryItemId: 1, quantity: 10 }],
     },
+    activeClinicalResolutionRows: [],
     formState: {
       firstName: "",
       lastName: "",
@@ -99,6 +100,9 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     addAllergy: vi.fn(),
     scheduleAppointment: vi.fn(),
     markDoneAndNext: vi.fn(),
+    canSubmitDispense: true,
+    dispenseActionDisabledReason: null,
+    setResolvedInventoryItem: vi.fn(),
     loadState: readyLoadState(),
     createPatientState: idleMutationState(),
     createPatientFeedback: null,
