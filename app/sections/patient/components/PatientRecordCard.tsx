@@ -50,9 +50,9 @@ export function PatientRecordCard({ patient, onViewProfile }: PatientRecordCardP
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {patient.tags.map((tag) => (
+            {patient.tags.map((tag, index) => (
               <span
-                key={tag}
+                key={`${tag}-${index}`}
                 className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_32px_rgba(71,85,105,0.3)]"
               >
                 {tag}
@@ -78,8 +78,8 @@ export function PatientRecordCard({ patient, onViewProfile }: PatientRecordCardP
           <div className="rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(71,85,105,0.35)]">
             <div className="text-xs uppercase tracking-[0.18em] text-slate-300">Conditions</div>
             <div className="mt-1 flex flex-wrap gap-2">
-              {patient.conditions.map((condition) => (
-                <span key={condition} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100 ring-1 ring-white/15">
+              {patient.conditions.map((condition, index) => (
+                <span key={`${condition}-${index}`} className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100 ring-1 ring-white/15">
                   {condition}
                 </span>
               ))}
