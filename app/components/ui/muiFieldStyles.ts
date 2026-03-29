@@ -32,6 +32,26 @@ export const appMuiSelectSx = {
   "& .MuiSvgIcon-root": {
     color: "#64748b",
   },
+  "@media (max-width:1279px)": {
+    fontSize: "0.8125rem",
+    minHeight: 38,
+    height: 38,
+    "& .MuiSelect-select": {
+      minHeight: "38px",
+      paddingLeft: "0.875rem",
+      paddingRight: "2.25rem",
+    },
+  },
+  "@media (max-width:767px)": {
+    fontSize: "0.75rem",
+    minHeight: 36,
+    height: 36,
+    "& .MuiSelect-select": {
+      minHeight: "36px",
+      paddingLeft: "0.75rem",
+      paddingRight: "2rem",
+    },
+  },
 } as const;
 
 export const appMuiPickerTextFieldProps = {
@@ -107,6 +127,60 @@ export const appMuiPickerTextFieldProps = {
     "& .MuiInputAdornment-root .MuiIconButton-root": {
       color: "#64748b",
       padding: "8px",
+    },
+    "@media (max-width:1279px)": {
+      "& .MuiOutlinedInput-root": {
+        minHeight: 38,
+        height: 38,
+        fontSize: "0.8125rem",
+      },
+      "& .MuiPickersInputBase-root": {
+        minHeight: 38,
+        height: 38,
+        fontSize: "0.8125rem",
+      },
+      "& .MuiPickersOutlinedInput-root": {
+        minHeight: 38,
+        height: 38,
+      },
+      "& .MuiInputBase-input": {
+        height: "38px",
+        padding: "0 12px",
+      },
+      "& .MuiPickersSectionList-root": {
+        minHeight: "38px",
+        padding: "0 12px",
+      },
+      "& .MuiInputAdornment-root .MuiIconButton-root": {
+        padding: "6px",
+      },
+    },
+    "@media (max-width:767px)": {
+      "& .MuiOutlinedInput-root": {
+        minHeight: 36,
+        height: 36,
+        fontSize: "0.75rem",
+      },
+      "& .MuiPickersInputBase-root": {
+        minHeight: 36,
+        height: 36,
+        fontSize: "0.75rem",
+      },
+      "& .MuiPickersOutlinedInput-root": {
+        minHeight: 36,
+        height: 36,
+      },
+      "& .MuiInputBase-input": {
+        height: "36px",
+        padding: "0 10px",
+      },
+      "& .MuiPickersSectionList-root": {
+        minHeight: "36px",
+        padding: "0 10px",
+      },
+      "& .MuiInputAdornment-root .MuiIconButton-root": {
+        padding: "5px",
+      },
     },
   },
 } as const;

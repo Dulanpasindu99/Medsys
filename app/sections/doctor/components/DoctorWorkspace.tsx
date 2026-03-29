@@ -113,8 +113,8 @@ export function DoctorWorkspace({
   const [activeTab, setActiveTab] = useState<"clinical" | "prescription" | "notes">("clinical");
 
   return (
-        <div className="order-1 col-span-12 flex h-full min-h-0 flex-col xl:col-span-8 2xl:col-span-9">
-            <div className="flex h-full min-h-0 flex-col gap-3 rounded-[24px] border border-white/70 bg-white/80 p-3 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl sm:rounded-[28px] sm:p-4">
+        <div className="order-1 col-span-12 flex h-auto min-h-0 flex-col lg:col-span-8 lg:h-full 2xl:col-span-9">
+            <div className="flex h-auto min-h-0 flex-col gap-2 rounded-[24px] border border-white/70 bg-white/80 p-2.5 shadow-[0_24px_60px_rgba(14,116,144,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl sm:rounded-[28px] sm:p-3 lg:h-full lg:gap-3 lg:p-4">
                 <PatientProfileModal profileId={profileId} onClose={onCloseProfile} />
 
                 <DoctorHeader
@@ -163,7 +163,7 @@ export function DoctorWorkspace({
                     nicIdentityLabel={nicIdentityLabel}
                 />
 
-                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                <div className="mobile-visible-x-scroll flex flex-nowrap items-center gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-1 lg:flex-wrap lg:overflow-visible lg:pb-0">
                     {[
                         { key: "clinical", label: "Clinical" },
                         { key: "prescription", label: "Prescription" },
@@ -173,7 +173,7 @@ export function DoctorWorkspace({
                             key={tab.key}
                             type="button"
                             onClick={() => setActiveTab(tab.key as "clinical" | "prescription" | "notes")}
-                            className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] transition sm:px-4 sm:text-[11px] ${
+                            className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition lg:px-4 lg:py-2 lg:text-[11px] lg:tracking-[0.14em] ${
                                 activeTab === tab.key
                                     ? "bg-slate-800 text-white shadow-md"
                                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -184,7 +184,7 @@ export function DoctorWorkspace({
                     ))}
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="min-h-0 flex-1 overflow-visible lg:overflow-y-auto lg:pr-1">
                     {activeTab === "clinical" ? (
                         <DiseaseSearch
                             diseaseQuery={clinicalWorkflow.diseaseQuery}

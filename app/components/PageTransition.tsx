@@ -56,11 +56,11 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`page-transition page-transition--${transitionDirection} ${
+      className={`page-transition h-full min-h-0 overflow-visible lg:overflow-hidden page-transition--${transitionDirection} ${
         transitionStage === 'idle' ? '' : `page-transition--${transitionStage}`
       }`}
     >
-      <div className="page-transition__content">{displayedContent}</div>
+      <div className="page-transition__content h-full min-h-0 overflow-visible lg:overflow-hidden">{displayedContent}</div>
     </div>
   );
 }

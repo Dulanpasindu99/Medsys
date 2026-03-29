@@ -26,8 +26,8 @@
   --priority-critical-border: #fecaca;
   --frost: rgba(255, 255, 255, 0.72);
   --frost-strong: rgba(255, 255, 255, 0.9);
-  --frost-outline: rgba(255, 255, 255, 0.65);
-  --frost-shadow: 0 20px 55px rgba(15, 23, 42, 0.12), 0 3px 10px rgba(255, 255, 255, 0.6);
+  --frost-outline: rgba(255, 255, 255, 0.32);
+  --frost-shadow: 0 18px 46px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(255, 255, 255, 0.45);
 }
 
 @theme inline {
@@ -74,6 +74,18 @@ body {
   padding: 0 24px;
 }
 
+@media (max-width: 1279px) {
+  .page-width {
+    padding: 0 18px;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-width {
+    padding: 0 12px;
+  }
+}
+
 .ios-shell::before,
 .ios-shell::after {
   content: none;
@@ -101,7 +113,7 @@ body {
 
 .ios-surface {
   border-radius: 26px;
-  @apply ring-1 ring-slate-100/70;
+  @apply ring-0;
 }
 
 .ios-chip {
@@ -112,6 +124,18 @@ body {
 .ios-button-primary {
   @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-200 ease-out;
   box-shadow: 0 14px 32px rgba(10, 132, 255, 0.32);
+}
+
+@media (max-width: 1279px) {
+  .ios-button-primary {
+    @apply px-4 py-2 text-[12px];
+  }
+}
+
+@media (max-width: 767px) {
+  .ios-button-primary {
+    @apply px-3 py-2 text-[11px];
+  }
 }
 
 .ios-button-primary:hover {
@@ -127,6 +151,20 @@ body {
 .app-button {
   @apply inline-flex items-center justify-center gap-2 rounded-[20px] px-5 py-3 text-sm font-semibold transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-70;
   min-height: 3.5rem;
+}
+
+@media (max-width: 1279px) {
+  .app-button {
+    @apply px-4 py-2 text-[12px];
+    min-height: 2.875rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-button {
+    @apply px-3 py-1.5 text-[11px];
+    min-height: 2.5rem;
+  }
 }
 
 .app-button--full {
@@ -172,9 +210,39 @@ body {
   min-height: 2.75rem;
 }
 
+@media (max-width: 1279px) {
+  .app-button--pill {
+    @apply px-3.5 py-1.5 text-[11px];
+    min-height: 2.375rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-button--pill {
+    @apply px-2.5 py-1.5 text-[10px];
+    min-height: 2.125rem;
+  }
+}
+
 .app-segment {
   @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-all duration-200;
   min-height: 2.75rem;
+}
+
+@media (max-width: 1279px) {
+  .app-segment {
+    @apply px-3 py-1.5 text-[10px];
+    min-height: 2.25rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-segment {
+    @apply px-2.5 py-1 text-[9px];
+    min-height: 2rem;
+    letter-spacing: 0.08em;
+  }
 }
 
 .app-segment--male {
@@ -206,6 +274,20 @@ body {
 .app-priority {
   @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200;
   min-height: 2.75rem;
+}
+
+@media (max-width: 1279px) {
+  .app-priority {
+    @apply px-3 py-1.5 text-[10px];
+    min-height: 2.25rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-priority {
+    @apply px-2.5 py-1 text-[9px];
+    min-height: 2rem;
+  }
 }
 
 .app-priority--normal {
@@ -427,4 +509,34 @@ body {
 .ios-nav-button--active .ios-nav-button__icon {
   transform: translateY(-2px) scale(1.1);
   filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.35));
+}
+
+.mobile-visible-x-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(100, 116, 139, 0.75) rgba(226, 232, 240, 0.9);
+}
+
+.mobile-visible-x-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.mobile-visible-x-scroll::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.9);
+  border-radius: 999px;
+}
+
+.mobile-visible-x-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.75);
+  border-radius: 999px;
+  border: 2px solid rgba(226, 232, 240, 0.9);
+}
+
+@media (min-width: 1024px) {
+  .mobile-visible-x-scroll {
+    scrollbar-width: none;
+  }
+
+  .mobile-visible-x-scroll::-webkit-scrollbar {
+    height: 0;
+  }
 }

@@ -153,11 +153,11 @@ export function DoctorSidebar({
         : "No selection";
 
   return (
-    <div className="order-2 col-span-12 flex h-full min-h-0 flex-col xl:col-span-4 2xl:col-span-3">
-      <div className="flex h-full min-h-0 flex-col xl:sticky xl:top-4">
-        <SurfaceCard className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] p-0 sm:rounded-[28px]">
+    <div className="order-2 col-span-12 flex h-auto min-h-0 flex-col lg:col-span-4 lg:h-full 2xl:col-span-3">
+      <div className="flex h-auto min-h-0 flex-col lg:sticky lg:top-0 lg:h-full">
+        <SurfaceCard className="flex h-auto min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] p-0 sm:rounded-[28px] lg:h-full">
           <div className="border-b border-slate-100/90 p-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="mobile-visible-x-scroll flex flex-nowrap gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible lg:pb-0">
               {[
                 { key: "overview", label: "Overview" },
                 { key: "vitals", label: "Vitals" },
@@ -169,7 +169,7 @@ export function DoctorSidebar({
                   onClick={() =>
                     setActiveSidebarTab(tab.key as "overview" | "vitals" | "allergies")
                   }
-                  className={`rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] transition sm:px-4 ${
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition lg:px-4 lg:py-2 lg:tracking-[0.14em] ${
                     activeSidebarTab === tab.key
                       ? "bg-slate-800 text-white shadow-md"
                       : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -181,7 +181,7 @@ export function DoctorSidebar({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-visible lg:overflow-y-auto">
             {activeSidebarTab === "overview" ? (
               <SidebarSection title="Patient Actions" subtitle="History and registration">
                 {selectedPatientProfileId ? (

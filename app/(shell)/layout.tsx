@@ -19,14 +19,14 @@ export default async function ShellLayout({
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
+    <div className="flex h-dvh min-h-dvh w-full overflow-hidden bg-slate-50">
       <NavigationPanel
         sessionRole={session.role}
         sessionPermissions={session.permissions}
         userName={session.name}
       />
-      <main className="flex-1 overflow-y-auto pl-[96px] lg:pl-[130px]">
-        <div className="page-width">
+      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+6.5rem)] pt-3 md:pb-4 md:pl-[7rem] md:pt-4 lg:overflow-hidden lg:pl-[8.5rem]">
+        <div className="page-width h-full min-h-0">
           <PageTransition>{children}</PageTransition>
         </div>
       </main>

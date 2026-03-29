@@ -1,6 +1,7 @@
 'use client';
 
 import { AsyncNotice } from '../components/ui/AsyncStatePanel';
+import { ViewportBody, ViewportFrame, ViewportPage, ViewportScrollBody } from '../components/ui/ViewportLayout';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { usePatientProfilePopup } from '../hooks/usePatientProfilePopup';
 import { AssistantHeader } from './assistant/components/AssistantHeader';
@@ -51,12 +52,12 @@ export default function AssistantSection() {
     const popup = usePatientProfilePopup();
 
     return (
-        <section id="assistant" className="relative isolate flex min-h-screen items-start justify-center px-4 py-8 text-slate-900">
-            <div className="flex w-full flex-col gap-6 lg:flex-row lg:items-start">
-                <div className="ios-surface w-full flex-1 overflow-hidden rounded-[30px] ring-1 ring-slate-100/80">
-                    <div className="relative flex flex-1 flex-col px-6 py-8 lg:px-10">
-                        <div className="mx-auto flex w-full flex-col gap-6">
-                            <div className="flex-1 space-y-6">
+        <ViewportPage className="relative isolate text-slate-900">
+            <ViewportFrame>
+                <ViewportBody className="px-4 py-5 sm:px-6 sm:py-6 lg:px-10">
+                    <ViewportScrollBody className="pr-0">
+                        <div className="mx-auto flex w-full flex-col gap-6 pb-1">
+                            <div className="space-y-6">
                                 <div className="flex flex-col gap-3">
                                     <AssistantHeader stats={stats} />
                                     <div className="flex flex-wrap gap-3">
@@ -79,7 +80,7 @@ export default function AssistantSection() {
                                 {scheduleAppointmentFeedback ? <AsyncNotice tone={scheduleAppointmentFeedback.tone} message={scheduleAppointmentFeedback.message} /> : null}
                                 {dispenseFeedback ? <AsyncNotice tone={dispenseFeedback.tone} message={dispenseFeedback.message} /> : null}
 
-                                <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.92fr_1.16fr]">
+                                <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_1.92fr_1.16fr]">
                                     <AssistantPanelShell>
                                         <AssistantIntakePanel
                                             formState={formState}
@@ -132,10 +133,10 @@ export default function AssistantSection() {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </ViewportScrollBody>
+                </ViewportBody>
+            </ViewportFrame>
             <PatientProfileModal profileId={popup.selectedProfileId || ''} onClose={popup.closeProfile} />
-        </section>
+        </ViewportPage>
     );
 }

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { AsyncNotice } from "../components/ui/AsyncStatePanel";
+import { ViewportBody, ViewportFrame, ViewportPage } from "../components/ui/ViewportLayout";
 import { usePatientProfilePopup } from "../hooks/usePatientProfilePopup";
 import { canAccessRoute } from "../lib/authorization";
 import { useCurrentUserQuery } from "../lib/query-hooks";
@@ -113,12 +114,9 @@ export default function DoctorSection() {
   );
 
   return (
-    <section
-      id="doctor"
-      className="flex h-[100dvh] min-h-[100dvh] overflow-hidden items-stretch justify-center px-2 py-2 text-slate-900 sm:px-3 sm:py-3 xl:px-4 xl:py-4"
-    >
-      <div className="h-full w-full max-w-[2200px] flex-1 overflow-hidden rounded-[24px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.96)_42%,rgba(219,234,254,0.94)_100%)] shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-1 ring-sky-50/80 backdrop-blur-xl sm:rounded-[28px]">
-        <div className="relative flex h-full flex-1 flex-col p-2 sm:p-3 xl:p-4">
+    <ViewportPage className="h-full min-h-0 text-slate-900">
+      <ViewportFrame className="h-full max-w-[2200px] bg-[linear-gradient(135deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.96)_42%,rgba(219,234,254,0.94)_100%)] shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-sky-50/80 sm:rounded-[28px]">
+        <ViewportBody className="relative overflow-y-auto p-2 sm:p-3 lg:overflow-hidden xl:p-4">
           <div className="col-span-12 space-y-3">
             {queueState.error ? (
               <AsyncNotice tone="error" message={queueState.error} />
@@ -146,7 +144,7 @@ export default function DoctorSection() {
             ) : null}
           </div>
           <div className="mx-auto flex min-h-0 w-full flex-1">
-            <div className="grid h-full min-h-0 w-full grid-cols-12 items-stretch gap-3 xl:gap-4">
+            <div className="grid min-h-0 w-full flex-1 grid-cols-12 items-start gap-3 lg:items-stretch lg:gap-4">
               <DoctorSidebar
                 selectedPatientLabel={selectedPatientLabel}
                 selectedPatientProfileId={selectedPatientProfileId}
@@ -243,8 +241,8 @@ export default function DoctorSection() {
               />
             </div>
           </div>
-        </div>
-      </div>
-    </section>
+        </ViewportBody>
+      </ViewportFrame>
+    </ViewportPage>
   );
 }
