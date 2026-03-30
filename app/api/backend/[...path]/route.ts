@@ -129,6 +129,8 @@ function updateSessionCookie(
       role: claims.role,
       email: claims.email ?? existingSession.email,
       name: claims.name ?? existingSession.name,
+      doctorWorkflowMode:
+        claims.doctorWorkflowMode ?? existingSession.doctorWorkflowMode ?? null,
     },
     { expiresAt: refreshClaims.exp ?? claims.exp ?? undefined }
   );

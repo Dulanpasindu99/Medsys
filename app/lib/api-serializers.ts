@@ -1,5 +1,6 @@
 import type { AppRole } from "@/app/lib/roles";
 import type { AppPermission } from "@/app/lib/authorization";
+import type { DoctorWorkflowMode } from "@/app/lib/api-client";
 
 type PatientRecord = {
   id: number;
@@ -33,6 +34,7 @@ type UserRecord = {
   createdAt: string | null;
   permissions?: AppPermission[];
   extraPermissions?: AppPermission[];
+  doctorWorkflowMode?: DoctorWorkflowMode;
 };
 
 type HistoryEntry = {
@@ -54,6 +56,7 @@ type SessionIdentity = {
   email: string;
   role: AppRole;
   permissions?: AppPermission[];
+  doctorWorkflowMode?: DoctorWorkflowMode;
 };
 
 export function serializePatient(patient: PatientRecord) {
@@ -99,6 +102,7 @@ export function serializeUser(user: UserRecord) {
     created_at: user.createdAt ?? null,
     ...(user.permissions?.length ? { permissions: user.permissions } : {}),
     ...(user.extraPermissions?.length ? { extraPermissions: user.extraPermissions } : {}),
+    ...(user.doctorWorkflowMode ? { doctor_workflow_mode: user.doctorWorkflowMode } : {}),
   };
 }
 
@@ -120,5 +124,8 @@ export function serializeSessionIdentity(identity: SessionIdentity) {
     email: identity.email,
     role: identity.role,
     ...(identity.permissions?.length ? { permissions: identity.permissions } : {}),
+    ...(identity.doctorWorkflowMode
+      ? { doctor_workflow_mode: identity.doctorWorkflowMode }
+      : {}),
   };
 }

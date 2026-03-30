@@ -104,6 +104,8 @@ export async function POST(request: NextRequest) {
       email: resolvedEmail,
       role,
       permissions: resolvedPermissions,
+      doctorWorkflowMode:
+        claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
     })
   );
 
@@ -125,6 +127,8 @@ export async function POST(request: NextRequest) {
     email: resolvedEmail,
     name,
     permissions: resolvedPermissions,
+    doctorWorkflowMode:
+      claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
   }, {
     expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,
   });

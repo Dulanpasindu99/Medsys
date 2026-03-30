@@ -167,6 +167,7 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     requiresGuardianDetails: false,
     handleSearchCommit: vi.fn(),
     searchMatches: [],
+    waitingQueuePatients: [],
     patientVitals: [{ label: "BP", value: "120/80" }],
     patientAllergies: [],
     consultationAllergies: [],

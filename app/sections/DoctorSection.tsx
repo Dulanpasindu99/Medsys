@@ -58,6 +58,7 @@ export default function DoctorSection() {
     requiresGuardianDetails,
     handleSearchCommit,
     searchMatches,
+    waitingQueuePatients,
     selectedPatientProfileId,
     selectedPatientLabel,
     patientVitals,
@@ -197,10 +198,12 @@ export default function DoctorSection() {
                 onSearchChange={setSearch}
                 onSearchCommit={handleSearchCommit}
                 searchMatches={searchMatches}
+                waitingQueuePatients={waitingQueuePatients}
                 onSearchSelect={handlePatientSelect}
                 isCreatingPatientInline={isCreatingPatientInline}
                 patientLookupNotice={patientLookupNotice}
                 selectedPatientProfileId={selectedPatientProfileId}
+                workflowType={workflowType}
                 patientCode={patientCode}
                 nicNumber={nicNumber}
                 onNicNumberChange={setNicNumber}

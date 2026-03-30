@@ -17,6 +17,7 @@ function serializeSessionFallback(request: NextRequest) {
       email: session.email,
       name: session.name,
       permissions: session.permissions,
+      doctorWorkflowMode: session.doctorWorkflowMode ?? null,
     })
   );
 }
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
         email: authenticatedUser.email,
         name: authenticatedUser.name,
         permissions: authenticatedUser.permissions,
+        doctorWorkflowMode: authenticatedUser.doctorWorkflowMode ?? null,
       })
     );
 
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
       email: authenticatedUser.email,
       name: authenticatedUser.name,
       permissions: authenticatedUser.permissions,
+      doctorWorkflowMode: authenticatedUser.doctorWorkflowMode ?? null,
     });
     backend.applyTo(response);
     return response;

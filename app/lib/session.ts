@@ -2,6 +2,7 @@ import crypto from "crypto";
 import type { NextRequest, NextResponse } from "next/server";
 import type { AppRole } from "@/app/lib/roles";
 import type { AppPermission } from "@/app/lib/authorization";
+import type { DoctorWorkflowMode } from "@/app/lib/api-client";
 
 export const SESSION_COOKIE_NAME = "medsys_session";
 
@@ -14,6 +15,7 @@ export type SessionPayload = {
   email: string;
   name: string;
   permissions?: AppPermission[];
+  doctorWorkflowMode?: DoctorWorkflowMode;
   iat: number;
   exp: number;
 };

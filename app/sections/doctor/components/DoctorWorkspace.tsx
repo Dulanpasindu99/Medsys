@@ -18,10 +18,12 @@ type DoctorWorkspaceProps = {
     onSearchChange: (value: string) => void;
     onSearchCommit: () => void;
     searchMatches: Patient[];
+    waitingQueuePatients: Patient[];
     onSearchSelect: (patient: Patient) => void;
     isCreatingPatientInline: boolean;
     patientLookupNotice?: string | null;
     selectedPatientProfileId?: string | null;
+    workflowType?: "appointment" | "walk_in";
     patientCode: string;
     nicNumber: string;
     onNicNumberChange: (value: string) => void;
@@ -68,10 +70,12 @@ export function DoctorWorkspace({
     onSearchChange,
     onSearchCommit,
     searchMatches,
+    waitingQueuePatients,
     onSearchSelect,
     isCreatingPatientInline,
     patientLookupNotice = null,
     selectedPatientProfileId = null,
+    workflowType = "walk_in",
     patientCode,
     nicNumber,
     onNicNumberChange,
@@ -122,10 +126,12 @@ export function DoctorWorkspace({
                     onSearchChange={onSearchChange}
                     onSearchCommit={onSearchCommit}
                     searchMatches={searchMatches}
+                    waitingQueuePatients={waitingQueuePatients}
                     onSearchSelect={onSearchSelect}
                     isCreatingPatientInline={isCreatingPatientInline}
                     patientLookupNotice={patientLookupNotice}
                     selectedPatientProfileId={selectedPatientProfileId}
+                    workflowType={workflowType}
                     patientCode={patientCode}
                     nicNumber={nicNumber}
                     onNicNumberChange={onNicNumberChange}

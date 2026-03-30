@@ -6,6 +6,7 @@ export type ApiClientError = {
   status: number;
   retryAfterSeconds?: number;
 };
+export type DoctorWorkflowMode = "self_service" | "clinic_supported" | null;
 type ApiContractError = ApiClientError;
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
 export type ApiRecord = Record<string, unknown>;
@@ -201,6 +202,7 @@ export type LoginResponse = {
   email: string;
   name: string;
   permissions?: AppPermission[];
+  doctor_workflow_mode?: DoctorWorkflowMode;
 };
 
 export type FrontendUser = {
@@ -211,6 +213,7 @@ export type FrontendUser = {
   created_at?: string | null;
   permissions?: AppPermission[];
   extraPermissions?: AppPermission[];
+  doctor_workflow_mode?: DoctorWorkflowMode;
 };
 
 export type PatientWriteInput = {

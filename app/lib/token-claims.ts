@@ -1,5 +1,6 @@
 import type { AppRole } from "@/app/lib/roles";
 import type { AppPermission } from "@/app/lib/authorization";
+import type { DoctorWorkflowMode } from "@/app/lib/api-client";
 
 export type TokenRole = AppRole;
 
@@ -10,7 +11,16 @@ export type TokenClaims = {
   userId: number | null;
   exp: number | null;
   permissions: AppPermission[];
+  doctorWorkflowMode: DoctorWorkflowMode;
 };
+
+function normalizeDoctorWorkflowMode(value: unknown): DoctorWorkflowMode {
+  if (typeof value !== "string") return null;
+  const mode = value.trim().toLowerCase();
+  if (mode === "self_service") return "self_service";
+  if (mode === "clinic_supported") return "clinic_supported";
+  return null;
+}
 
 function decodeBase64Url(input: string) {
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -102,6 +112,7 @@ export function readTokenClaims(token: string): TokenClaims {
       userId: null,
       exp: null,
       permissions: [],
+      doctorWorkflowMode: null,
     };
   }
 
@@ -129,5 +140,9 @@ export function readTokenClaims(token: string): TokenClaims {
     userId: getNumericClaim(payload, ["userId", "user_id", "id", "sub"]),
     exp: getNumericClaim(payload, ["exp"]),
     permissions: readPermissionClaims(payload),
+    doctorWorkflowMode:
+      normalizeDoctorWorkflowMode(payload.doctor_workflow_mode) ??
+      normalizeDoctorWorkflowMode(payload.doctorWorkflowMode) ??
+      normalizeDoctorWorkflowMode(payload["https://medsys.app/doctor_workflow_mode"]),
   };
 }

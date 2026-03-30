@@ -47,6 +47,7 @@ type VisitPlannerState = ReturnType<typeof useVisitPlanner>;
 const EMPTY_ROWS: unknown[] = [];
 type VitalDraftKey = "bloodPressure" | "heartRate" | "temperature" | "spo2";
 type AllergySeverity = "low" | "moderate" | "high";
+type ConsultationWorkflowType = "appointment" | "walk_in";
 
 function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
@@ -392,6 +393,13 @@ function getResolvedPatientId(payload: AnyRecord) {
   );
 }
 
+function normalizeWorkflowType(value: unknown): ConsultationWorkflowType | null {
+  const raw = getString(value).trim().toLowerCase();
+  if (raw === "appointment") return "appointment";
+  if (raw === "walk_in" || raw === "walk-in" || raw === "walkin") return "walk_in";
+  return null;
+}
+
 function isMinorWithoutNic(dateOfBirth: string, nic: string) {
   if (!dateOfBirth || nic.trim()) return false;
   const age = toAge(dateOfBirth);
@@ -431,6 +439,8 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
   const fromAppointments = appointmentRows.map((row, index) => {
     const nestedPatient = asRecord(row.patient) ?? asRecord(row.patientDetails) ?? null;
     const appointmentId = getNumber(row.id ?? row.appointmentId ?? row.appointment_id) ?? undefined;
+    const queuePosition =
+      getNumber(row.queuePosition ?? row.queue_position) ?? undefined;
     const patientIdFromRow = getNumber(row.patientId ?? row.patient_id ?? nestedPatient?.id) ?? undefined;
     const doctorId = getNumber(row.doctorId ?? row.doctor_id ?? asRecord(row.doctor)?.id) ?? undefined;
     const appointmentPatientCode = normalizeLookupValue(
@@ -535,6 +545,7 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
         appointmentStatus === "cancelled"
           ? (appointmentStatus as AppointmentLifecycleStatus)
           : "waiting",
+      queueOrder: queuePosition,
       name,
       patientCode,
       familyId,
@@ -860,6 +871,8 @@ export function useDoctorWorkspaceData(
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
     useState<AppointmentLifecycleStatus | null>(null);
+  const [explicitWorkflowType, setExplicitWorkflowType] =
+    useState<ConsultationWorkflowType | null>(null);
   const [workflowStatusLabel, setWorkflowStatusLabel] = useState<string | null>(null);
   const [dispenseStatusLabel, setDispenseStatusLabel] = useState<string | null>(null);
   const [lastClinicalItemCount, setLastClinicalItemCount] = useState<number>(0);
@@ -900,6 +913,10 @@ export function useDoctorWorkspaceData(
     [rawPatients, rawWaitingAppointments]
   );
   const inventoryItems = useMemo(() => asArray(rawInventory), [rawInventory]);
+  const waitingQueuePatients = useMemo(
+    () => patients.filter((patient) => patient.appointmentId !== undefined),
+    [patients]
+  );
 
   const searchMatches = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1037,8 +1054,10 @@ export function useDoctorWorkspaceData(
     selectedPatientId,
   ]);
   const isDoctorRole = currentUserQuery.data?.role === "doctor";
-  const workflowType: "appointment" | "walk_in" =
+  const derivedWorkflowType: ConsultationWorkflowType =
     selectedAppointmentId !== null ? "appointment" : "walk_in";
+  const workflowType: ConsultationWorkflowType =
+    explicitWorkflowType ?? derivedWorkflowType;
   const hasDoctorWorkspaceAccess =
     !!currentUserQuery.data &&
     isDoctorRole &&
@@ -1349,6 +1368,7 @@ export function useDoctorWorkspaceData(
     setSelectedAppointmentId(null);
     setSelectedDoctorId(null);
     setSelectedAppointmentStatus(null);
+    setExplicitWorkflowType(null);
     setVitalDrafts({
       bloodPressure: "",
       heartRate: "",
@@ -1392,6 +1412,7 @@ export function useDoctorWorkspaceData(
     setSelectedAppointmentId(patient.appointmentId ?? null);
     setSelectedDoctorId(patient.doctorId ?? null);
     setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
+    setExplicitWorkflowType(patient.appointmentId ? "appointment" : "walk_in");
     setSearchState("");
     setVitalsSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
     setAllergySaveState((current) => (current.status === "idle" ? current : idleMutationState()));
@@ -1826,6 +1847,12 @@ export function useDoctorWorkspaceData(
       setLastSavedPrescriptionId(resolvedPrescriptionId);
       setSelectedDoctorId(doctorId);
       const responseRecord = asRecord(response);
+      const responseWorkflowType = normalizeWorkflowType(
+        responseRecord?.workflow_type ?? responseRecord?.workflowType
+      );
+      const responseAppointmentId = getNumber(
+        responseRecord?.appointment_id ?? responseRecord?.appointmentId
+      );
       const responseWorkflowStatus = getString(
         responseRecord?.workflow_status ?? responseRecord?.workflowStatus
       );
@@ -1842,6 +1869,15 @@ export function useDoctorWorkspaceData(
       );
       setLastClinicalItemCount(responseClinicalItemCount);
       setLastOutsideItemCount(responseOutsideItemCount);
+      if (responseWorkflowType) {
+        setExplicitWorkflowType(responseWorkflowType);
+        if (responseWorkflowType === "walk_in") {
+          setSelectedAppointmentId(null);
+          setSelectedAppointmentStatus(null);
+        } else if (responseAppointmentId !== null) {
+          setSelectedAppointmentId(responseAppointmentId);
+        }
+      }
       setWorkflowStatusLabel(responseWorkflowStatus || null);
       setDispenseStatusLabel(responseDispenseStatus || null);
       setConsultationAllergies([]);
@@ -2033,6 +2069,7 @@ export function useDoctorWorkspaceData(
     requiresGuardianDetails,
     handleSearchCommit: handleHeaderLookup,
     searchMatches,
+    waitingQueuePatients,
     selectedPatientProfileId: selectedPatientId ? String(selectedPatientId) : null,
     selectedPatientLabel: patientName || null,
     patientVitals: selectedPatientId ? patientVitals : [],

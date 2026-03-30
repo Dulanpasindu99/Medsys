@@ -1,5 +1,6 @@
 import type { AppPermission } from "./authorization";
 import type { AppRole } from "./roles";
+import type { DoctorWorkflowMode } from "./api-client";
 
 export type ApiContractError = {
   message: string;
@@ -82,6 +83,13 @@ function normalizePermissionArray(value: unknown): AppPermission[] {
         .filter(Boolean)
     )
   );
+}
+
+function normalizeDoctorWorkflowMode(value: unknown): DoctorWorkflowMode {
+  const normalized = toString(value).trim().toLowerCase();
+  if (normalized === "self_service") return "self_service";
+  if (normalized === "clinic_supported") return "clinic_supported";
+  return null;
 }
 
 function joinName(record: AnyRecord) {
@@ -300,6 +308,12 @@ function normalizeUserRecord(record: AnyRecord) {
     ),
     extra_permissions: normalizePermissionArray(
       record.extra_permissions ?? record.extraPermissions
+    ),
+    doctorWorkflowMode: normalizeDoctorWorkflowMode(
+      record.doctorWorkflowMode ?? record.doctor_workflow_mode
+    ),
+    doctor_workflow_mode: normalizeDoctorWorkflowMode(
+      record.doctor_workflow_mode ?? record.doctorWorkflowMode
     ),
   };
 }

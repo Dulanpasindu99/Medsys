@@ -90,10 +90,12 @@ type DoctorHeaderProps = {
   onSearchChange: (value: string) => void;
   onSearchCommit: () => void;
   searchMatches: Patient[];
+  waitingQueuePatients: Patient[];
   onSearchSelect: (patient: Patient) => void;
   isCreatingPatientInline: boolean;
   patientLookupNotice?: string | null;
   selectedPatientProfileId?: string | null;
+  workflowType?: "appointment" | "walk_in";
   patientCode: string;
   nicNumber: string;
   onNicNumberChange: (value: string) => void;
@@ -136,10 +138,12 @@ export function DoctorHeader({
   onSearchChange,
   onSearchCommit,
   searchMatches,
+  waitingQueuePatients,
   onSearchSelect,
   isCreatingPatientInline,
   patientLookupNotice = null,
   selectedPatientProfileId = null,
+  workflowType = "walk_in",
   patientCode,
   nicNumber,
   onNicNumberChange,
@@ -178,6 +182,13 @@ export function DoctorHeader({
 }: DoctorHeaderProps) {
   const showSelectedPatientIdentity = Boolean(selectedPatientProfileId && !isCreatingPatientInline);
   const patientAge = getAgeFromDateOfBirth(patientDateOfBirth);
+  const selectedQueuePatient =
+    waitingQueuePatients.find((patient) => patient.profileId === selectedPatientProfileId) ?? null;
+  const isAppointmentMode = workflowType === "appointment";
+  const modeLabel = isAppointmentMode ? "Appointment Mode" : "Walk-In Mode";
+  const modeToneClass = isAppointmentMode
+    ? "bg-sky-50 text-sky-700 ring-sky-100"
+    : "bg-emerald-50 text-emerald-700 ring-emerald-100";
 
   return (
     <div className="grid gap-2.5 p-2 sm:gap-3 sm:p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_auto_auto] lg:items-start lg:gap-x-3 xl:gap-4 xl:p-4">
@@ -208,14 +219,22 @@ export function DoctorHeader({
                 className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] text-slate-800 transition hover:bg-sky-50 xl:py-3 xl:text-sm"
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
-                    {patient.name}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {typeof patient.queueOrder === "number" ? (
+                      <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
+                        #{patient.queueOrder}
+                      </span>
+                    ) : null}
+                    <div className="truncate text-sm font-semibold text-slate-900">
+                      {patient.name}
+                    </div>
                   </div>
                   <div className="truncate text-[11px] text-slate-500">
                     {patient.patientCode || patient.nic}
                     {patient.guardianNic
                       ? ` | Guardian ${patient.guardianNic}`
                       : ""}
+                    {patient.appointmentId ? " | Appointment" : " | Walk-in"}
                   </div>
                 </div>
                 <span className="ml-3 rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
@@ -240,9 +259,100 @@ export function DoctorHeader({
         />
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 lg:col-start-1 lg:row-start-2">
+        <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ring-1 ${modeToneClass}`}>
+          {modeLabel}
+        </span>
+        {selectedQueuePatient?.queueOrder ? (
+          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
+            Queue #{selectedQueuePatient.queueOrder}
+          </span>
+        ) : null}
+        {selectedQueuePatient?.time ? (
+          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
+            Time {selectedQueuePatient.time}
+          </span>
+        ) : null}
+        {isCreatingPatientInline ? (
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100">
+            New patient draft
+          </span>
+        ) : null}
+      </div>
+
+      {isAppointmentMode && waitingQueuePatients.length > 0 ? (
+        <div className="lg:col-span-2 lg:row-start-3">
+          <div className="rounded-[24px] border border-sky-100 bg-sky-50/60 p-3 ring-1 ring-white/70">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700">
+                  Appointment Queue
+                </p>
+                <p className="text-xs font-medium text-slate-600">
+                  Waiting appointments are shown in queue order. Selecting one puts the doctor into appointment mode.
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-sky-700 ring-1 ring-sky-100">
+                {waitingQueuePatients.length} waiting
+              </span>
+            </div>
+            <div className="mt-3 grid gap-2 xl:grid-cols-2">
+              {waitingQueuePatients.map((patient) => {
+                const isActive =
+                  selectedPatientProfileId !== null &&
+                  patient.profileId === selectedPatientProfileId &&
+                  isAppointmentMode;
+
+                return (
+                  <button
+                    key={`queue-${patient.appointmentId ?? patient.patientId ?? patient.nic}`}
+                    type="button"
+                    onClick={() => onSearchSelect(patient)}
+                    className={`rounded-2xl border px-4 py-3 text-left transition ${
+                      isActive
+                        ? "border-sky-300 bg-white text-sky-900 shadow-[0_10px_24px_rgba(14,165,233,0.14)]"
+                        : "border-white/80 bg-white/90 text-slate-800 hover:border-sky-200 hover:bg-white"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-sky-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
+                            #{patient.queueOrder ?? "-"}
+                          </span>
+                          <span className="truncate text-sm font-bold text-slate-900">
+                            {patient.name}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          {patient.reason || "Consultation"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {patient.patientCode || patient.nic}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <span className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
+                          {patient.time}
+                        </span>
+                        {patient.appointmentStatus ? (
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700">
+                            {patient.appointmentStatus.replace("_", " ")}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {showSelectedPatientIdentity ? (
         <>
-          <div className="grid gap-2.5 lg:col-start-1 lg:row-start-2 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-center xl:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] 2xl:grid-cols-[42rem_minmax(0,1fr)]">
+          <div className="grid gap-2.5 lg:col-start-1 lg:row-start-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-center xl:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] 2xl:grid-cols-[42rem_minmax(0,1fr)]">
             <div className="relative min-w-0">
               <input
                 className="h-9 w-full rounded-[999px] border border-slate-200 bg-white px-3.5 pr-24 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none xl:h-10 xl:px-4 xl:text-sm"
@@ -280,7 +390,7 @@ export function DoctorHeader({
             </div>
           </div>
 
-          <div className="grid gap-2.5 lg:col-span-2 lg:row-start-3 md:grid-cols-[minmax(0,1.4fr)_minmax(180px,0.7fr)]">
+          <div className="grid gap-2.5 lg:col-span-2 lg:row-start-5 md:grid-cols-[minmax(0,1.4fr)_minmax(180px,0.7fr)]">
             <input
               className="h-9 rounded-xl border border-transparent bg-slate-50/50 px-3.5 text-[15px] font-bold text-slate-900 placeholder-slate-300 outline-none ring-1 ring-slate-200/50 transition sm:text-base xl:h-10 xl:px-4 xl:text-lg"
               placeholder="Patient Name"
@@ -303,7 +413,7 @@ export function DoctorHeader({
           </div>
         </>
       ) : (
-        <div className="space-y-3 lg:col-start-1 lg:col-span-2 lg:row-start-2 lg:space-y-4">
+        <div className="space-y-3 lg:col-start-1 lg:col-span-2 lg:row-start-4 lg:space-y-4">
           {patientLookupNotice ? (
             <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
               {patientLookupNotice}

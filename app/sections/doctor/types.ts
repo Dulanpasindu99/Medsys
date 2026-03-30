@@ -11,6 +11,7 @@ export type Patient = {
   appointmentId?: number;
   doctorId?: number;
   appointmentStatus?: AppointmentLifecycleStatus;
+  queueOrder?: number;
   familyId?: number;
   name: string;
   patientCode: string;
