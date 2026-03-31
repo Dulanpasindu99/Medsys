@@ -6,6 +6,8 @@ import type {
 } from "../types";
 
 type DiseaseSearchProps = {
+  onOpenPrescription: () => void;
+  onOpenNotes: () => void;
   diseaseQuery: string;
   setDiseaseQuery: (value: string) => void;
   handleDiseaseKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
@@ -33,6 +35,8 @@ type DiseaseSearchProps = {
 };
 
 export function DiseaseSearch({
+  onOpenPrescription,
+  onOpenNotes,
   diseaseQuery,
   setDiseaseQuery,
   handleDiseaseKeyDown,
@@ -59,7 +63,8 @@ export function DiseaseSearch({
   addRecommendedTests,
 }: DiseaseSearchProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-6">
+    <div className="flex min-h-full flex-col gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-6">
       <div className="space-y-2">
         <p className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Diagnosis (ICD-10)</p>
         <div className="relative">
@@ -224,6 +229,24 @@ export function DiseaseSearch({
             );
           })}
         </div>
+      </div>
+      </div>
+
+      <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+        <button
+          type="button"
+          onClick={onOpenPrescription}
+          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-100"
+        >
+          Prescription
+        </button>
+        <button
+          type="button"
+          onClick={onOpenNotes}
+          className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:bg-amber-100"
+        >
+          Notes
+        </button>
       </div>
     </div>
   );

@@ -47,8 +47,114 @@ const FREQUENCY_LABELS: Record<DrugFrequencyCode, string> = {
   PRN: "PRN - as needed",
 };
 
-const CLINICAL_SEARCH_DEBOUNCE_MS = 300;
+const CLINICAL_SEARCH_DEBOUNCE_MS = 350;
 const CLINICAL_RESULT_LIMIT = 8;
+const CLINICAL_SEARCH_CACHE_TTL_MS = 60_000;
+const CLINICAL_SEARCH_MIN_CHARS = 2;
+
+type CacheEntry<T> = {
+  data: T;
+  cachedAt: number;
+};
+
+const diagnosisSearchCache = new Map<string, CacheEntry<ClinicalDiagnosisOption[]>>();
+const testSearchCache = new Map<string, CacheEntry<ClinicalTestOption[]>>();
+const diagnosisSearchInflight = new Map<string, Promise<ClinicalDiagnosisOption[]>>();
+const testSearchInflight = new Map<string, Promise<ClinicalTestOption[]>>();
+
+function readFreshCache<T>(cache: Map<string, CacheEntry<T>>, key: string) {
+  const entry = cache.get(key);
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() - entry.cachedAt > CLINICAL_SEARCH_CACHE_TTL_MS) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.data;
+}
+
+async function fetchDiagnosisSuggestionsCached(query: string, signal: AbortSignal) {
+  const cacheKey = `${query}:${CLINICAL_RESULT_LIMIT}`;
+  const cached = readFreshCache(diagnosisSearchCache, cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const inflight = diagnosisSearchInflight.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const request = (async () => {
+    const response = await fetch(
+      `/api/clinical/diagnoses?terms=${encodeURIComponent(query)}&limit=${CLINICAL_RESULT_LIMIT}`,
+      { signal }
+    );
+    if (!response.ok) {
+      throw new Error(String(response.status));
+    }
+
+    const payload = (await response.json()) as { diagnoses?: ClinicalDiagnosisOption[] };
+    const suggestions = Array.isArray(payload.diagnoses) ? payload.diagnoses : [];
+    diagnosisSearchCache.set(cacheKey, {
+      data: suggestions,
+      cachedAt: Date.now(),
+    });
+    return suggestions;
+  })();
+
+  diagnosisSearchInflight.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    diagnosisSearchInflight.delete(cacheKey);
+  }
+}
+
+async function fetchTestSuggestionsCached(query: string, signal: AbortSignal) {
+  const cacheKey = `${query}:${CLINICAL_RESULT_LIMIT}`;
+  const cached = readFreshCache(testSearchCache, cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const inflight = testSearchInflight.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const request = (async () => {
+    const response = await fetch(
+      `/api/clinical/tests?terms=${encodeURIComponent(query)}&limit=${CLINICAL_RESULT_LIMIT}`,
+      { signal }
+    );
+    if (!response.ok) {
+      throw new Error(String(response.status));
+    }
+
+    const payload = (await response.json()) as { tests?: ClinicalTestOption[] };
+    const suggestions = Array.isArray(payload.tests)
+      ? payload.tests.slice(0, CLINICAL_RESULT_LIMIT)
+      : [];
+    testSearchCache.set(cacheKey, {
+      data: suggestions,
+      cachedAt: Date.now(),
+    });
+    return suggestions;
+  })();
+
+  testSearchInflight.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    testSearchInflight.delete(cacheKey);
+  }
+}
 
 function formatDose(value: string, unit: DrugDoseUnit) {
   const normalizedValue = value.trim();
@@ -74,6 +180,7 @@ function formatDose(value: string, unit: DrugDoseUnit) {
 
 export function useDoctorClinicalWorkflow() {
   const [rxRows, setRxRows] = useState<ClinicalDrug[]>([]);
+  const [drugDraftFeedback, setDrugDraftFeedback] = useState<string | null>(null);
   const [persistedConditionDiagnoses, setPersistedConditionDiagnoses] = useState<Set<string>>(
     () => new Set()
   );
@@ -98,6 +205,9 @@ export function useDoctorClinicalWorkflow() {
   }, [clinicalDrugForm.name, suggestedDrugNames]);
 
   const updateClinicalDrugForm = (patch: Partial<ClinicalDrugForm>) => {
+    if (drugDraftFeedback) {
+      setDrugDraftFeedback(null);
+    }
     setClinicalDrugForm((prev) => ({ ...prev, ...patch }));
   };
 
@@ -126,6 +236,12 @@ export function useDoctorClinicalWorkflow() {
 
     if (!name || !doseValue || !amountValue) return;
 
+    const normalizedName = name.toLowerCase();
+    if (rxRows.some((entry) => entry.drug.trim().toLowerCase() === normalizedName)) {
+      setDrugDraftFeedback("This drug is already added to the prescription.");
+      return;
+    }
+
     const dose = formatDose(doseValue, clinicalDrugForm.doseUnit);
     const termsDisplay = FREQUENCY_LABELS[clinicalDrugForm.frequencyCode];
 
@@ -138,6 +254,7 @@ export function useDoctorClinicalWorkflow() {
     };
 
     setRxRows((prev) => [...prev, newEntry]);
+    setDrugDraftFeedback(null);
     setClinicalDrugForm({
       name: "",
       doseValue: "",
@@ -156,6 +273,9 @@ export function useDoctorClinicalWorkflow() {
   };
 
   const updateRxRow = (index: number, field: keyof ClinicalDrug, value: string) => {
+    if (drugDraftFeedback) {
+      setDrugDraftFeedback(null);
+    }
     setRxRows((prev) =>
       prev.map((row, i) =>
         i === index
@@ -174,6 +294,9 @@ export function useDoctorClinicalWorkflow() {
   };
 
   const removeRxRow = (index: number) => {
+    if (drugDraftFeedback) {
+      setDrugDraftFeedback(null);
+    }
     setRxRows((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -210,7 +333,7 @@ export function useDoctorClinicalWorkflow() {
 
   useEffect(() => {
     const q = debouncedTestQuery.trim();
-    if (q.length < 2) {
+    if (q.length < CLINICAL_SEARCH_MIN_CHARS) {
       setTestSuggestions([]);
       setTestSearchFeedback(null);
       setHighlightedTestIndex(-1);
@@ -222,15 +345,7 @@ export function useDoctorClinicalWorkflow() {
       try {
         setIsFetchingTests(true);
         setTestSearchFeedback(null);
-        const response = await fetch(`/api/clinical/tests?terms=${encodeURIComponent(q)}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error(String(response.status));
-        }
-
-        const payload = (await response.json()) as { tests?: ClinicalTestOption[] };
-        const suggestions = Array.isArray(payload.tests) ? payload.tests.slice(0, CLINICAL_RESULT_LIMIT) : [];
+        const suggestions = await fetchTestSuggestionsCached(q, controller.signal);
         setTestSuggestions(suggestions);
         setHighlightedTestIndex(suggestions.length ? 0 : -1);
       } catch (error) {
@@ -242,7 +357,6 @@ export function useDoctorClinicalWorkflow() {
             console.error("Error fetching medical test suggestions", error);
             setTestSearchFeedback("Unable to load medical test suggestions right now.");
           }
-          setTestSuggestions([]);
           setHighlightedTestIndex(-1);
         }
       } finally {
@@ -318,7 +432,10 @@ export function useDoctorClinicalWorkflow() {
       event.preventDefault();
       if (filteredTestOptions.length === 0) {
         const immediateQuery = testQuery.trim();
-        if (immediateQuery.length >= 2 && immediateQuery !== debouncedTestQuery) {
+        if (
+          immediateQuery.length >= CLINICAL_SEARCH_MIN_CHARS &&
+          immediateQuery !== debouncedTestQuery
+        ) {
           setDebouncedTestQuery(immediateQuery);
           return;
         }
@@ -351,7 +468,7 @@ export function useDoctorClinicalWorkflow() {
 
   useEffect(() => {
     const q = debouncedDiseaseQuery.trim();
-    if (q.length < 2) {
+    if (q.length < CLINICAL_SEARCH_MIN_CHARS) {
       setDiseaseSuggestions([]);
       setHighlightedDiseaseIndex(-1);
       return;
@@ -361,13 +478,7 @@ export function useDoctorClinicalWorkflow() {
     const fetchSuggestions = async () => {
       try {
         setIsFetchingDiseases(true);
-        const response = await fetch(`/api/clinical/diagnoses?terms=${encodeURIComponent(q)}&limit=10`, { signal: controller.signal });
-        if (!response.ok) {
-          throw new Error(String(response.status));
-        }
-
-        const payload = (await response.json()) as { diagnoses?: ClinicalDiagnosisOption[] };
-        const suggestions = Array.isArray(payload.diagnoses) ? payload.diagnoses : [];
+        const suggestions = await fetchDiagnosisSuggestionsCached(q, controller.signal);
         setDiseaseSuggestions(suggestions);
         setHighlightedDiseaseIndex(suggestions.length ? 0 : -1);
       } catch (error) {
@@ -376,7 +487,6 @@ export function useDoctorClinicalWorkflow() {
           if (status !== "503") {
             console.error("Error fetching disease suggestions", error);
           }
-          setDiseaseSuggestions([]);
           setHighlightedDiseaseIndex(-1);
         }
       } finally {
@@ -545,7 +655,10 @@ export function useDoctorClinicalWorkflow() {
       event.preventDefault();
       if (diseaseSuggestions.length === 0) {
         const immediateQuery = diseaseQuery.trim();
-        if (immediateQuery.length >= 2 && immediateQuery !== debouncedDiseaseQuery) {
+        if (
+          immediateQuery.length >= CLINICAL_SEARCH_MIN_CHARS &&
+          immediateQuery !== debouncedDiseaseQuery
+        ) {
           setDebouncedDiseaseQuery(immediateQuery);
           return;
         }
@@ -563,6 +676,7 @@ export function useDoctorClinicalWorkflow() {
   return {
     rxRows,
     setRxRows,
+    drugDraftFeedback,
     clinicalDrugForm,
     updateClinicalDrugForm,
     filteredDrugSuggestions,

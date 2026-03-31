@@ -159,6 +159,7 @@ function buildPrescriptionPrintHtml(input: {
   patientCode?: string;
   nic?: string;
   diagnosis: string;
+  tests?: string[];
   notes?: string;
   doctorName: string;
   issuedAt: string;
@@ -174,6 +175,17 @@ function buildPrescriptionPrintHtml(input: {
           <td>${escapeHtml(item.frequency)}</td>
           <td>${escapeHtml(item.quantity)}</td>
           <td>${escapeHtml(item.source)}</td>
+        </tr>
+      `
+    )
+    .join("");
+  const testRows = (input.tests ?? [])
+    .filter((test) => test.trim().length > 0)
+    .map(
+      (test, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(test)}</td>
         </tr>
       `
     )
@@ -196,6 +208,7 @@ function buildPrescriptionPrintHtml(input: {
         table { width: 100%; border-collapse: collapse; margin-top: 18px; }
         th, td { border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; font-size: 14px; vertical-align: top; }
         th { background: #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; }
+        .section { margin-top: 18px; }
         .notes { margin-top: 18px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; }
       </style>
     </head>
@@ -242,6 +255,17 @@ function buildPrescriptionPrintHtml(input: {
         </thead>
         <tbody>${rows || '<tr><td colspan="6">No prescription items found.</td></tr>'}</tbody>
       </table>
+      <div class="section">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:72px;">#</th>
+              <th>Ordered Tests</th>
+            </tr>
+          </thead>
+          <tbody>${testRows || '<tr><td colspan="2">No medical tests recorded.</td></tr>'}</tbody>
+        </table>
+      </div>
       ${
         input.notes
           ? `<div class="notes"><span class="label">Clinical Notes</span><div class="value">${escapeHtml(input.notes)}</div></div>`
@@ -1586,6 +1610,9 @@ export function useDoctorWorkspaceData(
           )
           .filter(Boolean)
           .join(", ") || "Consultation treatment";
+      const orderedTests = clinicalWorkflow.selectedTests
+        .map((entry) => (typeof entry === "string" ? entry : entry.display))
+        .filter(Boolean);
       const popup = window.open("", "_blank", "width=960,height=720");
 
       if (!popup) {
@@ -1604,6 +1631,7 @@ export function useDoctorWorkspaceData(
           getString(detailPatient?.nic ?? detailRecord.nic ?? detailRecord.patientNic ?? detailRecord.patient_nic).trim() ||
           nicNumber.trim(),
         diagnosis: diagnosisText,
+        tests: orderedTests,
         notes: visitPlanner.notes.trim() || undefined,
         doctorName: currentUserQuery.data?.name ?? "Doctor",
         issuedAt: getDateTimeLabel(

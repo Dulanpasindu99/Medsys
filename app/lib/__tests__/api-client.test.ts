@@ -729,6 +729,71 @@ describe("api client backend compatibility", () => {
     );
   });
 
+  it("preserves backend validation warnings for frontend notifications and field errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: "Validation failed.",
+            code: "VALIDATION_ERROR",
+            severity: "warning",
+            userMessage: "Please check the highlighted fields and try again.",
+            requestId: "req-123",
+            statusCode: 400,
+            issues: [{ field: "email", message: "Is required." }],
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    );
+
+    await expect(loginUser("", "", "owner")).rejects.toMatchObject({
+      message: "Please check the highlighted fields and try again.",
+      userMessage: "Please check the highlighted fields and try again.",
+      code: "VALIDATION_ERROR",
+      severity: "warning",
+      requestId: "req-123",
+      issues: [{ field: "email", message: "Is required." }],
+      status: 400,
+    });
+  });
+
+  it("preserves backend service failures with request metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: "LOINC provider unavailable",
+            code: "SERVICE_UNAVAILABLE",
+            severity: "error",
+            userMessage: "LOINC provider unavailable",
+            requestId: "req-503",
+            statusCode: 503,
+          }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json", "Retry-After": "30" },
+          }
+        )
+      )
+    );
+
+    await expect(getAnalyticsOverview()).rejects.toMatchObject({
+      message: "LOINC provider unavailable",
+      userMessage: "LOINC provider unavailable",
+      code: "SERVICE_UNAVAILABLE",
+      severity: "error",
+      requestId: "req-503",
+      retryAfterSeconds: 30,
+      status: 503,
+    });
+  });
+
   it("loads users through the dedicated users BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

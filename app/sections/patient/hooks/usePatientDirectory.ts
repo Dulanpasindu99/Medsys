@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   listAppointments,
@@ -16,6 +16,7 @@ import {
   readyLoadState,
   type LoadState,
 } from "../../../lib/async-state";
+import { notifyWarning } from "../../../lib/notifications";
 import { queryKeys } from "../../../lib/query-keys";
 import type { AgeBucketId, Gender, Patient } from "../types";
 
@@ -118,6 +119,7 @@ export function usePatientDirectory() {
   const [ageRange, setAgeRange] = useState<AgeBucketId>("all");
   const [gender, setGender] = useState<Gender | "all">("all");
   const patients = directoryQuery.data?.patients ?? EMPTY_PATIENTS;
+  const lastNoticeRef = useRef<string | null>(null);
 
   let loadState: LoadState;
   if (directoryQuery.isPending || directoryQuery.isFetching) {
@@ -130,6 +132,15 @@ export function usePatientDirectory() {
   } else {
     loadState = directoryQuery.data?.loadState ?? emptyLoadState();
   }
+
+  useEffect(() => {
+    if (!loadState.notice || loadState.notice === lastNoticeRef.current) {
+      return;
+    }
+
+    notifyWarning(loadState.notice);
+    lastNoticeRef.current = loadState.notice;
+  }, [loadState.notice]);
 
   const families = useMemo(() => {
     const set = new Set<string>(["All Families"]);
@@ -311,7 +322,7 @@ async function fetchPatientDirectorySnapshot(): Promise<{
       familiesResult.status === "rejected" || appointmentsResult.status === "rejected";
     const detailNotice =
       detailFailures > 0
-        ? "Some patient timeline or allergy details could not be loaded."
+        ? "Some timeline or allergy details in the patient directory could not be loaded. Core patient records are still available."
         : null;
     const feedNotice = baseFeedFailure
       ? "Some patient family or appointment feeds failed and fallback data is being shown."

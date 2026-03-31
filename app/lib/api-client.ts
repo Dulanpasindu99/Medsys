@@ -5,6 +5,12 @@ export type ApiClientError = {
   message: string;
   status: number;
   retryAfterSeconds?: number;
+  code?: string;
+  severity?: "warning" | "error";
+  userMessage?: string;
+  requestId?: string;
+  issues?: Array<{ field?: string; message?: string }>;
+  debugMessage?: string;
 };
 export type DoctorWorkflowMode = "self_service" | "clinic_supported" | null;
 export type WorkflowProfileMode = DoctorWorkflowMode | "standard" | null;
@@ -14,6 +20,18 @@ export type WorkflowProfiles = {
   owner?: { mode: WorkflowProfileMode } | null;
 };
 type ApiContractError = ApiClientError;
+type ApiErrorIssue = { field?: string; message?: string };
+type ParsedApiError = {
+  message: string;
+  status: number;
+  retryAfterSeconds?: number;
+  code?: string;
+  severity?: "warning" | "error";
+  userMessage?: string;
+  requestId?: string;
+  issues?: ApiErrorIssue[];
+  debugMessage?: string;
+};
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
 export type ApiRecord = Record<string, unknown>;
 export type VisitStartPriority = "low" | "normal" | "high" | "critical";
@@ -89,12 +107,44 @@ export function clearStoredAuth() {
   // Legacy no-op kept for compatibility with existing callers.
 }
 
-async function parseErrorMessage(response: Response) {
+async function parseApiError(response: Response): Promise<ParsedApiError> {
+  const fallbackMessage = `Request failed with status ${response.status}.`;
+
   try {
-    const payload = (await response.json()) as { message?: string; error?: string };
-    return payload.message ?? payload.error ?? `Request failed with status ${response.status}.`;
+    const payload = (await response.json()) as {
+      message?: string;
+      error?: string;
+      code?: string;
+      severity?: "warning" | "error";
+      userMessage?: string;
+      requestId?: string;
+      statusCode?: number;
+      issues?: ApiErrorIssue[];
+    };
+
+    const userMessage = payload.userMessage?.trim() || undefined;
+    const debugMessage = payload.message?.trim() || payload.error?.trim() || undefined;
+
+    return {
+      message: userMessage ?? debugMessage ?? fallbackMessage,
+      status:
+        typeof payload.statusCode === "number" && Number.isFinite(payload.statusCode)
+          ? payload.statusCode
+          : response.status,
+      retryAfterSeconds: parseRetryAfterSeconds(response),
+      code: payload.code?.trim() || undefined,
+      severity: payload.severity,
+      userMessage,
+      requestId: payload.requestId?.trim() || undefined,
+      issues: Array.isArray(payload.issues) ? payload.issues : undefined,
+      debugMessage,
+    };
   } catch {
-    return `Request failed with status ${response.status}.`;
+    return {
+      message: fallbackMessage,
+      status: response.status,
+      retryAfterSeconds: parseRetryAfterSeconds(response),
+    };
   }
 }
 
@@ -128,6 +178,7 @@ function toApiClientError(error: unknown): ApiClientError {
     message: "An unexpected API client error occurred.",
     status: 500,
     retryAfterSeconds: undefined,
+    severity: "error",
   };
 }
 
@@ -187,12 +238,7 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw {
-      message,
-      status: response.status,
-      retryAfterSeconds: parseRetryAfterSeconds(response),
-    } satisfies ApiClientError;
+    throw (await parseApiError(response)) satisfies ApiClientError;
   }
 
   if (response.status === 204) {
@@ -264,8 +310,7 @@ export async function loginUser(email: string, password: string, roleHint?: AppR
   });
 
   if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw { message, status: response.status } satisfies ApiClientError;
+    throw (await parseApiError(response)) satisfies ApiClientError;
   }
 
   return (await response.json()) as LoginResponse;
@@ -292,8 +337,7 @@ export async function setActiveRole(activeRole: AppRole) {
   });
 
   if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw { message, status: response.status } satisfies ApiClientError;
+    throw (await parseApiError(response)) satisfies ApiClientError;
   }
 
   return (await response.json()) as LoginResponse;
@@ -311,8 +355,7 @@ export async function getCurrentUser() {
     }
 
     if (!response.ok) {
-      const message = await parseErrorMessage(response);
-      throw { message, status: response.status } satisfies ApiClientError;
+      throw (await parseApiError(response)) satisfies ApiClientError;
     }
 
     return (await response.json()) as LoginResponse;
@@ -348,8 +391,7 @@ export async function registerUser(input: {
   });
 
   if (!response.ok) {
-    const message = await parseErrorMessage(response);
-    throw { message, status: response.status } satisfies ApiClientError;
+    throw (await parseApiError(response)) satisfies ApiClientError;
   }
 
   const payload = (await response.json()) as {

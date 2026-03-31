@@ -113,6 +113,14 @@ export default function DoctorSection() {
           : "/assistant",
     [canOpenAssistantRegistration, search],
   );
+  const selectedStatusLabel =
+    selectedAppointmentStatus
+      ? selectedAppointmentStatus.replace("_", " ")
+      : selectedPatientProfileId
+        ? "ready"
+        : isCreatingPatientInline
+          ? "draft"
+          : "No selection";
 
   return (
     <ViewportPage className="h-full min-h-0 text-slate-900">
@@ -173,22 +181,7 @@ export default function DoctorSection() {
                 allergiesDisabledReason={allergiesDisabledReason}
                 allergyFeedback={allergyFeedback}
                 onAddOrUpdateAllergy={handleAddOrUpdateAllergy}
-                onSaveRecord={handleSaveRecord}
-                onSaveAndComplete={handleSaveAndComplete}
-                onPrintPrescription={handlePrintPrescription}
                 selectedAppointmentStatus={selectedAppointmentStatus}
-                workflowType={workflowType}
-                workflowStatusLabel={workflowStatusLabel}
-                dispenseStatusLabel={dispenseStatusLabel}
-                lastClinicalItemCount={lastClinicalItemCount}
-                lastOutsideItemCount={lastOutsideItemCount}
-                canDirectDispense={canDirectDispense}
-                canPrintPrescription={canPrintPrescription}
-                directDispenseDisabledReason={directDispenseDisabledReason}
-                canSaveRecord={canSaveRecord}
-                saveDisabledReason={saveDisabledReason}
-                saveFeedback={saveFeedback}
-                isSavingRecord={saveState.status === "pending"}
                 showDraftEditors={isCreatingPatientInline}
               />
               <DoctorWorkspace
@@ -241,6 +234,21 @@ export default function DoctorSection() {
                 nicIdentityLabel={nicIdentityLabel}
                 clinicalWorkflow={clinicalWorkflow}
                 visitPlanner={visitPlanner}
+                onSaveRecord={handleSaveRecord}
+                onSaveAndComplete={handleSaveAndComplete}
+                onPrintPrescription={handlePrintPrescription}
+                selectedStatusLabel={selectedStatusLabel}
+                workflowStatusLabel={workflowStatusLabel}
+                dispenseStatusLabel={dispenseStatusLabel}
+                lastClinicalItemCount={lastClinicalItemCount}
+                lastOutsideItemCount={lastOutsideItemCount}
+                canDirectDispense={canDirectDispense}
+                canPrintPrescription={canPrintPrescription}
+                directDispenseDisabledReason={directDispenseDisabledReason}
+                canSaveRecord={canSaveRecord}
+                saveDisabledReason={saveDisabledReason}
+                saveFeedback={saveFeedback}
+                saveState={saveState}
               />
             </div>
           </div>

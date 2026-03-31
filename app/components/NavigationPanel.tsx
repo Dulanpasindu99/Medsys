@@ -5,11 +5,12 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { logoutUser, setActiveRole, type LoginResponse } from '../lib/api-client';
+import { logoutUser, setActiveRole, type ApiClientError, type LoginResponse } from '../lib/api-client';
 import { getDefaultRouteForSubject, getNavigationItemsForSubject, type AppPermission, type NavigationItemId } from '../lib/authorization';
 import type { AppRole } from '../lib/roles';
 import { useCurrentUserQuery } from '../lib/query-hooks';
 import { queryKeys } from '../lib/query-keys';
+import { notifyError } from '../lib/notifications';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
 
@@ -174,7 +175,12 @@ export default function NavigationPanel({
         permissions: updatedUser.permissions,
       }));
       router.refresh();
-    } catch {
+    } catch (error) {
+      const apiError = error as ApiClientError | undefined;
+      notifyError(
+        apiError?.userMessage ?? apiError?.message ?? "Unable to switch the active role right now.",
+        apiError?.requestId
+      );
       await currentUserQuery.refetch();
     }
   };

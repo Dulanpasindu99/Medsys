@@ -7,7 +7,10 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { FiSearch } from "react-icons/fi";
-import { appMuiPickerTextFieldProps, appMuiSelectSx } from "../../../components/ui/muiFieldStyles";
+import {
+  appMuiPickerTextFieldProps,
+  appMuiSelectSx,
+} from "../../../components/ui/muiFieldStyles";
 import type { GuardianCaptureMode, Patient, PatientGender } from "../types";
 
 function getAgeFromDateOfBirth(dateOfBirth: string) {
@@ -180,70 +183,89 @@ export function DoctorHeader({
   requiresGuardianDetails,
   nicIdentityLabel = null,
 }: DoctorHeaderProps) {
-  const showSelectedPatientIdentity = Boolean(selectedPatientProfileId && !isCreatingPatientInline);
+  const showSelectedPatientIdentity = Boolean(
+    selectedPatientProfileId && !isCreatingPatientInline,
+  );
   const patientAge = getAgeFromDateOfBirth(patientDateOfBirth);
   const selectedQueuePatient =
-    waitingQueuePatients.find((patient) => patient.profileId === selectedPatientProfileId) ?? null;
+    waitingQueuePatients.find(
+      (patient) => patient.profileId === selectedPatientProfileId,
+    ) ?? null;
   const isAppointmentMode = workflowType === "appointment";
   const modeLabel = isAppointmentMode ? "Appointment Mode" : "Walk-In Mode";
   const modeToneClass = isAppointmentMode
     ? "bg-sky-50 text-sky-700 ring-sky-100"
     : "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  const hasHeaderMetaRow =
+    Boolean(selectedQueuePatient?.queueOrder) ||
+    Boolean(selectedQueuePatient?.time) ||
+    isCreatingPatientInline;
 
   return (
-    <div className="grid gap-2.5 p-2 sm:gap-3 sm:p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_auto_auto] lg:items-start lg:gap-x-3 xl:gap-4 xl:p-4">
-      <div className="relative min-w-0 w-full lg:col-start-1 lg:row-start-1 lg:max-w-[34rem] xl:max-w-[40rem] 2xl:max-w-[48rem]">
-        <input
-          className="h-9 w-full rounded-[999px] border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"
-          placeholder="Search by name, patient code, NIC, or guardian"
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          onBlur={onSearchCommit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              onSearchCommit();
-            }
-          }}
-        />
-        {search.trim() && searchMatches.length > 0 ? (
-          <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-60 overflow-y-auto rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200">
-            {searchMatches.map((patient) => (
-              <button
-                key={`${patient.patientId ?? "unknown"}-${patient.appointmentId ?? patient.nic}`}
-                type="button"
-                onMouseDown={(event) => {
+    <div className="grid gap-x-2.5 gap-y-1.5 p-2 sm:gap-x-3 sm:gap-y-2 sm:p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-3 xl:gap-x-4 xl:p-4">
+      <div className="min-w-0 w-full lg:col-start-1 lg:row-start-1 lg:max-w-[34rem] xl:max-w-[40rem] 2xl:max-w-[48rem]">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <input
+              className="h-9 w-full rounded-[999px] border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"
+              placeholder="Search by name, patient code, NIC, or guardian"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              onBlur={onSearchCommit}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
                   event.preventDefault();
-                  onSearchSelect(patient);
-                }}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] text-slate-800 transition hover:bg-sky-50 xl:py-3 xl:text-sm"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {typeof patient.queueOrder === "number" ? (
-                      <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
-                        #{patient.queueOrder}
-                      </span>
-                    ) : null}
-                    <div className="truncate text-sm font-semibold text-slate-900">
-                      {patient.name}
+                  onSearchCommit();
+                }
+              }}
+            />
+            {search.trim() && searchMatches.length > 0 ? (
+              <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-60 overflow-y-auto rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200">
+                {searchMatches.map((patient) => (
+                  <button
+                    key={`${patient.patientId ?? "unknown"}-${patient.appointmentId ?? patient.nic}`}
+                    type="button"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      onSearchSelect(patient);
+                    }}
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] text-slate-800 transition hover:bg-sky-50 xl:py-3 xl:text-sm"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {typeof patient.queueOrder === "number" ? (
+                          <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
+                            #{patient.queueOrder}
+                          </span>
+                        ) : null}
+                        <div className="truncate text-sm font-semibold text-slate-900">
+                          {patient.name}
+                        </div>
+                      </div>
+                      <div className="truncate text-[11px] text-slate-500">
+                        {patient.patientCode || patient.nic}
+                        {patient.guardianNic
+                          ? ` | Guardian ${patient.guardianNic}`
+                          : ""}
+                        {patient.appointmentId
+                          ? " | Appointment"
+                          : " | Walk-in"}
+                      </div>
                     </div>
-                  </div>
-                  <div className="truncate text-[11px] text-slate-500">
-                    {patient.patientCode || patient.nic}
-                    {patient.guardianNic
-                      ? ` | Guardian ${patient.guardianNic}`
-                      : ""}
-                    {patient.appointmentId ? " | Appointment" : " | Walk-in"}
-                  </div>
-                </div>
-                <span className="ml-3 rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
-                  {patient.time}
-                </span>
-              </button>
-            ))}
+                    <span className="ml-3 rounded-full bg-sky-50 px-3 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
+                      {patient.time}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
-        ) : null}
+          <span
+            className={`inline-flex h-9 shrink-0 items-center rounded-[999px] px-3.5 text-[11px] font-bold uppercase tracking-[0.16em] ring-1 xl:h-10 xl:px-4 ${modeToneClass}`}
+          >
+            {modeLabel}
+          </span>
+        </div>
       </div>
       <div
         className={`flex justify-center lg:col-start-2 lg:row-start-1 lg:min-w-[13rem] lg:justify-end xl:min-w-[15rem] ${
@@ -259,26 +281,25 @@ export function DoctorHeader({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 lg:col-start-1 lg:row-start-2">
-        <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ring-1 ${modeToneClass}`}>
-          {modeLabel}
-        </span>
-        {selectedQueuePatient?.queueOrder ? (
-          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
-            Queue #{selectedQueuePatient.queueOrder}
-          </span>
-        ) : null}
-        {selectedQueuePatient?.time ? (
-          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
-            Time {selectedQueuePatient.time}
-          </span>
-        ) : null}
-        {isCreatingPatientInline ? (
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100">
-            New patient draft
-          </span>
-        ) : null}
-      </div>
+      {hasHeaderMetaRow ? (
+        <div className="flex flex-wrap items-center gap-2 lg:col-start-1 lg:row-start-2">
+          {selectedQueuePatient?.queueOrder ? (
+            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
+              Queue #{selectedQueuePatient.queueOrder}
+            </span>
+          ) : null}
+          {selectedQueuePatient?.time ? (
+            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
+              Time {selectedQueuePatient.time}
+            </span>
+          ) : null}
+          {isCreatingPatientInline ? (
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100">
+              New patient draft
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {isAppointmentMode && waitingQueuePatients.length > 0 ? (
         <div className="lg:col-span-2 lg:row-start-3">
@@ -289,7 +310,8 @@ export function DoctorHeader({
                   Appointment Queue
                 </p>
                 <p className="text-xs font-medium text-slate-600">
-                  Waiting appointments are shown in queue order. Selecting one puts the doctor into appointment mode.
+                  Waiting appointments are shown in queue order. Selecting one
+                  puts the doctor into appointment mode.
                 </p>
               </div>
               <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-sky-700 ring-1 ring-sky-100">
@@ -437,7 +459,9 @@ export function DoctorHeader({
                 <DatePicker
                   value={patientDateOfBirth ? dayjs(patientDateOfBirth) : null}
                   onChange={(value) =>
-                    onPatientDateOfBirthChange(value ? value.format("YYYY-MM-DD") : "")
+                    onPatientDateOfBirthChange(
+                      value ? value.format("YYYY-MM-DD") : "",
+                    )
                   }
                   format="DD/MM/YYYY"
                   slotProps={{
@@ -528,9 +552,13 @@ export function DoctorHeader({
                           className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm text-slate-800 transition hover:bg-amber-50"
                         >
                           <div className="min-w-0">
-                            <div className="truncate font-semibold text-slate-900">{guardian.name}</div>
+                            <div className="truncate font-semibold text-slate-900">
+                              {guardian.name}
+                            </div>
                             <div className="truncate text-[11px] text-slate-500">
-                              {guardian.nic !== "No NIC" ? guardian.nic : guardian.phone || "No identity"}
+                              {guardian.nic !== "No NIC"
+                                ? guardian.nic
+                                : guardian.phone || "No identity"}
                             </div>
                           </div>
                         </button>
@@ -541,7 +569,9 @@ export function DoctorHeader({
                 <FormControl fullWidth size="small">
                   <Select
                     value={guardianRelationship}
-                    onChange={(event) => onGuardianRelationshipChange(event.target.value)}
+                    onChange={(event) =>
+                      onGuardianRelationshipChange(event.target.value)
+                    }
                     displayEmpty
                     sx={compactSelectSx}
                   >
@@ -605,9 +635,15 @@ export function DoctorHeader({
                       <div className="relative">
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
                           <DatePicker
-                            value={guardianDateOfBirth ? dayjs(guardianDateOfBirth) : null}
+                            value={
+                              guardianDateOfBirth
+                                ? dayjs(guardianDateOfBirth)
+                                : null
+                            }
                             onChange={(value) =>
-                              onGuardianDateOfBirthChange(value ? value.format("YYYY-MM-DD") : "")
+                              onGuardianDateOfBirthChange(
+                                value ? value.format("YYYY-MM-DD") : "",
+                              )
                             }
                             format="DD/MM/YYYY"
                             slotProps={{
@@ -633,7 +669,9 @@ export function DoctorHeader({
                           <Select
                             value={guardianGender}
                             onChange={(event) =>
-                              onGuardianGenderChange(event.target.value as PatientGender)
+                              onGuardianGenderChange(
+                                event.target.value as PatientGender,
+                              )
                             }
                             sx={compactSelectSx}
                           >

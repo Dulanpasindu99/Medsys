@@ -38,27 +38,15 @@ vi.mock("../../../lib/query-hooks", () => ({
 vi.mock("../components/DoctorSidebar", () => ({
   DoctorSidebar: ({
     onOpenPatientHistory,
-    onSaveRecord,
-    canSaveRecord,
-    saveDisabledReason,
-    isSavingRecord,
     selectedPatientProfileId,
   }: {
     onOpenPatientHistory: () => void;
-    onSaveRecord: () => void;
-    canSaveRecord?: boolean;
-    saveDisabledReason?: string | null;
-    isSavingRecord?: boolean;
     selectedPatientProfileId?: string | null;
   }) => (
     <div>
       <button type="button" onClick={onOpenPatientHistory} disabled={!selectedPatientProfileId}>
         View Patient History
       </button>
-      <button type="button" onClick={onSaveRecord} disabled={isSavingRecord || !canSaveRecord}>
-        {isSavingRecord ? "Saving consultation..." : "Save Consultation"}
-      </button>
-      {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
     </div>
   ),
 }));
@@ -67,6 +55,10 @@ vi.mock("../components/DoctorWorkspace", () => ({
   DoctorWorkspace: ({
     profileId,
     onSearchSelect,
+    onSaveRecord,
+    canSaveRecord,
+    saveDisabledReason,
+    saveState,
   }: {
     profileId: string;
     onSearchSelect: (patient: {
@@ -83,6 +75,10 @@ vi.mock("../components/DoctorWorkspace", () => ({
       reason: string;
       time: string;
     }) => void;
+    onSaveRecord: () => void;
+    canSaveRecord?: boolean;
+    saveDisabledReason?: string | null;
+    saveState?: { status?: string };
   }) => (
     <div>
       <button
@@ -106,6 +102,14 @@ vi.mock("../components/DoctorWorkspace", () => ({
       >
         Select patient
       </button>
+      <button
+        type="button"
+        onClick={onSaveRecord}
+        disabled={saveState?.status === "pending" || !canSaveRecord}
+      >
+        {saveState?.status === "pending" ? "Saving consultation..." : "Save Consultation"}
+      </button>
+      {saveDisabledReason ? <p>{saveDisabledReason}</p> : null}
       <div data-testid="doctor-workspace">{profileId}</div>
     </div>
   ),

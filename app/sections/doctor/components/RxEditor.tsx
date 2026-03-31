@@ -41,7 +41,10 @@ const FREQUENCY_OPTIONS: Array<{
 ];
 
 type RxEditorProps = {
+  onOpenClinical: () => void;
+  onOpenNotes: () => void;
   rxRows: ClinicalDrug[];
+  drugDraftFeedback?: string | null;
   clinicalDrugForm: ClinicalDrugForm;
   filteredDrugSuggestions: string[];
   onDrugFormChange: (patch: Partial<ClinicalDrugForm>) => void;
@@ -58,7 +61,10 @@ type RxEditorProps = {
 };
 
 export function RxEditor({
+  onOpenClinical,
+  onOpenNotes,
   rxRows,
+  drugDraftFeedback = null,
   clinicalDrugForm,
   filteredDrugSuggestions,
   onDrugFormChange,
@@ -121,7 +127,7 @@ export function RxEditor({
         <p className="ml-1 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
           Prescription / Drugs
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={onDemoFill}
@@ -336,6 +342,9 @@ export function RxEditor({
               Enter drug name, dose, and total quantity to add the prescription row.
             </p>
           ) : null}
+          {drugDraftFeedback ? (
+            <p className="text-xs font-semibold text-rose-600">{drugDraftFeedback}</p>
+          ) : null}
         </div>
       </form>
 
@@ -396,6 +405,22 @@ export function RxEditor({
             </button>
           </div>
         ))}
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onOpenClinical}
+            className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700 transition hover:bg-sky-100"
+          >
+            Clinical
+          </button>
+          <button
+            type="button"
+            onClick={onOpenNotes}
+            className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:bg-amber-100"
+          >
+            Notes
+          </button>
+        </div>
         </div>
       </div>
     </div>
