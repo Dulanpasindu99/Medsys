@@ -127,10 +127,15 @@ function updateSessionCookie(
     {
       userId: claims.userId,
       role: claims.role,
+      roles: existingSession.roles ?? (claims.role ? [claims.role] : undefined),
+      activeRole: existingSession.activeRole ?? claims.role ?? undefined,
       email: claims.email ?? existingSession.email,
       name: claims.name ?? existingSession.name,
+      permissions: existingSession.permissions,
+      extraPermissions: existingSession.extraPermissions,
       doctorWorkflowMode:
         claims.doctorWorkflowMode ?? existingSession.doctorWorkflowMode ?? null,
+      workflowProfiles: existingSession.workflowProfiles ?? null,
     },
     { expiresAt: refreshClaims.exp ?? claims.exp ?? undefined }
   );

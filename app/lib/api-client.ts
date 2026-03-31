@@ -7,6 +7,12 @@ export type ApiClientError = {
   retryAfterSeconds?: number;
 };
 export type DoctorWorkflowMode = "self_service" | "clinic_supported" | null;
+export type WorkflowProfileMode = DoctorWorkflowMode | "standard" | null;
+export type WorkflowProfiles = {
+  doctor?: { mode: DoctorWorkflowMode } | null;
+  assistant?: { mode: WorkflowProfileMode } | null;
+  owner?: { mode: WorkflowProfileMode } | null;
+};
 type ApiContractError = ApiClientError;
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
 export type ApiRecord = Record<string, unknown>;
@@ -198,22 +204,32 @@ export async function apiFetch<T>(
 
 export type LoginResponse = {
   id: number | null;
+  user_id?: number | null;
   role: AppRole;
+  roles?: AppRole[];
+  active_role?: AppRole;
   email: string;
   name: string;
   permissions?: AppPermission[];
+  extra_permissions?: AppPermission[];
   doctor_workflow_mode?: DoctorWorkflowMode;
+  workflow_profiles?: WorkflowProfiles | null;
 };
 
 export type FrontendUser = {
   id: number;
+  user_id?: number;
   name: string;
   email: string;
   role: AppRole;
+  roles?: AppRole[];
+  active_role?: AppRole;
   created_at?: string | null;
   permissions?: AppPermission[];
   extraPermissions?: AppPermission[];
+  extra_permissions?: AppPermission[];
   doctor_workflow_mode?: DoctorWorkflowMode;
+  workflow_profiles?: WorkflowProfiles | null;
 };
 
 export type PatientWriteInput = {
@@ -266,6 +282,21 @@ export async function logoutUser() {
   }
   clearStoredAuth();
   return { success: true as const };
+}
+
+export async function setActiveRole(activeRole: AppRole) {
+  const response = await fetch("/api/auth/active-role", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ activeRole }),
+  });
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response);
+    throw { message, status: response.status } satisfies ApiClientError;
+  }
+
+  return (await response.json()) as LoginResponse;
 }
 
 export async function getCurrentUser() {

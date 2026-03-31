@@ -2,32 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { adaptAuthenticatedUserResponse } from "@/app/lib/backend-contract-adapters";
 import { callBackendRoute } from "@/app/lib/backend-route-client";
 import { serializeSessionIdentity } from "@/app/lib/api-serializers";
-import { attachSessionCookie, readSessionFromRequest } from "@/app/lib/session";
+import { attachSessionCookie } from "@/app/lib/session";
+import type { AppRole } from "@/app/lib/roles";
 
-function serializeSessionFallback(request: NextRequest) {
-  const session = readSessionFromRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  return NextResponse.json(
-    serializeSessionIdentity({
-      id: session.userId,
-      role: session.role,
-      roles: session.roles ?? [session.role],
-      activeRole: session.activeRole ?? session.role,
-      email: session.email,
-      name: session.name,
-      permissions: session.permissions,
-      extraPermissions: session.extraPermissions ?? [],
-      doctorWorkflowMode: session.doctorWorkflowMode ?? null,
-      workflowProfiles: session.workflowProfiles ?? null,
-    })
-  );
+function parseRequestedRole(value: unknown): AppRole | null {
+  if (typeof value !== "string") return null;
+  const role = value.trim().toLowerCase();
+  return role === "owner" || role === "doctor" || role === "assistant"
+    ? (role as AppRole)
+    : null;
 }
 
-export async function GET(request: NextRequest) {
-  const backend = await callBackendRoute(request, "/v1/auth/me", {
+export async function POST(request: NextRequest) {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const requestedRole = parseRequestedRole(
+    (body as Record<string, unknown> | null)?.activeRole
+  );
+  if (!requestedRole) {
+    return NextResponse.json(
+      { error: "activeRole must be one of owner, doctor, assistant." },
+      { status: 400 }
+    );
+  }
+
+  const backend = await callBackendRoute(request, "/v1/auth/active-role", {
+    body: JSON.stringify({ activeRole: requestedRole }),
     includeSearch: false,
     unavailableMessage: "Authentication service is unavailable.",
   });
@@ -36,7 +41,17 @@ export async function GET(request: NextRequest) {
   }
 
   if (!backend.response.ok) {
-    return serializeSessionFallback(request);
+    let message = "Unable to switch active role.";
+    try {
+      const payload = (await backend.response.clone().json()) as { message?: string; error?: string };
+      message = payload.message ?? payload.error ?? message;
+    } catch {
+      // Ignore parse errors and fall back to the generic message.
+    }
+
+    const response = NextResponse.json({ error: message }, { status: backend.response.status });
+    backend.applyTo(response);
+    return response;
   }
 
   try {
@@ -74,7 +89,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch {
     return NextResponse.json(
-      { error: "Backend contract mismatch for the auth current-user route." },
+      { error: "Backend contract mismatch for the active-role route." },
       { status: 502 }
     );
   }

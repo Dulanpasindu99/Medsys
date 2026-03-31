@@ -29,6 +29,7 @@ export default function AnalyticsSection() {
     inventoryStock,
     encounterCount,
     completionRate,
+    roleContext,
   } = useAnalyticsSnapshot();
 
   return (
@@ -38,7 +39,11 @@ export default function AnalyticsSection() {
           <ViewportHeader
             eyebrow="Insights control room"
             title="Realtime Analytics"
-            description="Live overview from `/api/analytics/overview` plus operational endpoints."
+            description={
+              roleContext
+                ? `Live ${roleContext} overview from \`/api/analytics/overview\` plus operational endpoints.`
+                : "Live overview from `/api/analytics/overview` plus operational endpoints."
+            }
             actions={
               <button
                 type="button"
@@ -50,6 +55,13 @@ export default function AnalyticsSection() {
               </button>
             }
           />
+          {roleContext ? (
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 ring-1 ring-sky-100">
+                Role Context: {roleContext}
+              </span>
+            </div>
+          ) : null}
           <ViewportTabs
             tabs={[
               {

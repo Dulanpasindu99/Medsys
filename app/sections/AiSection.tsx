@@ -15,7 +15,7 @@ import { useAiInsightsData } from './ai/hooks/useAiInsightsData';
 
 export default function AiSection() {
   const [activeTab, setActiveTab] = useState<'snapshot' | 'insights'>('snapshot');
-  const { patientTotal, appointmentTotal, auditEventCount, insights, loadState, reload } = useAiInsightsData();
+  const { patientTotal, appointmentTotal, auditEventCount, roleContext, insights, loadState, reload } = useAiInsightsData();
 
   return (
     <ViewportPage>
@@ -24,7 +24,11 @@ export default function AiSection() {
           <ViewportHeader
             eyebrow="AI doctor tools"
             title="Live Insight Assistant"
-            description="Derived from realtime analytics, appointments, and audit activity."
+            description={
+              roleContext
+                ? `Derived from realtime analytics, appointments, and audit activity for the ${roleContext} role.`
+                : "Derived from realtime analytics, appointments, and audit activity."
+            }
             actions={
               <button
                 type="button"
@@ -36,6 +40,13 @@ export default function AiSection() {
               </button>
             }
           />
+          {roleContext ? (
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-100">
+                Role Context: {roleContext}
+              </span>
+            </div>
+          ) : null}
           <ViewportTabs
             tabs={[
               {

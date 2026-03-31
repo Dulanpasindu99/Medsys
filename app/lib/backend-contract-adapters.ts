@@ -300,6 +300,22 @@ function normalizeUserRecord(record: AnyRecord) {
     fullName: name,
     email,
     role: role as AppRole,
+    roles: Array.from(
+      new Set(
+        (Array.isArray(record.roles) ? record.roles : [record.active_role ?? record.role])
+          .map((entry) => toString(entry).toLowerCase())
+          .filter((entry): entry is AppRole =>
+            entry === "owner" || entry === "doctor" || entry === "assistant"
+          )
+      )
+    ),
+    active_role:
+      (() => {
+        const activeRole = toString(record.active_role ?? record.activeRole).toLowerCase();
+        return activeRole === "owner" || activeRole === "doctor" || activeRole === "assistant"
+          ? (activeRole as AppRole)
+          : (role as AppRole);
+      })(),
     createdAt: toString(record.createdAt ?? record.created_at) || null,
     created_at: toString(record.created_at ?? record.createdAt) || null,
     permissions: normalizePermissionArray(record.permissions),
@@ -315,6 +331,7 @@ function normalizeUserRecord(record: AnyRecord) {
     doctor_workflow_mode: normalizeDoctorWorkflowMode(
       record.doctor_workflow_mode ?? record.doctorWorkflowMode
     ),
+    workflow_profiles: asRecord(record.workflow_profiles ?? record.workflowProfiles),
   };
 }
 

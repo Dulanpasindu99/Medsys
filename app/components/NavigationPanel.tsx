@@ -4,9 +4,12 @@ import React, { useLayoutEffect, useRef, useState, useSyncExternalStore } from '
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { logoutUser } from '../lib/api-client';
-import { getNavigationItemsForSubject, type AppPermission, type NavigationItemId } from '../lib/authorization';
+import { useQueryClient } from '@tanstack/react-query';
+import { logoutUser, setActiveRole, type LoginResponse } from '../lib/api-client';
+import { getDefaultRouteForSubject, getNavigationItemsForSubject, type AppPermission, type NavigationItemId } from '../lib/authorization';
 import type { AppRole } from '../lib/roles';
+import { useCurrentUserQuery } from '../lib/query-hooks';
+import { queryKeys } from '../lib/query-keys';
 
 export type IconRenderer = (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
 
@@ -127,19 +130,25 @@ export default function NavigationPanel({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const currentUserQuery = useCurrentUserQuery();
   const navListRef = useRef<HTMLUListElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
   const mounted = useIsHydrated();
+  const currentUser = currentUserQuery.data;
+  const effectiveRole = currentUser?.active_role ?? currentUser?.role ?? sessionRole;
+  const effectivePermissions = currentUser?.permissions ?? sessionPermissions;
+  const availableRoles = currentUser?.roles?.length ? currentUser.roles : [effectiveRole];
   const navigationItems: NavigationItem[] = getNavigationItemsForSubject({
-    role: sessionRole,
-    permissions: sessionPermissions,
+    role: effectiveRole,
+    permissions: effectivePermissions,
   }).map((item) => ({
     id: item.id,
     label: item.label,
     href: item.href,
     icon: ICONS_BY_NAV_ID[item.id],
   }));
-  const displayName = userName.trim() || 'Medsys User';
+  const displayName = (currentUser?.name ?? userName).trim() || 'Medsys User';
 
   // Determine active ID based on pathname
   const activeId = navigationItems.find(item => {
@@ -151,6 +160,23 @@ export default function NavigationPanel({
     await logoutUser();
     router.push('/login');
     router.refresh();
+  };
+
+  const handleRoleSwitch = async (nextRole: AppRole) => {
+    if (nextRole === effectiveRole) return;
+
+    try {
+      const updatedUser = await setActiveRole(nextRole);
+      queryClient.setQueryData(queryKeys.auth.currentUser, updatedUser as LoginResponse);
+      await currentUserQuery.refetch();
+      router.push(getDefaultRouteForSubject({
+        role: updatedUser.active_role ?? updatedUser.role,
+        permissions: updatedUser.permissions,
+      }));
+      router.refresh();
+    } catch {
+      await currentUserQuery.refetch();
+    }
   };
 
   const [indicatorOffset, setIndicatorOffset] = useState(0);
@@ -223,6 +249,25 @@ export default function NavigationPanel({
             </div>
           </div>
         </div>
+        {availableRoles.length > 1 ? (
+          <div className="flex flex-col items-center gap-2 rounded-[22px] bg-white/95 px-3 py-3 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
+            {availableRoles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => handleRoleSwitch(role)}
+                disabled={currentUserQuery.isFetching}
+                className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                  role === effectiveRole
+                    ? 'bg-slate-800 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-1 items-center">

@@ -83,6 +83,7 @@ export function useAiInsightsData() {
     toNumber(overview?.totalPatients ?? overview?.patientCount) ?? patients.length;
   const appointmentTotal = appointments.length;
   const auditEventCount = auditLogs.length;
+  const roleContext = toString(overview?.role_context ?? overview?.roleContext) || null;
 
   const insights = useMemo(() => {
     const waiting = appointments.filter((row) => toString(row.status).toLowerCase() === "waiting").length;
@@ -95,20 +96,30 @@ export function useAiInsightsData() {
       ? toString(lastAudit.entityType ?? lastAudit.entity, "system")
       : "system";
 
+    const framingInsight =
+      roleContext === "owner"
+        ? "Recommendation: focus on staffing, throughput, and compliance hotspots."
+        : roleContext === "assistant"
+          ? "Recommendation: focus on intake coordination, queue preparation, and dispense readiness."
+          : waiting > completed
+            ? "Recommendation: prioritize queue balancing and assistant handover."
+            : "Recommendation: maintain current consultation throughput.";
+
     return [
-      `Current patient base is ${patientTotal}.`,
+      roleContext
+        ? `Current AI framing is tuned for the ${roleContext} role.`
+        : `Current patient base is ${patientTotal}.`,
       `Waiting queue has ${waiting} appointments and ${completed} completed visits.`,
       `Latest audited action: ${lastAuditAction} on ${lastAuditEntity}.`,
-      waiting > completed
-        ? "Recommendation: prioritize queue balancing and assistant handover."
-        : "Recommendation: maintain current consultation throughput.",
+      framingInsight,
     ];
-  }, [appointments, auditLogs, patientTotal]);
+  }, [appointments, auditLogs, patientTotal, roleContext]);
 
   return {
     patientTotal,
     appointmentTotal,
     auditEventCount,
+    roleContext,
     insights,
     loadState,
     reload: async () => {

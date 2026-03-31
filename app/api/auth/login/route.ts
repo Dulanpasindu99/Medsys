@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
   const claims = readTokenClaims(tokenPair.accessToken);
   const refreshClaims = readTokenClaims(tokenPair.refreshToken);
   const role = claims.role ?? backendUser?.role ?? roleHint ?? null;
+  const roles = backendUser?.roles ?? (role ? [role] : []);
+  const activeRole = backendUser?.active_role ?? role ?? null;
   const name = claims.name ?? backendUser?.name ?? email.split("@")[0] ?? "User";
   const resolvedEmail = claims.email ?? backendUser?.email ?? email;
   const resolvedPermissions =
@@ -102,10 +104,15 @@ export async function POST(request: NextRequest) {
       id: claims.userId ?? backendUser?.id ?? null,
       name,
       email: resolvedEmail,
-      role,
+      role: activeRole ?? role,
+      roles,
+      activeRole: activeRole ?? role,
       permissions: resolvedPermissions,
+      extraPermissions:
+        backendUser?.extra_permissions ?? backendUser?.extraPermissions ?? [],
       doctorWorkflowMode:
         claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
+      workflowProfiles: backendUser?.workflow_profiles ?? null,
     })
   );
 
@@ -123,12 +130,17 @@ export async function POST(request: NextRequest) {
 
   attachSessionCookie(response, {
     userId: claims.userId ?? backendUser?.id ?? null,
-    role,
+    role: activeRole ?? role,
+    roles,
+    activeRole: activeRole ?? role,
     email: resolvedEmail,
     name,
     permissions: resolvedPermissions,
+    extraPermissions:
+      backendUser?.extra_permissions ?? backendUser?.extraPermissions ?? [],
     doctorWorkflowMode:
       claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
+    workflowProfiles: backendUser?.workflow_profiles ?? null,
   }, {
     expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,
   });

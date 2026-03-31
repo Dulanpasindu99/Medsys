@@ -85,12 +85,17 @@ describe("POST /api/auth/login", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      id: 42,
-      name: "Dr. Jane Doe",
-      email: "doctor@example.com",
-      role: "doctor",
-    });
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: 42,
+        user_id: 42,
+        name: "Dr. Jane Doe",
+        email: "doctor@example.com",
+        role: "doctor",
+        active_role: "doctor",
+        roles: ["doctor"],
+      })
+    );
     expect(response.cookies.get(BACKEND_ACCESS_COOKIE_NAME)?.value).toBe(accessToken);
     expect(response.cookies.get(BACKEND_REFRESH_COOKIE_NAME)?.value).toBe(refreshToken);
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBeTruthy();
@@ -138,13 +143,18 @@ describe("POST /api/auth/login", () => {
     const response = await POST(request);
     const body = await response.json();
 
-    expect(body).toEqual({
-      id: 42,
-      name: "Dr. Jane Doe",
-      email: "doctor@example.com",
-      role: "doctor",
-      permissions: ["assistant.workspace.view", "appointment.create", "prescription.dispense"],
-    });
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: 42,
+        user_id: 42,
+        name: "Dr. Jane Doe",
+        email: "doctor@example.com",
+        role: "doctor",
+        active_role: "doctor",
+        roles: ["doctor"],
+        permissions: ["assistant.workspace.view", "appointment.create", "prescription.dispense"],
+      })
+    );
   });
 
   it("falls back to backend user permissions when tokens omit them", async () => {
@@ -197,13 +207,19 @@ describe("POST /api/auth/login", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      id: 42,
-      name: "Dr. Jane Doe",
-      email: "doctor@example.com",
-      role: "doctor",
-      permissions: ["patient.write", "appointment.create", "prescription.dispense"],
-    });
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: 42,
+        user_id: 42,
+        name: "Dr. Jane Doe",
+        email: "doctor@example.com",
+        role: "doctor",
+        active_role: "doctor",
+        roles: ["doctor"],
+        permissions: ["patient.write", "appointment.create", "prescription.dispense"],
+        extra_permissions: ["appointment.create", "prescription.dispense"],
+      })
+    );
   });
 
   it("accepts backend auth payloads with extra metadata and snake_case duplicates", async () => {
@@ -258,12 +274,17 @@ describe("POST /api/auth/login", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toEqual({
-      id: 42,
-      name: "Dr. Jane Doe",
-      email: "doctor@example.com",
-      role: "doctor",
-    });
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: 42,
+        user_id: 42,
+        name: "Dr. Jane Doe",
+        email: "doctor@example.com",
+        role: "doctor",
+        active_role: "doctor",
+        roles: ["doctor"],
+      })
+    );
   });
 
   it("returns 502 when the backend login payload is malformed", async () => {

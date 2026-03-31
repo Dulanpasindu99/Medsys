@@ -2,7 +2,7 @@ import crypto from "crypto";
 import type { NextRequest, NextResponse } from "next/server";
 import type { AppRole } from "@/app/lib/roles";
 import type { AppPermission } from "@/app/lib/authorization";
-import type { DoctorWorkflowMode } from "@/app/lib/api-client";
+import type { DoctorWorkflowMode, WorkflowProfiles } from "@/app/lib/api-client";
 
 export const SESSION_COOKIE_NAME = "medsys_session";
 
@@ -12,10 +12,14 @@ const HMAC_ALGORITHM = "sha256";
 export type SessionPayload = {
   userId: number | null;
   role: AppRole;
+  roles?: AppRole[];
+  activeRole?: AppRole;
   email: string;
   name: string;
   permissions?: AppPermission[];
+  extraPermissions?: AppPermission[];
   doctorWorkflowMode?: DoctorWorkflowMode;
+  workflowProfiles?: WorkflowProfiles | null;
   iat: number;
   exp: number;
 };

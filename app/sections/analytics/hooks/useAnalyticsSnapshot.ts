@@ -140,6 +140,7 @@ export function useAnalyticsSnapshot() {
   const completionRate = appointments.length
     ? Math.round((appointmentStatusSummary.completed / appointments.length) * 100)
     : 0;
+  const roleContext = toString(overview?.role_context ?? overview?.roleContext) || null;
 
   return {
     patients,
@@ -155,5 +156,6 @@ export function useAnalyticsSnapshot() {
     inventoryStock,
     encounterCount,
     completionRate,
+    roleContext,
   };
 }

@@ -1,6 +1,6 @@
 import type { AppRole } from "@/app/lib/roles";
 import type { AppPermission } from "@/app/lib/authorization";
-import type { DoctorWorkflowMode } from "@/app/lib/api-client";
+import type { DoctorWorkflowMode, WorkflowProfiles } from "@/app/lib/api-client";
 
 type PatientRecord = {
   id: number;
@@ -31,10 +31,13 @@ type UserRecord = {
   name: string;
   email: string;
   role: AppRole;
+  roles?: AppRole[];
+  activeRole?: AppRole;
   createdAt: string | null;
   permissions?: AppPermission[];
   extraPermissions?: AppPermission[];
   doctorWorkflowMode?: DoctorWorkflowMode;
+  workflowProfiles?: WorkflowProfiles | null;
 };
 
 type HistoryEntry = {
@@ -55,8 +58,12 @@ type SessionIdentity = {
   name: string;
   email: string;
   role: AppRole;
+  roles?: AppRole[];
+  activeRole?: AppRole;
   permissions?: AppPermission[];
+  extraPermissions?: AppPermission[];
   doctorWorkflowMode?: DoctorWorkflowMode;
+  workflowProfiles?: WorkflowProfiles | null;
 };
 
 export function serializePatient(patient: PatientRecord) {
@@ -96,13 +103,17 @@ export function serializePatient(patient: PatientRecord) {
 export function serializeUser(user: UserRecord) {
   return {
     id: user.id,
+    user_id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
+    ...(user.roles?.length ? { roles: user.roles } : {}),
+    ...(user.activeRole ? { active_role: user.activeRole } : {}),
     created_at: user.createdAt ?? null,
     ...(user.permissions?.length ? { permissions: user.permissions } : {}),
-    ...(user.extraPermissions?.length ? { extraPermissions: user.extraPermissions } : {}),
+    ...(user.extraPermissions?.length ? { extra_permissions: user.extraPermissions } : {}),
     ...(user.doctorWorkflowMode ? { doctor_workflow_mode: user.doctorWorkflowMode } : {}),
+    ...(user.workflowProfiles ? { workflow_profiles: user.workflowProfiles } : {}),
   };
 }
 
@@ -120,12 +131,19 @@ export function serializeHistoryEntry(entry: HistoryEntry, actor?: HistoryActor)
 export function serializeSessionIdentity(identity: SessionIdentity) {
   return {
     id: identity.id,
+    user_id: identity.id,
     name: identity.name,
     email: identity.email,
     role: identity.role,
+    ...(identity.roles?.length ? { roles: identity.roles } : {}),
+    ...(identity.activeRole ? { active_role: identity.activeRole } : {}),
     ...(identity.permissions?.length ? { permissions: identity.permissions } : {}),
+    ...(identity.extraPermissions?.length
+      ? { extra_permissions: identity.extraPermissions }
+      : {}),
     ...(identity.doctorWorkflowMode
       ? { doctor_workflow_mode: identity.doctorWorkflowMode }
       : {}),
+    ...(identity.workflowProfiles ? { workflow_profiles: identity.workflowProfiles } : {}),
   };
 }
