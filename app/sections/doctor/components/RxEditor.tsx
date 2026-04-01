@@ -348,80 +348,88 @@ export function RxEditor({
         </div>
       </form>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="max-h-[22rem] overflow-y-auto pr-1">
         <div className="flex flex-col gap-2">
-        {rxRows.length === 0 && (
-          <div className="py-4 text-center text-sm italic text-slate-400">
-            No drugs added yet.
-          </div>
-        )}
-        {rxRows.map((row, index) => (
-          <div
-            key={`${row.drug}-${index}`}
-            className="group grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-sky-200 hover:shadow-md md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_180px_96px_210px_110px] xl:items-center"
-          >
-            <div className="flex min-w-0 flex-[2] flex-col justify-center">
-              <span className="text-sm font-bold text-slate-900">
-                {row.drug}
-              </span>
-              <span className="mt-1 text-xs text-slate-500">{row.dose}</span>
+          {rxRows.length === 0 && (
+            <div className="py-4 text-center text-sm italic text-slate-400">
+              No drugs added yet.
             </div>
+          )}
+          {rxRows.map((row, index) => (
             <div
-              className={`${rowControlClass} flex items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700 ring-1 ring-slate-200`}
+              key={`${row.drug}-${index}`}
+              className="group grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-sky-200 hover:shadow-md md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_180px_96px_210px_110px] xl:items-center"
             >
-              {row.terms}
+              <div className="flex min-w-0 flex-[2] flex-col justify-center">
+                <span className="text-sm font-bold text-slate-900">{row.drug}</span>
+                <span className="mt-1 text-xs text-slate-500">{row.dose}</span>
+              </div>
+              <div
+                className={`${rowControlClass} flex items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700 ring-1 ring-slate-200`}
+              >
+                {row.terms}
+              </div>
+              <div className="min-w-0 text-center text-sm font-bold text-slate-800">
+                <input
+                  className={`${rowControlClass} w-full border border-slate-200 bg-slate-50 px-2 text-center outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100`}
+                  value={row.amount}
+                  onChange={(e) => onUpdateRxRow(index, "amount", e.target.value)}
+                />
+              </div>
+              <div className="grid min-w-0 grid-cols-2 gap-2">
+                {(["Clinical", "Outside"] as const).map((source) => (
+                  <button
+                    key={source}
+                    type="button"
+                    onClick={() => onUpdateRxRow(index, "source", source)}
+                    className={`${rowControlClass} px-2 text-[10px] font-bold uppercase tracking-[0.16em] ${
+                      row.source === source
+                        ? source === "Clinical"
+                          ? "bg-emerald-500 text-white"
+                          : "bg-amber-500 text-white"
+                        : "border border-slate-200 bg-white text-slate-500"
+                    }`}
+                  >
+                    {source}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemoveRxRow(index)}
+                className={`${rowControlClass} border border-rose-200 bg-rose-50 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-100 hover:text-rose-700 md:col-span-2 xl:col-span-1`}
+              >
+                Remove
+              </button>
             </div>
-            <div className="min-w-0 text-center text-sm font-bold text-slate-800">
-              <input
-                className={`${rowControlClass} w-full border border-slate-200 bg-slate-50 px-2 text-center outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100`}
-                value={row.amount}
-                onChange={(e) => onUpdateRxRow(index, "amount", e.target.value)}
-              />
-            </div>
-            <div className="grid min-w-0 grid-cols-2 gap-2">
-              {(["Clinical", "Outside"] as const).map((source) => (
-                <button
-                  key={source}
-                  type="button"
-                  onClick={() => onUpdateRxRow(index, "source", source)}
-                  className={`${rowControlClass} px-2 text-[10px] font-bold uppercase tracking-[0.16em] ${
-                    row.source === source
-                      ? source === "Clinical"
-                        ? "bg-emerald-500 text-white"
-                        : "bg-amber-500 text-white"
-                      : "border border-slate-200 bg-white text-slate-500"
-                  }`}
-                >
-                  {source}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => onRemoveRxRow(index)}
-              className={`${rowControlClass} border border-rose-200 bg-rose-50 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-100 hover:text-rose-700 md:col-span-2 xl:col-span-1`}
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        <div className="flex flex-wrap justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onOpenClinical}
-            className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700 transition hover:bg-sky-100"
-          >
-            Clinical
-          </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-end gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onOpenClinical}
+          className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700 transition hover:bg-sky-100"
+        >
+          Clinical
+        </button>
+        <button
+          type="button"
+          onClick={onOpenNotes}
+          className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:bg-amber-100"
+        >
+          Notes
+        </button>
+        {rxRows.length > 0 ? (
           <button
             type="button"
             onClick={onOpenNotes}
-            className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:bg-amber-100"
+            className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-100"
           >
-            Notes
+            Next: Consultation Save
           </button>
-        </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

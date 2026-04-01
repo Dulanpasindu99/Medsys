@@ -182,6 +182,20 @@ function toApiClientError(error: unknown): ApiClientError {
   };
 }
 
+function hasUnknownBloodGroupFieldIssue(error: unknown) {
+  const apiError = error as ApiClientError | undefined;
+  if (apiError?.status !== 400 || !Array.isArray(apiError.issues)) {
+    return false;
+  }
+
+  return apiError.issues.some(
+    (issue) =>
+      issue?.field === "bloodGroup" &&
+      typeof issue.message === "string" &&
+      issue.message.toLowerCase().includes("unknown field")
+  );
+}
+
 function isApiRecord(value: unknown): value is ApiRecord {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -296,6 +310,23 @@ export type PatientWriteInput = {
   familyId?: number;
   familyCode?: string | null;
   guardianPatientId?: number;
+  guardianName?: string | null;
+  guardianNic?: string | null;
+  guardianPhone?: string | null;
+  guardianRelationship?: string | null;
+};
+
+export type PatientUpdateInput = {
+  firstName?: string | null;
+  lastName?: string | null;
+  dob?: string | null;
+  gender?: "male" | "female" | "other" | null;
+  nic?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  bloodGroup?: string | null;
+  familyId?: number | null;
+  guardianPatientId?: number | null;
   guardianName?: string | null;
   guardianNic?: string | null;
   guardianPhone?: string | null;
@@ -458,9 +489,38 @@ export async function getPatientById(patientId: number | string) {
   return apiFetch(`/api/patients/${patientId}`, { method: "GET" });
 }
 
+export async function updatePatient(
+  patientId: number | string,
+  input: PatientUpdateInput
+) {
+  try {
+    const response = await apiFetch<{ patient: unknown }>(`/api/patients/${patientId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return response.patient;
+  } catch (error) {
+    if (!hasUnknownBloodGroupFieldIssue(error) || !Object.prototype.hasOwnProperty.call(input, "bloodGroup")) {
+      throw error;
+    }
+
+    const { bloodGroup: _bloodGroup, ...fallbackInput } = input;
+    const response = await apiFetch<{ patient: unknown }>(`/api/patients/${patientId}`, {
+      method: "PATCH",
+      body: JSON.stringify(fallbackInput),
+    });
+    return response.patient;
+  }
+}
+
 export async function getPatientProfile(patientId: number | string) {
   const response = await apiFetch<unknown>(`/api/patients/${patientId}/profile`, { method: "GET" });
   return expectApiRecord(response, "patient profile");
+}
+
+export async function getPatientConsultations(patientId: number | string) {
+  const response = await apiFetch<unknown>(`/api/patients/${patientId}/consultations`, { method: "GET" });
+  return expectApiRecord(response, "patient consultations");
 }
 
 export async function getPatientFamily(patientId: number | string) {

@@ -59,6 +59,16 @@ describe("/api/patients BFF routes", () => {
               gender: "female",
               phone: "555-0000",
               created_at: "2026-03-09T00:00:00.000Z",
+              family_name: "Doe Family",
+              visit_count: 3,
+              last_visit_at: "2026-03-09T00:00:00.000Z",
+              next_appointment: {
+                id: 11,
+                scheduled_at: "2026-03-10T09:00:00.000Z",
+                status: "waiting",
+              },
+              allergy_highlights: ["Dust", "Mist"],
+              major_active_condition: "Asthma",
             },
           ],
         }),
@@ -88,6 +98,16 @@ describe("/api/patients BFF routes", () => {
           nic: "990011223V",
           age: 31,
           gender: "female",
+          family_name: "Doe Family",
+          visit_count: 3,
+          last_visit_at: "2026-03-09T00:00:00.000Z",
+          next_appointment: {
+            id: 11,
+            scheduled_at: "2026-03-10T09:00:00.000Z",
+            status: "waiting",
+          },
+          allergy_highlights: ["Dust", "Mist"],
+          major_active_condition: "Asthma",
         },
       ],
     });
@@ -316,6 +336,159 @@ describe("/api/patients BFF routes", () => {
       issues: [{ field: "body", message: "At least one updatable field is required." }],
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("passes blood group through the patient patch BFF validator", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          patient: {
+            id: 41,
+            first_name: "Dulan",
+            last_name: "Nishthunga",
+            nic: "992970375V",
+            age: 27,
+            gender: "male",
+            phone: "0776347519",
+            blood_group: "O+",
+            created_at: "2026-03-31T11:54:41.562Z",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await updatePatientRoute(
+      buildRequest("http://localhost/api/patients/41", "doctor", "PATCH", {
+        firstName: "Dulan",
+        lastName: "Nishthunga",
+        dob: "1999-10-23",
+        gender: "male",
+        nic: "992970375v",
+        phone: "0776347519",
+        address: null,
+        bloodGroup: "O+",
+        familyId: 16,
+      }),
+      { params: Promise.resolve({ id: "41" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      firstName: "Dulan",
+      lastName: "Nishthunga",
+      dob: "1999-10-23",
+      gender: "male",
+      nic: "992970375V",
+      phone: "0776347519",
+      address: null,
+      bloodGroup: "O+",
+      familyId: 16,
+    });
+    expect(body).toEqual({
+      patient: {
+        id: 41,
+        name: "Dulan Nishthunga",
+        date_of_birth: null,
+        phone: "0776347519",
+        address: null,
+        created_at: "2026-03-31T11:54:41.562Z",
+        nic: "992970375V",
+        age: 27,
+        gender: "male",
+        blood_group: "O+",
+      },
+    });
+  });
+
+  it("retries patient patch with legacy aliases when identity fields come back stale", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            patient: {
+              id: 41,
+              first_name: "Dulan",
+              last_name: "Nis",
+              nic: "992970375V",
+              dob: "1999-03-15",
+              age: 27,
+              gender: "male",
+              phone: "0776347519",
+              blood_group: "O+",
+              created_at: "2026-03-31T11:54:41.562Z",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            patient: {
+              id: 41,
+              first_name: "Dulan",
+              last_name: "Nishthunga",
+              nic: "992970375V",
+              dob: "2000-10-23",
+              age: 25,
+              gender: "male",
+              phone: "0776347519",
+              blood_group: "O+",
+              created_at: "2026-03-31T11:54:41.562Z",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await updatePatientRoute(
+      buildRequest("http://localhost/api/patients/41", "doctor", "PATCH", {
+        firstName: "Dulan",
+        lastName: "Nishthunga",
+        dob: "2000-10-23",
+        gender: "male",
+        nic: "992970375V",
+        phone: "0776347519",
+        address: null,
+        bloodGroup: "O+",
+        familyId: 16,
+      }),
+      { params: Promise.resolve({ id: "41" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      first_name: "Dulan",
+      last_name: "Nishthunga",
+      full_name: "Dulan Nishthunga",
+      name: "Dulan Nishthunga",
+      date_of_birth: "2000-10-23",
+      blood_group: "O+",
+      family_id: 16,
+    });
+    expect(body).toEqual({
+      patient: {
+        id: 41,
+        name: "Dulan Nishthunga",
+        first_name: "Dulan",
+        last_name: "Nishthunga",
+        date_of_birth: "2000-10-23",
+        phone: "0776347519",
+        address: null,
+        created_at: "2026-03-31T11:54:41.562Z",
+        nic: "992970375V",
+        age: 25,
+        gender: "male",
+        blood_group: "O+",
+      },
+    });
   });
 
   it("rejects invalid patient history payloads", async () => {

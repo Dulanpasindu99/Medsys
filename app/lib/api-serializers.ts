@@ -13,6 +13,7 @@ type PatientRecord = {
   createdAt: string | null;
   patientCode?: string | null;
   familyId?: number | null;
+  familyName?: string | null;
   guardianPatientId?: number | null;
   guardianName?: string | null;
   guardianNic?: string | null;
@@ -24,6 +25,11 @@ type PatientRecord = {
   priority?: string | null;
   mobile?: string | null;
   fullName?: string | null;
+  visitCount?: number | null;
+  lastVisitAt?: string | null;
+  nextAppointment?: Record<string, unknown> | null;
+  allergyHighlights?: unknown;
+  majorActiveCondition?: string | null;
 };
 
 type UserRecord = {
@@ -84,6 +90,7 @@ export function serializePatient(patient: PatientRecord) {
     address: patient.address,
     created_at: patient.createdAt ?? null,
     ...(patient.familyId != null ? { family_id: patient.familyId } : {}),
+    ...(patient.familyName != null ? { family_name: patient.familyName } : {}),
     ...(patient.guardianPatientId != null
       ? { guardian_patient_id: patient.guardianPatientId }
       : {}),
@@ -97,6 +104,13 @@ export function serializePatient(patient: PatientRecord) {
     ...(patient.age != null ? { age: patient.age } : {}),
     ...(patient.gender != null ? { gender: patient.gender } : {}),
     ...(patient.priority != null ? { priority: patient.priority } : {}),
+    ...(patient.visitCount != null ? { visit_count: patient.visitCount } : {}),
+    ...(patient.lastVisitAt != null ? { last_visit_at: patient.lastVisitAt } : {}),
+    ...(patient.nextAppointment != null ? { next_appointment: patient.nextAppointment } : {}),
+    ...(patient.allergyHighlights != null ? { allergy_highlights: patient.allergyHighlights } : {}),
+    ...(patient.majorActiveCondition != null
+      ? { major_active_condition: patient.majorActiveCondition }
+      : {}),
   };
 }
 

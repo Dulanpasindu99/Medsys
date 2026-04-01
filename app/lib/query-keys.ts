@@ -26,6 +26,8 @@ export const queryKeys = {
     directory: ["patients", "directory"] as const,
     list: ["patients", "list"] as const,
     profile: (patientId: number | string) => ["patients", "profile", String(patientId)] as const,
+    consultations: (patientId: number | string) =>
+      ["patients", "consultations", String(patientId)] as const,
     family: (patientId: number | string) => ["patients", "family", String(patientId)] as const,
     vitals: (patientId: number | string) => ["patients", "vitals", String(patientId)] as const,
     allergies: (patientId: number | string) =>

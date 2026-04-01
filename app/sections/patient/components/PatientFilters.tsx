@@ -60,6 +60,16 @@ export function PatientFilters({
             >
               Female
             </button>
+            <button
+              onClick={() => setGender("Other")}
+              className={`rounded-full border px-5 py-2 text-[11px] font-bold uppercase tracking-[0.2em] transition ${
+                gender === "Other"
+                  ? "border-violet-200 bg-violet-50 text-violet-700 shadow-[0_10px_24px_rgba(139,92,246,0.18)]"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Other
+            </button>
             {gender !== "all" && (
               <button onClick={() => setGender("all")} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200">
                 <span className="sr-only">Clear</span>

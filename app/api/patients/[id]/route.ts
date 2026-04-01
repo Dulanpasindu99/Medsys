@@ -10,10 +10,115 @@ import {
   validationErrorResponse,
 } from "@/app/lib/api-validation";
 
+type PatientUpdateShape = {
+  firstName?: string;
+  lastName?: string;
+  dob?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  bloodGroup?: string | null;
+  nic?: string | null;
+  gender?: "male" | "female" | "other";
+  familyId?: number | null;
+  familyCode?: string | null;
+  guardianPatientId?: number | null;
+  guardianName?: string | null;
+  guardianNic?: string | null;
+  guardianPhone?: string | null;
+  guardianRelationship?: string | null;
+};
+
 function contractMismatchResponse() {
   return NextResponse.json(
     { error: "Backend contract mismatch for the patient detail route." },
     { status: 502 }
+  );
+}
+
+function normalizeString(value: string | null | undefined) {
+  return value?.trim() ?? "";
+}
+
+type IdentityComparableRecord = {
+  firstName?: string | null;
+  first_name?: string | null;
+  lastName?: string | null;
+  last_name?: string | null;
+  dateOfBirth?: string | null;
+  date_of_birth?: string | null;
+  dob?: string | null;
+};
+
+function shouldRetryIdentityPatch(input: PatientUpdateShape, updated: IdentityComparableRecord) {
+  if (input.firstName && normalizeString(String(updated.firstName ?? updated.first_name ?? "")) !== normalizeString(input.firstName)) {
+    return true;
+  }
+
+  if (input.lastName && normalizeString(String(updated.lastName ?? updated.last_name ?? "")) !== normalizeString(input.lastName)) {
+    return true;
+  }
+
+  if (input.dob && normalizeString(String(updated.dateOfBirth ?? updated.date_of_birth ?? updated.dob ?? "")) !== normalizeString(input.dob)) {
+    return true;
+  }
+
+  return false;
+}
+
+function buildLegacyPatientUpdatePayload(input: PatientUpdateShape) {
+  const firstName = input.firstName?.trim();
+  const lastName = input.lastName?.trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+  return {
+    ...(firstName ? { first_name: firstName } : {}),
+    ...(lastName ? { last_name: lastName } : {}),
+    ...(fullName ? { full_name: fullName, fullName, name: fullName } : {}),
+    ...("dob" in input ? { dob: input.dob ?? null, date_of_birth: input.dob ?? null } : {}),
+    ...("phone" in input ? { phone: input.phone ?? null } : {}),
+    ...("address" in input ? { address: input.address ?? null } : {}),
+    ...("bloodGroup" in input ? { blood_group: input.bloodGroup ?? null, bloodGroup: input.bloodGroup ?? null } : {}),
+    ...("nic" in input ? { nic: input.nic ?? null } : {}),
+    ...("gender" in input ? { gender: input.gender } : {}),
+    ...("familyId" in input ? { family_id: input.familyId ?? null, familyId: input.familyId ?? null } : {}),
+    ...("familyCode" in input ? { family_code: input.familyCode ?? null, familyCode: input.familyCode ?? null } : {}),
+    ...("guardianPatientId" in input
+      ? { guardian_patient_id: input.guardianPatientId ?? null, guardianPatientId: input.guardianPatientId ?? null }
+      : {}),
+    ...("guardianName" in input ? { guardian_name: input.guardianName ?? null, guardianName: input.guardianName ?? null } : {}),
+    ...("guardianNic" in input ? { guardian_nic: input.guardianNic ?? null, guardianNic: input.guardianNic ?? null } : {}),
+    ...("guardianPhone" in input ? { guardian_phone: input.guardianPhone ?? null, guardianPhone: input.guardianPhone ?? null } : {}),
+    ...("guardianRelationship" in input
+      ? {
+          guardian_relationship: input.guardianRelationship ?? null,
+          guardianRelationship: input.guardianRelationship ?? null,
+        }
+      : {}),
+  };
+}
+
+function buildForwardPatientUpdatePayload(input: PatientUpdateShape) {
+  return {
+    ...input,
+    ...("dob" in input ? { date_of_birth: input.dob ?? null, dateOfBirth: input.dob ?? null } : {}),
+    ...("bloodGroup" in input
+      ? { blood_group: input.bloodGroup ?? null, bloodGroup: input.bloodGroup ?? null }
+      : {}),
+    ...("familyId" in input ? { family_id: input.familyId ?? null } : {}),
+    ...("guardianName" in input ? { guardian_name: input.guardianName ?? null } : {}),
+    ...("guardianNic" in input ? { guardian_nic: input.guardianNic ?? null } : {}),
+    ...("guardianPhone" in input ? { guardian_phone: input.guardianPhone ?? null } : {}),
+    ...("guardianRelationship" in input
+      ? { guardian_relationship: input.guardianRelationship ?? null }
+      : {}),
+  };
+}
+
+function hasIdentityFields(input: PatientUpdateShape) {
+  return Boolean(
+    ("firstName" in input && input.firstName !== undefined) ||
+      ("lastName" in input && input.lastName !== undefined) ||
+      ("dob" in input && input.dob !== undefined)
   );
 }
 
@@ -89,7 +194,7 @@ export async function PATCH(
   }
 
   const backend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
-    body: JSON.stringify(validated.value),
+    body: JSON.stringify(buildForwardPatientUpdatePayload(validated.value as PatientUpdateShape)),
     includeSearch: false,
   });
   if (!backend.ok) {
@@ -101,7 +206,26 @@ export async function PATCH(
   }
 
   try {
-    const updated = adaptSinglePatientResponse(await backend.response.json());
+    let updated = adaptSinglePatientResponse(await backend.response.json());
+    const shouldRunLegacyFollowUp =
+      hasIdentityFields(validated.value as PatientUpdateShape) ||
+      shouldRetryIdentityPatch(validated.value as PatientUpdateShape, updated);
+
+    if (shouldRunLegacyFollowUp) {
+      const legacyBackend = await callBackendRoute(request, `/v1/patients/${id.value}`, {
+        body: JSON.stringify(buildLegacyPatientUpdatePayload(validated.value as PatientUpdateShape)),
+        includeSearch: false,
+      });
+      if (legacyBackend.ok && legacyBackend.response.ok) {
+        updated = adaptSinglePatientResponse(await legacyBackend.response.json());
+        const response = NextResponse.json({
+          patient: serializePatient(updated),
+        });
+        legacyBackend.applyTo(response);
+        return response;
+      }
+    }
+
     const response = NextResponse.json({
       patient: serializePatient(updated),
     });

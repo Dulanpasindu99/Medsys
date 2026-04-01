@@ -535,6 +535,7 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     "dob",
     "phone",
     "address",
+    "bloodGroup",
     "nic",
     "gender",
     "familyId",
@@ -556,6 +557,7 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
     dob?: string | null;
     phone?: string | null;
     address?: string | null;
+    bloodGroup?: string | null;
     nic?: string | null;
     gender?: "male" | "female" | "other";
     familyId?: number | null;
@@ -609,6 +611,15 @@ export function validatePatientUpdatePayload(payload: Record<string, unknown>) {
       issues.push(...address.issues);
     } else {
       result.address = address.value ?? null;
+    }
+  }
+
+  if ("bloodGroup" in payload) {
+    const bloodGroup = normalizeBloodGroup(payload.bloodGroup, "bloodGroup");
+    if (!bloodGroup.ok) {
+      issues.push(...bloodGroup.issues);
+    } else {
+      result.bloodGroup = bloodGroup.value ?? null;
     }
   }
 

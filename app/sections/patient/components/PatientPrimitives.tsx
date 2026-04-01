@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { PATIENT_SHADOWS } from "../constants";
 
-export function SectionShell({ children }: { children: ReactNode }) {
-  return <section className={`ios-surface ${PATIENT_SHADOWS.card} p-6 md:p-7`}>{children}</section>;
+export function SectionShell({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <section className={`ios-surface ${PATIENT_SHADOWS.card} p-6 md:p-7 ${className}`}>{children}</section>;
 }
 
 export function FilterChip({

@@ -5,6 +5,7 @@ import {
   getAnalyticsOverview,
   getAuthStatus,
   getCurrentUser,
+  getPatientConsultations,
   getPatientFamily,
   getPatientProfile,
   listFamilies,
@@ -103,6 +104,14 @@ export function usePatientProfileQuery(patientId: number | string, enabled = tru
   return useQuery({
     queryKey: queryKeys.patients.profile(patientId),
     queryFn: () => getPatientProfile(patientId),
+    enabled,
+  });
+}
+
+export function usePatientConsultationsQuery(patientId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.patients.consultations(patientId),
+    queryFn: () => getPatientConsultations(patientId),
     enabled,
   });
 }

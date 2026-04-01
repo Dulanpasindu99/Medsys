@@ -93,13 +93,13 @@ function normalizeDoctorWorkflowMode(value: unknown): DoctorWorkflowMode {
 }
 
 function joinName(record: AnyRecord) {
-  const direct = toString(record.name ?? record.fullName ?? record.full_name).trim();
-  if (direct) return direct;
-
   const firstName = toString(record.firstName ?? record.first_name).trim();
   const lastName = toString(record.lastName ?? record.last_name).trim();
   const combined = `${firstName} ${lastName}`.trim();
-  return combined;
+  if (combined) return combined;
+
+  const direct = toString(record.name ?? record.fullName ?? record.full_name).trim();
+  return direct;
 }
 
 function contractMismatch(message: string): ApiContractError {
@@ -126,6 +126,7 @@ function normalizePatientRecord(record: AnyRecord) {
   const gender = toString(record.gender, "");
   const priority = toString(record.priority, "");
   const patientCode = toString(record.patient_code, "");
+  const familyName = toString(record.family_name ?? record.familyName ?? asRecord(record.family)?.name, "");
   const familyId = toNumber(record.family_id ?? asRecord(record.family)?.id);
   const guardianPatientId = toNumber(
     record.guardian_patient_id ??
@@ -145,6 +146,21 @@ function normalizePatientRecord(record: AnyRecord) {
     ""
   );
   const guardianRelationship = toString(record.guardian_relationship, "");
+  const visitCount = toNumber(record.visit_count ?? record.total_visits ?? record.visits);
+  const lastVisitAt = toString(record.last_visit_at ?? record.lastVisitAt, "");
+  const nextAppointment = asRecord(record.next_appointment ?? record.nextAppointment);
+  const majorActiveCondition = toString(
+    record.major_active_condition ?? record.majorActiveCondition,
+    ""
+  );
+  const allergyHighlights = Array.isArray(record.allergy_highlights ?? record.allergyHighlights)
+    ? (record.allergy_highlights ?? record.allergyHighlights)
+    : typeof (record.allergy_highlights ?? record.allergyHighlights) === "string"
+      ? String(record.allergy_highlights ?? record.allergyHighlights)
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      : [];
   const firstName = toString(record.first_name, "");
   const lastName = toString(record.last_name, "");
 
@@ -166,6 +182,8 @@ function normalizePatientRecord(record: AnyRecord) {
     created_at: createdAt || null,
     patientCode: patientCode || null,
     patient_code: patientCode || null,
+    familyName: familyName || null,
+    family_name: familyName || null,
     familyId,
     family_id: familyId,
     guardianPatientId,
@@ -182,6 +200,16 @@ function normalizePatientRecord(record: AnyRecord) {
     age,
     gender: gender || null,
     priority: priority || null,
+    visitCount,
+    visit_count: visitCount,
+    lastVisitAt: lastVisitAt || null,
+    last_visit_at: lastVisitAt || null,
+    nextAppointment: nextAppointment ?? null,
+    next_appointment: nextAppointment ?? null,
+    allergyHighlights,
+    allergy_highlights: allergyHighlights,
+    majorActiveCondition: majorActiveCondition || null,
+    major_active_condition: majorActiveCondition || null,
   };
 }
 

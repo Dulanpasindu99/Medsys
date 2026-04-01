@@ -1,11 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  listAppointments,
-  listFamilies,
-  listPatientAllergies,
-  listPatientConditions,
-  listPatientTimeline,
   listPatients,
   type ApiClientError,
 } from "../../../lib/api-client";
@@ -16,7 +11,6 @@ import {
   readyLoadState,
   type LoadState,
 } from "../../../lib/async-state";
-import { notifyWarning } from "../../../lib/notifications";
 import { queryKeys } from "../../../lib/query-keys";
 import type { AgeBucketId, Gender, Patient } from "../types";
 
@@ -25,21 +19,6 @@ const EMPTY_PATIENTS: Patient[] = [];
 
 function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
-}
-
-function asArray(value: unknown): AnyRecord[] {
-  if (Array.isArray(value)) {
-    return value.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
-  }
-  const record = asRecord(value);
-  if (!record) return [];
-  const candidates = [record.data, record.items, record.rows];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.map((entry) => asRecord(entry)).filter((entry): entry is AnyRecord => !!entry);
-    }
-  }
-  return [];
 }
 
 function toString(value: unknown, fallback = "") {
@@ -54,9 +33,10 @@ function toNumber(value: unknown): number | null {
 
 function toGender(value: unknown): Gender {
   const raw = toString(value).toLowerCase();
-  if (raw === "female") return "Female";
+  if (raw === "female" || raw === "f") return "Female";
   if (raw === "other") return "Other";
-  return "Male";
+  if (raw === "male" || raw === "m") return "Male";
+  return "Other";
 }
 
 function toName(row: AnyRecord, fallback: string) {
@@ -68,13 +48,9 @@ function toName(row: AnyRecord, fallback: string) {
   return combined || fallback;
 }
 
-function toAge(row: AnyRecord) {
-  const directAge = toNumber(row.age);
-  if (directAge !== null) return directAge;
-  const dob = toString(row.date_of_birth ?? row.dob);
-  if (!dob) return 0;
+function calculateAgeFromDob(dob: string) {
   const parsed = new Date(`${dob}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) return 0;
+  if (Number.isNaN(parsed.getTime())) return null;
   const today = new Date();
   let years = today.getUTCFullYear() - parsed.getUTCFullYear();
   const beforeBirthday =
@@ -83,6 +59,20 @@ function toAge(row: AnyRecord) {
       today.getUTCDate() < parsed.getUTCDate());
   if (beforeBirthday) years -= 1;
   return years;
+}
+
+function toAge(row: AnyRecord) {
+  const dob = toString(row.date_of_birth ?? row.dob);
+  if (dob) {
+    const calculatedAge = calculateAgeFromDob(dob);
+    if (calculatedAge !== null) {
+      return calculatedAge;
+    }
+  }
+
+  const directAge = toNumber(row.age);
+  if (directAge !== null) return directAge;
+  return 0;
 }
 
 function getRelativeVisitLabel(lastVisitDate?: string) {
@@ -109,6 +99,22 @@ function toDisplayDateTime(value: unknown) {
   });
 }
 
+function toStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => toString(item).trim()).filter(Boolean);
+  }
+
+  const asText = toString(value).trim();
+  if (!asText) {
+    return [];
+  }
+
+  return asText
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function usePatientDirectory() {
   const directoryQuery = useQuery({
     queryKey: queryKeys.patients.directory,
@@ -119,8 +125,6 @@ export function usePatientDirectory() {
   const [ageRange, setAgeRange] = useState<AgeBucketId>("all");
   const [gender, setGender] = useState<Gender | "all">("all");
   const patients = directoryQuery.data?.patients ?? EMPTY_PATIENTS;
-  const lastNoticeRef = useRef<string | null>(null);
-
   let loadState: LoadState;
   if (directoryQuery.isPending || directoryQuery.isFetching) {
     loadState = loadingLoadState();
@@ -132,15 +136,6 @@ export function usePatientDirectory() {
   } else {
     loadState = directoryQuery.data?.loadState ?? emptyLoadState();
   }
-
-  useEffect(() => {
-    if (!loadState.notice || loadState.notice === lastNoticeRef.current) {
-      return;
-    }
-
-    notifyWarning(loadState.notice);
-    lastNoticeRef.current = loadState.notice;
-  }, [loadState.notice]);
 
   const families = useMemo(() => {
     const set = new Set<string>(["All Families"]);
@@ -192,146 +187,71 @@ async function fetchPatientDirectorySnapshot(): Promise<{
   loadState: LoadState;
 }> {
   try {
-    const [patientsResult, familiesResult, appointmentsResult] = await Promise.allSettled([
-      listPatients(),
-      listFamilies(),
-      listAppointments(),
-    ]);
+    const patientRows = await listPatients();
 
-    if (patientsResult.status === "rejected") {
-      const message =
-        (patientsResult.reason as ApiClientError)?.message ?? "Unable to load patients.";
+    const normalized = patientRows.map((row, index) => {
+      const patientId = toNumber(row.id ?? row.patient_id) ?? undefined;
+      const name = toName(row, `Patient ${index + 1}`);
+      const nic = toString(row.nic, "No NIC");
+      const age = toAge(row);
+      const patientGender = toGender(
+        row.gender ?? row.sex ?? row.patient_gender ?? row.patientGender
+      );
+      const mobile = toString(row.phone ?? row.mobile, "Not provided");
+      const patientCode = toString(row.patient_code ?? row.patientCode, "");
+      const guardianName = toString(row.guardian_name ?? row.guardianName, "");
+      const guardianNic = toString(row.guardian_nic ?? row.guardianNic, "");
+      const guardianRelationship = toString(
+        row.guardian_relationship ?? row.guardianRelationship,
+        ""
+      );
+      const familyName = toString(
+        row.family_name ?? row.familyName ?? asRecord(row.family)?.name,
+        "Unassigned"
+      );
+      const visits = toNumber(row.total_visits ?? row.visit_count ?? row.visits) ?? 0;
+      const nextAppointmentRecord = asRecord(row.next_appointment ?? row.nextAppointment);
+      const nextAppointment = toDisplayDateTime(
+        nextAppointmentRecord?.scheduled_at ??
+          nextAppointmentRecord?.scheduledAt ??
+          row.next_appointment_at ??
+          row.nextAppointmentAt
+      );
+      const allergyHighlights = toStringArray(
+        row.allergy_highlights ?? row.allergyHighlights
+      ).map((item) => `Allergy: ${item}`);
+      const majorActiveCondition = toString(
+        row.major_active_condition ?? row.majorActiveCondition,
+        ""
+      ).trim();
+      const conditionAlerts = majorActiveCondition ? [majorActiveCondition] : [];
+
       return {
-        patients: [],
-        loadState: errorLoadState(message),
-      };
-    }
-
-    const patientRows = asArray(patientsResult.value);
-    const familyRows = familiesResult.status === "fulfilled" ? asArray(familiesResult.value) : [];
-    const appointmentRows =
-      appointmentsResult.status === "fulfilled" ? asArray(appointmentsResult.value) : [];
-
-    const familyNameById = new Map<number, string>();
-    familyRows.forEach((row) => {
-      const id = toNumber(row.id ?? row.family_id);
-      if (id !== null) {
-        familyNameById.set(id, toString(row.name ?? row.familyName, `Family ${id}`));
-      }
+        patientId,
+        name,
+        patientCode,
+        nic,
+        guardianName: guardianName || undefined,
+        guardianNic: guardianNic || undefined,
+        guardianRelationship: guardianRelationship || undefined,
+        age,
+        gender: patientGender,
+        mobile,
+        family: familyName,
+        visits,
+        lastVisit: getRelativeVisitLabel(
+          toString(row.last_visit_at ?? row.lastVisitAt, "")
+        ),
+        nextAppointment: nextAppointment || undefined,
+        tags: [],
+        conditions: [...allergyHighlights, ...conditionAlerts],
+        profileId: patientId ? String(patientId) : undefined,
+      } satisfies Patient;
     });
-
-    let detailFailures = 0;
-    const normalized = await Promise.all(
-      patientRows.map(async (row, index) => {
-        const patientId = toNumber(row.id ?? row.patient_id) ?? undefined;
-        const name = toName(row, `Patient ${index + 1}`);
-        const nic = toString(row.nic, "No NIC");
-        const age = toAge(row);
-        const patientGender = toGender(row.gender);
-        const mobile = toString(row.mobile ?? row.phone, "Not provided");
-        const patientCode = toString(row.patient_code, "");
-        const guardianName = toString(row.guardian_name, "");
-        const guardianNic = toString(row.guardian_nic, "");
-        const guardianRelationship = toString(row.guardian_relationship, "");
-
-        const familyId = toNumber(row.family_id);
-        const nestedFamily = asRecord(row.family);
-        const familyName =
-          toString(nestedFamily?.name) ||
-          (familyId !== null ? familyNameById.get(familyId) : undefined) ||
-          toString(row.familyName) ||
-          "Unassigned";
-
-        let conditions: string[] = [];
-        let allergies: string[] = [];
-        let timelineRows: AnyRecord[] = [];
-        if (patientId !== undefined) {
-          const [conditionsResult, allergiesResult, timelineResult] = await Promise.allSettled([
-            listPatientConditions(patientId),
-            listPatientAllergies(patientId),
-            listPatientTimeline(patientId),
-          ]);
-
-          if (
-            conditionsResult.status === "rejected" ||
-            allergiesResult.status === "rejected" ||
-            timelineResult.status === "rejected"
-          ) {
-            detailFailures += 1;
-          }
-
-          conditions = asArray(
-            conditionsResult.status === "fulfilled" ? conditionsResult.value : []
-          )
-            .map((entry) => toString(entry.name ?? entry.conditionName ?? entry.diagnosisName))
-            .filter(Boolean);
-          allergies = asArray(
-            allergiesResult.status === "fulfilled" ? allergiesResult.value : []
-          )
-            .map((entry) => toString(entry.name ?? entry.allergyName))
-            .filter(Boolean);
-          timelineRows = asArray(timelineResult.status === "fulfilled" ? timelineResult.value : []);
-        }
-
-        const relatedAppointments = appointmentRows.filter((appointment) => {
-          const apptPatientId = toNumber(
-            appointment.patient_id ?? appointment.patientId ?? asRecord(appointment.patient)?.id
-          );
-          return patientId !== undefined && apptPatientId === patientId;
-        });
-
-        const nextAppointment = relatedAppointments
-          .filter((appointment) => {
-            const status = toString(appointment.status).toLowerCase();
-            return status === "waiting" || status === "in_consultation";
-          })
-          .map((appointment) => appointment.scheduledAt ?? appointment.scheduled_at)
-          .map((value) => toDisplayDateTime(value))
-          .find(Boolean);
-
-        const lastTimelineDate = timelineRows
-          .map((entry) =>
-            toString(entry.date ?? entry.recordedAt ?? entry.created_at ?? entry.createdAt)
-          )
-          .filter(Boolean)
-          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
-
-        return {
-          patientId,
-          name,
-          patientCode,
-          nic,
-          guardianName: guardianName || undefined,
-          guardianNic: guardianNic || undefined,
-          guardianRelationship: guardianRelationship || undefined,
-          age,
-          gender: patientGender,
-          mobile,
-          family: familyName,
-          visits: timelineRows.length + 1,
-          lastVisit: getRelativeVisitLabel(lastTimelineDate),
-          nextAppointment: nextAppointment || undefined,
-          tags: conditions.slice(0, 3),
-          conditions: [...conditions, ...allergies.map((item) => `Allergy: ${item}`)],
-          profileId: patientId ? String(patientId) : undefined,
-        } satisfies Patient;
-      })
-    );
-
-    const baseFeedFailure =
-      familiesResult.status === "rejected" || appointmentsResult.status === "rejected";
-    const detailNotice =
-      detailFailures > 0
-        ? "Some timeline or allergy details in the patient directory could not be loaded. Core patient records are still available."
-        : null;
-    const feedNotice = baseFeedFailure
-      ? "Some patient family or appointment feeds failed and fallback data is being shown."
-      : null;
-    const notice = detailNotice ?? feedNotice;
 
     return {
       patients: normalized,
-      loadState: normalized.length ? readyLoadState(notice) : emptyLoadState(notice),
+      loadState: normalized.length ? readyLoadState() : emptyLoadState(),
     };
   } catch (error) {
     const message = (error as ApiClientError)?.message ?? "Unable to load patients.";

@@ -10,12 +10,29 @@ vi.mock("../hooks/usePatientProfileData", () => ({
 
 const mockedUsePatientProfileData = vi.mocked(usePatientProfileData);
 
+const mediumAllergy = {
+  id: "a-1",
+  name: "Peanut",
+  severity: "Medium" as const,
+  severityKey: "moderate" as const,
+  pill: "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
+  dot: "bg-sky-500",
+};
+
+const highAllergy = {
+  id: "a-2",
+  name: "Dust",
+  severity: "High" as const,
+  severityKey: "high" as const,
+  pill: "bg-rose-50 text-rose-700 ring-1 ring-rose-100",
+  dot: "bg-rose-500",
+};
+
 describe("PatientProfileView", () => {
   it("renders a loading state before the profile is ready", () => {
     mockedUsePatientProfileData.mockReturnValue({
       profile: null,
       timeline: [],
-      totalProfiles: 0,
       formatDate: vi.fn(),
       loadState: loadingLoadState(),
       syncError: null,
@@ -31,7 +48,6 @@ describe("PatientProfileView", () => {
     mockedUsePatientProfileData.mockReturnValue({
       profile: null,
       timeline: [],
-      totalProfiles: 0,
       formatDate: vi.fn(),
       loadState: emptyLoadState(),
       syncError: null,
@@ -48,7 +64,6 @@ describe("PatientProfileView", () => {
     mockedUsePatientProfileData.mockReturnValue({
       profile: null,
       timeline: [],
-      totalProfiles: 0,
       formatDate: vi.fn(),
       loadState: errorLoadState("Unable to load patient profile."),
       syncError: "Unable to load patient profile.",
@@ -73,12 +88,12 @@ describe("PatientProfileView", () => {
         mobile: "0771234567",
         family: { assigned: true, name: "Doe", members: ["John Doe"] },
         conditions: ["Hypertension"],
-        allergies: ["Peanut"],
+        allergies: [mediumAllergy],
+        vitals: [],
         firstSeen: "2026-03-07T10:30:00.000Z",
         timeline: [],
       },
       timeline: [],
-      totalProfiles: 3,
       formatDate: (value: string) => value,
       loadState: readyLoadState("Some profile details could not be loaded and fallback data is being shown."),
       syncError: null,
@@ -103,12 +118,12 @@ describe("PatientProfileView", () => {
         mobile: "0771234567",
         family: { assigned: true, name: "Doe", members: ["John Doe"] },
         conditions: [],
-        allergies: ["Dust", "Dust"],
+        allergies: [highAllergy, mediumAllergy],
+        vitals: [],
         firstSeen: "2026-03-07T10:30:00.000Z",
         timeline: [],
       },
       timeline: [],
-      totalProfiles: 3,
       formatDate: (value: string) => value,
       loadState: readyLoadState(),
       syncError: null,
@@ -117,7 +132,7 @@ describe("PatientProfileView", () => {
 
     render(<PatientProfileView profileId="12" />);
 
-    expect(screen.getByText(/no patient history yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/no recorded history, timeline notes, or vitals yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no completed consultations yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/consultation details will appear here after the doctor completes a visit/i)).toBeInTheDocument();
   });
 });

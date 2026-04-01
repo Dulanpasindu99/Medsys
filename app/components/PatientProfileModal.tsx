@@ -17,7 +17,7 @@ export function PatientProfileModal({ profileId, onClose }: { profileId: string;
     if (!profileId || typeof document === 'undefined') return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[200] overflow-y-auto bg-[#F4F4F9] animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[200] overflow-hidden bg-[#F4F4F9] animate-in fade-in duration-200">
             {/* iOS Circular Close Button */}
             <button
                 onClick={onClose}
@@ -30,7 +30,7 @@ export function PatientProfileModal({ profileId, onClose }: { profileId: string;
             </button>
 
             {/* Modal Content */}
-            <div className="min-h-screen">
+            <div className="h-screen">
                 <PatientProfileView profileId={profileId} />
             </div>
         </div>,
