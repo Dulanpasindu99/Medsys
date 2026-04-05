@@ -138,7 +138,7 @@ export function ProfileEditCard({ profile, onClose }: ProfileEditCardProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.patients.profile(profile.id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.patients.consultations(profile.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.patients.list() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
       ]);
       notifySuccess("Patient profile updated successfully.");

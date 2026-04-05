@@ -22,6 +22,7 @@ import {
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
+  useFamiliesQuery,
   useInventoryQuery,
   usePatientAllergiesQuery,
   usePatientProfileQuery,
@@ -36,6 +37,7 @@ import type {
   AppointmentLifecycleStatus,
   ClinicalDiagnosisSelection,
   GuardianCaptureMode,
+  FamilyOption,
   Patient,
   PatientGender,
   PatientVital,
@@ -48,6 +50,7 @@ const EMPTY_ROWS: unknown[] = [];
 type VitalDraftKey = "bloodPressure" | "heartRate" | "temperature" | "spo2";
 type AllergySeverity = "low" | "moderate" | "high";
 type ConsultationWorkflowType = "appointment" | "walk_in";
+type TemperatureUnit = "C" | "F";
 
 function asRecord(value: unknown): AnyRecord | null {
   return value && typeof value === "object" ? (value as AnyRecord) : null;
@@ -325,7 +328,10 @@ function normalizeIsoDate(value: unknown) {
   return "";
 }
 
-function parseVitalDrafts(vitalDrafts: Record<VitalDraftKey, string>) {
+function parseVitalDrafts(
+  vitalDrafts: Record<VitalDraftKey, string>,
+  temperatureUnit: TemperatureUnit
+) {
   const bloodPressureText = vitalDrafts.bloodPressure.trim();
   const heartRateText = vitalDrafts.heartRate.trim();
   const temperatureText = vitalDrafts.temperature.trim();
@@ -336,7 +342,13 @@ function parseVitalDrafts(vitalDrafts: Record<VitalDraftKey, string>) {
   const heartRateMatch = heartRateText.match(/\d+(?:\.\d+)?/);
   const heartRate = heartRateMatch ? Number(heartRateMatch[0]) : undefined;
   const temperatureMatch = temperatureText.match(/\d+(?:\.\d+)?/);
-  const temperatureC = temperatureMatch ? Number(temperatureMatch[0]) : undefined;
+  const parsedTemperature = temperatureMatch ? Number(temperatureMatch[0]) : undefined;
+  const temperatureC =
+    parsedTemperature === undefined
+      ? undefined
+      : temperatureUnit === "F"
+        ? Number((((parsedTemperature - 32) * 5) / 9).toFixed(1))
+        : parsedTemperature;
   const spo2Match = spo2Text.match(/\d+(?:\.\d+)?/);
   const spo2 = spo2Match ? Number(spo2Match[0]) : undefined;
 
@@ -615,6 +627,25 @@ function normalizePatients(rawPatients: unknown, rawAppointments: unknown): Pati
   return [...fromAppointments, ...standalonePatients];
 }
 
+function normalizeFamilyOptions(rawFamilies: unknown): FamilyOption[] {
+  const families: FamilyOption[] = [];
+
+  asArray(rawFamilies).forEach((row, index) => {
+    const id = getNumber(row.id ?? row.family_id);
+    if (id === null) {
+      return;
+    }
+
+    families.push({
+      id,
+      name: getString(row.name ?? row.familyName, `Family ${index + 1}`),
+      familyCode: getString(row.family_code ?? row.familyCode, "") || undefined,
+    });
+  });
+
+  return families.sort((left, right) => left.name.localeCompare(right.name));
+}
+
 function normalizeVitals(raw: unknown): PatientVital[] {
   return asArray(raw).flatMap((row, index) => {
     const typedVitals: PatientVital[] = [];
@@ -865,6 +896,7 @@ export function useDoctorWorkspaceData(
 ) {
   const queryClient = useQueryClient();
   const patientsQuery = usePatientsQuery();
+  const familiesQuery = useFamiliesQuery();
   const waitingAppointmentsQuery = useAppointmentsQuery({ status: "waiting" });
   const currentUserQuery = useCurrentUserQuery();
   const inventoryQuery = useInventoryQuery();
@@ -877,6 +909,7 @@ export function useDoctorWorkspaceData(
   const [patientCode, setPatientCodeState] = useState("");
   const [nicNumber, setNicNumberState] = useState("");
   const [phoneNumber, setPhoneNumberState] = useState("");
+  const [selectedFamilyId, setSelectedFamilyIdState] = useState("");
   const [nicIdentityLabel, setNicIdentityLabel] = useState<"Patient NIC" | "Guardian NIC" | null>(
     null
   );
@@ -911,6 +944,7 @@ export function useDoctorWorkspaceData(
     spo2: "",
   });
   const [vitalsSaveState, setVitalsSaveState] = useState<MutationState>(idleMutationState());
+  const [temperatureUnit, setTemperatureUnitState] = useState<TemperatureUnit>("C");
   const [allergyDraftName, setAllergyDraftName] = useState("");
   const [allergyDraftSeverity, setAllergyDraftSeverity] = useState<AllergySeverity>("moderate");
   const [consultationAllergies, setConsultationAllergies] = useState<
@@ -918,6 +952,7 @@ export function useDoctorWorkspaceData(
   >([]);
   const [allergySaveState, setAllergySaveState] = useState<MutationState>(idleMutationState());
   const rawPatients = patientsQuery.data ?? EMPTY_ROWS;
+  const rawFamilies = familiesQuery.data ?? EMPTY_ROWS;
   const rawWaitingAppointments = waitingAppointmentsQuery.data ?? EMPTY_ROWS;
   const rawInventory = inventoryQuery.data ?? EMPTY_ROWS;
   const currentUserId = currentUserQuery.data?.id ?? null;
@@ -936,6 +971,7 @@ export function useDoctorWorkspaceData(
     () => dedupePatientsByIdentity(normalizePatients(rawPatients, rawWaitingAppointments)),
     [rawPatients, rawWaitingAppointments]
   );
+  const familyOptions = useMemo(() => normalizeFamilyOptions(rawFamilies), [rawFamilies]);
   const inventoryItems = useMemo(() => asArray(rawInventory), [rawInventory]);
   const waitingQueuePatients = useMemo(
     () => patients.filter((patient) => patient.appointmentId !== undefined),
@@ -1353,9 +1389,20 @@ export function useDoctorWorkspaceData(
     setGenderState(value);
   };
 
+  const setSelectedFamilyId = (value: string) => {
+    clearSaveState();
+    clearPatientLookupNotice();
+    setSelectedFamilyIdState(value);
+  };
+
   const setVitalDraft = (key: VitalDraftKey, value: string) => {
     clearVitalsSaveState();
     setVitalDrafts((current) => ({ ...current, [key]: value }));
+  };
+
+  const setTemperatureUnit = (value: TemperatureUnit) => {
+    clearVitalsSaveState();
+    setTemperatureUnitState(value);
   };
 
   const setAllergyNameDraft = (value: string) => {
@@ -1377,6 +1424,7 @@ export function useDoctorWorkspaceData(
     setPatientCodeState("");
     setNicNumberState("");
     setPhoneNumberState("");
+    setSelectedFamilyIdState("");
     setNicIdentityLabel(null);
     setGuardianNameState("");
     setGuardianNicState("");
@@ -1399,6 +1447,7 @@ export function useDoctorWorkspaceData(
       temperature: "",
       spo2: "",
     });
+    setTemperatureUnitState("C");
     setAllergyDraftName("");
     setAllergyDraftSeverity("moderate");
     setConsultationAllergies([]);
@@ -1419,6 +1468,7 @@ export function useDoctorWorkspaceData(
     setPatientCodeState(patient.patientCode);
     setNicNumberState(identityField.value);
     setPhoneNumberState(patient.phone ?? "");
+    setSelectedFamilyIdState("");
     setNicIdentityLabel(identityField.label);
     setGuardianNameState(patient.guardianName ?? "");
     setGuardianNicState(patient.guardianNic ?? "");
@@ -1583,7 +1633,7 @@ export function useDoctorWorkspaceData(
 
   const refreshDoctorQueries = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.list() }),
       queryClient.invalidateQueries({ queryKey: ["appointments"] }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),
@@ -1693,7 +1743,7 @@ export function useDoctorWorkspaceData(
 
     try {
       setSaveState(pendingMutationState());
-      const parsedVitals = parseVitalDrafts(vitalDrafts);
+      const parsedVitals = parseVitalDrafts(vitalDrafts, temperatureUnit);
       const consultationAllergyPayload = buildConsultationAllergyPayload(
         consultationAllergies,
         allergyDraftName,
@@ -1756,6 +1806,9 @@ export function useDoctorWorkspaceData(
                     ? { gender: "female" as const }
                     : {}),
                 ...(phoneNumber.trim() ? { phone: phoneNumber.trim() } : {}),
+                ...(!requiresGuardianDetails && selectedFamilyId.trim()
+                  ? { familyId: Number(selectedFamilyId) }
+                  : {}),
                 ...(requiresGuardianDetails
                   ? selectedGuardian?.patientId && selectedGuardian.familyId
                     ? {
@@ -1961,7 +2014,7 @@ export function useDoctorWorkspaceData(
       return;
     }
 
-    const parsedVitals = parseVitalDrafts(vitalDrafts);
+    const parsedVitals = parseVitalDrafts(vitalDrafts, temperatureUnit);
 
     if (!parsedVitals.hasAnySupportedVital) {
       setVitalsSaveState(
@@ -2072,6 +2125,9 @@ export function useDoctorWorkspaceData(
     setNicNumber,
     phoneNumber,
     setPhoneNumber,
+    familyOptions,
+    selectedFamilyId,
+    setSelectedFamilyId,
     guardianName,
     setGuardianName,
     guardianNic,
@@ -2105,6 +2161,8 @@ export function useDoctorWorkspaceData(
     consultationAllergies,
     vitalDrafts,
     setVitalDraft,
+    temperatureUnit,
+    setTemperatureUnit,
     canEditVitals,
     vitalsDisabledReason,
     vitalsSaveState,

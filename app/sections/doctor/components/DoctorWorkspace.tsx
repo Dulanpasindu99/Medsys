@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PatientProfileModal } from "../../../components/PatientProfileModal";
 import type { MutationFeedback, MutationState } from "../../../lib/async-state";
-import type { GuardianCaptureMode, Patient, PatientGender } from "../types";
+import type { FamilyOption, GuardianCaptureMode, Patient, PatientGender } from "../types";
 import { DoctorHeader } from "./DoctorHeader";
 import { DiseaseSearch } from "./DiseaseSearch";
 import { RxEditor } from "./RxEditor";
@@ -39,6 +39,9 @@ type DoctorWorkspaceProps = {
   onPatientLastNameChange: (value: string) => void;
   patientDateOfBirth: string;
   onPatientDateOfBirthChange: (value: string) => void;
+  familyOptions: FamilyOption[];
+  selectedFamilyId: string;
+  onSelectedFamilyIdChange: (value: string) => void;
   guardianName: string;
   onGuardianNameChange: (value: string) => void;
   guardianNic: string;
@@ -106,6 +109,9 @@ export function DoctorWorkspace({
   onPatientLastNameChange,
   patientDateOfBirth,
   onPatientDateOfBirthChange,
+  familyOptions,
+  selectedFamilyId,
+  onSelectedFamilyIdChange,
   guardianName,
   onGuardianNameChange,
   guardianNic,
@@ -179,6 +185,9 @@ export function DoctorWorkspace({
           onPatientLastNameChange={onPatientLastNameChange}
           patientDateOfBirth={patientDateOfBirth}
           onPatientDateOfBirthChange={onPatientDateOfBirthChange}
+          familyOptions={familyOptions}
+          selectedFamilyId={selectedFamilyId}
+          onSelectedFamilyIdChange={onSelectedFamilyIdChange}
           guardianName={guardianName}
           onGuardianNameChange={onGuardianNameChange}
           guardianNic={guardianNic}

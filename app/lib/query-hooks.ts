@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import type { AnalyticsDashboardQuery } from "./analytics-types";
 import {
+  getAnalyticsDashboard,
   getAnalyticsOverview,
   getAuthStatus,
   getCurrentUser,
@@ -17,10 +19,12 @@ import {
   listPatientVitals,
   listAuditLogs,
   listEncounters,
+  listInventoryAlerts,
   listInventory,
   listInventoryMovements,
   listPendingDispenseQueue,
   listPatients,
+  type ListPatientsInput,
   type AppointmentStatus,
 } from "./api-client";
 import { queryKeys } from "./query-keys";
@@ -41,10 +45,14 @@ export function useAuthStatusQuery() {
   });
 }
 
-export function useUsersQuery(input?: { role?: "owner" | "doctor" | "assistant" }) {
+export function useUsersQuery(
+  input?: { role?: "owner" | "doctor" | "assistant" },
+  enabled = true
+) {
   return useQuery({
     queryKey: queryKeys.users.list(input?.role),
     queryFn: () => listUsers(input),
+    enabled,
   });
 }
 
@@ -52,6 +60,14 @@ export function useAnalyticsOverviewQuery() {
   return useQuery({
     queryKey: queryKeys.analytics.overview,
     queryFn: getAnalyticsOverview,
+  });
+}
+
+export function useAnalyticsDashboardQuery(input?: AnalyticsDashboardQuery, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.analytics.dashboard(input),
+    queryFn: () => getAnalyticsDashboard(input),
+    enabled,
   });
 }
 
@@ -66,6 +82,14 @@ export function useInventoryQuery() {
   return useQuery({
     queryKey: queryKeys.inventory.list,
     queryFn: listInventory,
+  });
+}
+
+export function useInventoryAlertsQuery(days = 30, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.inventory.alerts(days),
+    queryFn: () => listInventoryAlerts({ days }),
+    enabled,
   });
 }
 
@@ -84,11 +108,14 @@ export function useAuditLogsQuery(input?: { limit?: number }) {
   });
 }
 
-export function usePatientsQuery(enabled = true) {
+export function usePatientsQuery(input?: ListPatientsInput | boolean, enabled = true) {
+  const resolvedInput = typeof input === "boolean" ? undefined : input;
+  const resolvedEnabled = typeof input === "boolean" ? input : enabled;
+
   return useQuery({
-    queryKey: queryKeys.patients.list,
-    queryFn: listPatients,
-    enabled,
+    queryKey: queryKeys.patients.list(resolvedInput),
+    queryFn: () => listPatients(resolvedInput),
+    enabled: resolvedEnabled,
   });
 }
 

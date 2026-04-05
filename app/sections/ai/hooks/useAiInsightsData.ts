@@ -25,7 +25,7 @@ function toString(value: unknown, fallback = "") {
 
 export function useAiInsightsData() {
   const overviewQuery = useAnalyticsOverviewQuery();
-  const patientsQuery = usePatientsQuery();
+  const patientsQuery = usePatientsQuery({ scope: "organization" });
   const appointmentsQuery = useAppointmentsQuery();
   const auditLogsQuery = useAuditLogsQuery({ limit: 20 });
 

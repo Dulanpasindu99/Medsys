@@ -113,6 +113,28 @@ describe("/api/patients BFF routes", () => {
     });
   });
 
+  it("forwards patient scope query params to the backend list route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ patients: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await listPatientsRoute(
+      buildRequest(
+        "http://localhost/api/patients?scope=my_patients&doctorId=8",
+        "owner"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "http://localhost:4000/v1/patients?scope=my_patients&doctorId=8"
+    );
+  });
+
   it("serializes patient detail responses from backend payloads", async () => {
     vi.stubGlobal(
       "fetch",

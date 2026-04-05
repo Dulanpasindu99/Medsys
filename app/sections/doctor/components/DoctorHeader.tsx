@@ -11,7 +11,12 @@ import {
   appMuiPickerTextFieldProps,
   appMuiSelectSx,
 } from "../../../components/ui/muiFieldStyles";
-import type { GuardianCaptureMode, Patient, PatientGender } from "../types";
+import type {
+  FamilyOption,
+  GuardianCaptureMode,
+  Patient,
+  PatientGender,
+} from "../types";
 
 function getAgeFromDateOfBirth(dateOfBirth: string) {
   if (!dateOfBirth) {
@@ -88,6 +93,29 @@ const compactSelectSx = {
   },
 } as const;
 
+const compactSecondarySelectSx = {
+  ...compactSelectSx,
+  minHeight: 32,
+  height: 32,
+  "@media (min-width:1280px)": {
+    minHeight: 36,
+    height: 36,
+  },
+  "& .MuiSelect-select": {
+    ...compactSelectSx["& .MuiSelect-select"],
+    minHeight: "32px",
+    paddingTop: 0,
+    paddingBottom: 0,
+    fontSize: "13px",
+    fontWeight: 600,
+    color: "#0f172a",
+    "@media (min-width:1280px)": {
+      minHeight: "36px",
+      fontSize: "13px",
+    },
+  },
+} as const;
+
 type DoctorHeaderProps = {
   search: string;
   onSearchChange: (value: string) => void;
@@ -113,6 +141,9 @@ type DoctorHeaderProps = {
   onPatientLastNameChange: (value: string) => void;
   patientDateOfBirth: string;
   onPatientDateOfBirthChange: (value: string) => void;
+  familyOptions: FamilyOption[];
+  selectedFamilyId: string;
+  onSelectedFamilyIdChange: (value: string) => void;
   guardianName: string;
   onGuardianNameChange: (value: string) => void;
   guardianNic: string;
@@ -161,6 +192,9 @@ export function DoctorHeader({
   onPatientLastNameChange,
   patientDateOfBirth,
   onPatientDateOfBirthChange,
+  familyOptions,
+  selectedFamilyId,
+  onSelectedFamilyIdChange,
   guardianName,
   onGuardianNameChange,
   guardianNic,
@@ -203,8 +237,8 @@ export function DoctorHeader({
 
   return (
     <div className="grid gap-x-2.5 gap-y-1.5 p-2 sm:gap-x-3 sm:gap-y-2 sm:p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-3 xl:gap-x-4 xl:p-4">
-      <div className="min-w-0 w-full lg:col-start-1 lg:row-start-1 lg:max-w-[34rem] xl:max-w-[40rem] 2xl:max-w-[48rem]">
-        <div className="flex items-center gap-2">
+      <div className="min-w-0 w-full lg:col-start-1 lg:row-start-1">
+        <div className="flex items-center gap-2 overflow-hidden">
           <div className="relative min-w-0 flex-1">
             <input
               className="h-9 w-full rounded-[999px] border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"
@@ -265,6 +299,11 @@ export function DoctorHeader({
           >
             {modeLabel}
           </span>
+          {isCreatingPatientInline ? (
+            <span className="inline-flex h-9 shrink-0 items-center rounded-[999px] bg-amber-50 px-3.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100 xl:h-10 xl:px-4">
+              New patient draft
+            </span>
+          ) : null}
         </div>
       </div>
       <div
@@ -291,11 +330,6 @@ export function DoctorHeader({
           {selectedQueuePatient?.time ? (
             <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-700 ring-1 ring-slate-200">
               Time {selectedQueuePatient.time}
-            </span>
-          ) : null}
-          {isCreatingPatientInline ? (
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100">
-              New patient draft
             </span>
           ) : null}
         </div>
@@ -441,7 +475,7 @@ export function DoctorHeader({
               {patientLookupNotice}
             </p>
           ) : null}
-          <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-3 lg:gap-3">
+          <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_210px] lg:gap-3">
             <input
               className="h-9 rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"
               placeholder="First Name"
@@ -480,23 +514,48 @@ export function DoctorHeader({
                 </span>
               ) : null}
             </div>
-            <input
-              className="h-9 rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"
-              placeholder="NIC (optional)"
-              value={nicNumber}
-              onChange={(e) => onNicNumberChange(e.target.value)}
-            />
-            <input
-              className="h-9 rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"
-              placeholder="Phone (optional)"
-              value={phoneNumber}
-              onChange={(e) => onPhoneNumberChange(e.target.value)}
-            />
-            <div className="grid h-9 grid-cols-3 gap-2 self-stretch md:col-span-2 lg:col-span-1 xl:h-10">
+          </div>
+          <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_210px] lg:gap-3">
+            <div className="grid gap-2.5 md:grid-cols-2">
+              <input
+                className="h-8 rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-9 xl:px-4"
+                placeholder="NIC"
+                value={nicNumber}
+                onChange={(e) => onNicNumberChange(e.target.value)}
+              />
+              <input
+                className="h-8 rounded-xl border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-9 xl:px-4"
+                placeholder="Phone"
+                value={phoneNumber}
+                onChange={(e) => onPhoneNumberChange(e.target.value)}
+              />
+            </div>
+            {!requiresGuardianDetails ? (
+              <FormControl fullWidth size="small">
+                <Select
+                  value={selectedFamilyId}
+                  onChange={(event) =>
+                    onSelectedFamilyIdChange(String(event.target.value))
+                  }
+                  displayEmpty
+                  sx={compactSecondarySelectSx}
+                >
+                  <MenuItem value="">New family</MenuItem>
+                  {familyOptions.map((family) => (
+                    <MenuItem key={family.id} value={String(family.id)}>
+                      {family.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <div className="hidden lg:block" />
+            )}
+            <div className="grid h-8 grid-cols-3 gap-1 self-stretch xl:h-9">
               <button
                 type="button"
                 onClick={() => onGenderChange("Male")}
-                className={`h-9 rounded-full text-[10px] font-semibold uppercase tracking-[0.11em] transition xl:h-10 xl:text-[11px] xl:tracking-[0.14em] ${
+                className={`h-8 rounded-full px-1.5 text-[12px] font-semibold text-slate-900 transition xl:h-9 xl:px-2 xl:text-[13px] ${
                   gender === "Male"
                     ? "border border-sky-300 bg-sky-50 text-sky-700 shadow-[0_8px_18px_rgba(14,165,233,0.12)]"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -507,7 +566,7 @@ export function DoctorHeader({
               <button
                 type="button"
                 onClick={() => onGenderChange("Female")}
-                className={`h-9 rounded-full text-[10px] font-semibold uppercase tracking-[0.11em] transition xl:h-10 xl:text-[11px] xl:tracking-[0.14em] ${
+                className={`h-8 rounded-full px-1.5 text-[12px] font-semibold text-slate-900 transition xl:h-9 xl:px-2 xl:text-[13px] ${
                   gender === "Female"
                     ? "border border-rose-300 bg-rose-50 text-rose-700 shadow-[0_8px_18px_rgba(244,63,94,0.12)]"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -518,13 +577,13 @@ export function DoctorHeader({
               <button
                 type="button"
                 onClick={() => onGenderChange("Unspecified")}
-                className={`h-9 rounded-full text-[10px] font-semibold uppercase tracking-[0.11em] transition xl:h-10 xl:text-[11px] xl:tracking-[0.14em] ${
+                className={`h-8 rounded-full px-1.5 text-[12px] font-semibold text-slate-900 transition xl:h-9 xl:px-2 xl:text-[13px] ${
                   gender === "Unspecified"
                     ? "bg-slate-800 text-white shadow-[0_8px_18px_rgba(15,23,42,0.18)]"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                Unspecified
+                Other
               </button>
             </div>
           </div>

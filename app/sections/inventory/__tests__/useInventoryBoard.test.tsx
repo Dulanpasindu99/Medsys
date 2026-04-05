@@ -8,20 +8,24 @@ import { useInventoryBoard } from "../hooks/useInventoryBoard";
 vi.mock("../../../lib/api-client", () => ({
   createInventoryItem: vi.fn(),
   createInventoryMovement: vi.fn(),
+  updateInventoryItem: vi.fn(),
 }));
 
 vi.mock("../../../lib/query-hooks", () => ({
   useCurrentUserQuery: vi.fn(),
+  useInventoryAlertsQuery: vi.fn(),
   useInventoryQuery: vi.fn(),
   useInventoryMovementsQuery: vi.fn(),
 }));
 
-import { createInventoryItem, createInventoryMovement } from "../../../lib/api-client";
-import { useCurrentUserQuery, useInventoryMovementsQuery, useInventoryQuery } from "../../../lib/query-hooks";
+import { createInventoryItem, createInventoryMovement, updateInventoryItem } from "../../../lib/api-client";
+import { useCurrentUserQuery, useInventoryAlertsQuery, useInventoryMovementsQuery, useInventoryQuery } from "../../../lib/query-hooks";
 
 const mockedCreateInventoryItem = vi.mocked(createInventoryItem);
 const mockedCreateInventoryMovement = vi.mocked(createInventoryMovement);
+const mockedUpdateInventoryItem = vi.mocked(updateInventoryItem);
 const mockedUseCurrentUserQuery = vi.mocked(useCurrentUserQuery);
+const mockedUseInventoryAlertsQuery = vi.mocked(useInventoryAlertsQuery);
 const mockedUseInventoryQuery = vi.mocked(useInventoryQuery);
 const mockedUseInventoryMovementsQuery = vi.mocked(useInventoryMovementsQuery);
 
@@ -56,8 +60,14 @@ describe("useInventoryBoard", () => {
         data: [{ movementType: "in", quantity: 1 }],
       }) as never
     );
+    mockedUseInventoryAlertsQuery.mockReturnValue(
+      buildQueryState({
+        data: { lowStockCount: 1, recommendedReorders: [{ itemName: "Paracetamol" }] },
+      }) as never
+    );
     mockedCreateInventoryItem.mockResolvedValue({ id: 9 });
     mockedCreateInventoryMovement.mockResolvedValue({ id: 4 });
+    mockedUpdateInventoryItem.mockResolvedValue({ id: 2 });
   });
 
   it("hydrates inventory items and selected movement history from shared queries", async () => {
@@ -72,7 +82,9 @@ describe("useInventoryBoard", () => {
     expect(result.current.items).toHaveLength(1);
     expect(result.current.selectedItemId).toBe(2);
     expect(mockedUseInventoryMovementsQuery).toHaveBeenLastCalledWith(2, true);
-    expect(result.current.movements).toEqual([{ movementType: "in", quantity: 1 }]);
+    expect(result.current.movements).toEqual([
+      expect.objectContaining({ type: "in", quantity: 1 }),
+    ]);
   });
 
   it("creates items and movements, then refetches the shared queries", async () => {
@@ -106,10 +118,37 @@ describe("useInventoryBoard", () => {
     });
 
     expect(mockedCreateInventoryItem).toHaveBeenCalledWith({
+      sku: null,
       name: "Ibuprofen",
+      genericName: null,
       category: "medicine",
-      quantity: 25,
-      unit: "units",
+      subcategory: null,
+      description: null,
+      dosageForm: null,
+      strength: null,
+      stock: 25,
+      route: null,
+      prescriptionType: null,
+      unit: "tablet",
+      packageUnit: "box",
+      packageSize: 1,
+      brandName: null,
+      supplierName: null,
+      leadTimeDays: 7,
+      reorderLevel: 0,
+      minStockLevel: null,
+      maxStockLevel: null,
+      expiryDate: null,
+      batchNo: null,
+      storageLocation: null,
+      directDispenseAllowed: false,
+      isAntibiotic: false,
+      isControlled: false,
+      isPediatricSafe: false,
+      requiresPrescription: false,
+      clinicUseOnly: false,
+      notes: null,
+      isActive: true,
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: queryKeys.inventory.list,
@@ -123,6 +162,7 @@ describe("useInventoryBoard", () => {
     expect(mockedCreateInventoryMovement).toHaveBeenCalledWith(2, {
       type: "out",
       quantity: 1,
+      reason: "dispense",
       note: "Quick out from frontend",
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
@@ -137,10 +177,10 @@ describe("useInventoryBoard", () => {
     });
   });
 
-  it("blocks inventory writes for read-only roles", async () => {
+  it("blocks inventory writes when no authenticated user is available", async () => {
     mockedUseCurrentUserQuery.mockReturnValue(
       buildQueryState({
-        data: { id: 77, role: "doctor" },
+        data: null,
       }) as never
     );
 
@@ -200,6 +240,24 @@ describe("useInventoryBoard", () => {
 
     expect(result.current.movementState.status).toBe("idle");
     expect(result.current.movementFeedback).toBeNull();
+  });
+
+  it("hydrates alerts and supports switching into edit mode", async () => {
+    const { result } = renderHook(() => useInventoryBoard(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.alertSummary.lowStockCount).toBe(1);
+    });
+
+    act(() => {
+      result.current.startEditItem(result.current.items[0]);
+    });
+
+    expect(result.current.activeTab).toBe("inventory");
+    expect(result.current.isEditingItem).toBe(true);
+    expect(result.current.itemForm.name).toBe("Paracetamol");
   });
 
   it("disables stock movement actions when no inventory item is selected", async () => {

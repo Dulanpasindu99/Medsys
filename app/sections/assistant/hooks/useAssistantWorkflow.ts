@@ -464,7 +464,7 @@ export function useAssistantWorkflow() {
   const pendingQueueQuery = usePendingDispenseQueueQuery();
   const allAppointmentsQuery = useAppointmentsQuery();
   const completedAppointmentsQuery = useAppointmentsQuery({ status: "completed" });
-  const patientsQuery = usePatientsQuery();
+  const patientsQuery = usePatientsQuery({ scope: "organization" });
   const familiesQuery = useFamiliesQuery();
   const analyticsOverviewQuery = useAnalyticsOverviewQuery();
   const currentUserQuery = useCurrentUserQuery();
@@ -646,7 +646,7 @@ export function useAssistantWorkflow() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.pendingDispenseQueue }),
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.list() }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.patients.list }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.list() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory }),
       queryClient.invalidateQueries({ queryKey: queryKeys.families.list }),
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.overview }),

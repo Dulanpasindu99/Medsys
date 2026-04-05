@@ -9,12 +9,31 @@ export const queryKeys = {
   },
   analytics: {
     overview: ["analytics", "overview"] as const,
+    dashboard: (input?: {
+      range?: string;
+      role?: string;
+      doctorId?: number;
+      assistantId?: number;
+      dateFrom?: string;
+      dateTo?: string;
+    }) =>
+      ([
+        "analytics",
+        "dashboard",
+        input?.range ?? "7d",
+        input?.role ?? "default",
+        input?.doctorId ?? "none",
+        input?.assistantId ?? "none",
+        input?.dateFrom ?? "none",
+        input?.dateTo ?? "none",
+      ] as const),
   },
   encounters: {
     list: ["encounters", "list"] as const,
   },
   inventory: {
     list: ["inventory", "list"] as const,
+    alerts: (days = 30) => ["inventory", "alerts", days] as const,
     movements: (inventoryId: number | string) =>
       ["inventory", "movements", String(inventoryId)] as const,
   },
@@ -24,7 +43,15 @@ export const queryKeys = {
   },
   patients: {
     directory: ["patients", "directory"] as const,
-    list: ["patients", "list"] as const,
+    list: (input?: { scope?: string; doctorId?: number | string }) =>
+      input?.scope || input?.doctorId !== undefined
+        ? ([
+            "patients",
+            "list",
+            input?.scope ?? "default",
+            input?.doctorId !== undefined ? String(input.doctorId) : "none",
+          ] as const)
+        : (["patients", "list"] as const),
     profile: (patientId: number | string) => ["patients", "profile", String(patientId)] as const,
     consultations: (patientId: number | string) =>
       ["patients", "consultations", String(patientId)] as const,

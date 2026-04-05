@@ -32,6 +32,12 @@ export type Patient = {
 export type PatientGender = "Male" | "Female" | "Unspecified";
 export type GuardianCaptureMode = "quick" | "draft";
 
+export type FamilyOption = {
+  id: number;
+  name: string;
+  familyCode?: string;
+};
+
 export type ClinicalDiagnosisOption = {
   code: string;
   codeSystem: string;

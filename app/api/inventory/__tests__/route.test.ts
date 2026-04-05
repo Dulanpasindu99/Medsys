@@ -7,6 +7,7 @@ import {
 import { createSessionToken, SESSION_COOKIE_NAME } from "../../../lib/session";
 import { GET as listInventoryRoute, POST as createInventoryRoute } from "../route";
 import { PATCH as updateInventoryRoute } from "../[id]/route";
+import { GET as listInventoryAlertsRoute } from "../alerts/route";
 import {
   GET as listMovementRoute,
   POST as createMovementRoute,
@@ -34,6 +35,16 @@ function buildRequest(
         `${BACKEND_ACCESS_COOKIE_NAME}=backend-access-token`,
         `${BACKEND_REFRESH_COOKIE_NAME}=backend-refresh-token`,
       ].join("; "),
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+function buildUnauthedRequest(url: string, method = "GET", body?: unknown) {
+  return new NextRequest(url, {
+    method,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: {
       "Content-Type": "application/json",
     },
   });
@@ -93,22 +104,21 @@ describe("/api/inventory BFF routes", () => {
     expect(body).toEqual({ id: 2, name: "Ibuprofen", quantity: 10 });
   });
 
-  it("blocks doctors from creating inventory items", async () => {
+  it("blocks unauthenticated inventory item creation", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await createInventoryRoute(
-      buildRequest(
+      buildUnauthedRequest(
         "http://localhost/api/inventory",
         "POST",
-        { name: "Ibuprofen", category: "medicine", quantity: 10, unit: "units" },
-        "doctor"
+        { name: "Ibuprofen", category: "medicine", quantity: 10, unit: "units" }
       )
     );
     const body = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(body).toEqual({ error: "Forbidden." });
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ error: "Unauthorized." });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -178,6 +188,31 @@ describe("/api/inventory BFF routes", () => {
     expect(body).toEqual([{ id: 99, type: "in", quantity: 1 }]);
   });
 
+  it("loads inventory alerts through the backend-backed BFF", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ lowStockCount: 2, recommendedReorders: [{ itemName: "Paracetamol" }] }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await listInventoryAlertsRoute(
+      buildRequest("http://localhost/api/inventory/alerts?days=30")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/inventory/alerts?days=30");
+    expect(body).toEqual({
+      lowStockCount: 2,
+      recommendedReorders: [{ itemName: "Paracetamol" }],
+    });
+  });
+
   it("creates inventory movements through the backend-backed BFF", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -203,18 +238,18 @@ describe("/api/inventory BFF routes", () => {
     expect(body).toEqual({ id: 100, type: "out", quantity: 1 });
   });
 
-  it("blocks doctors from creating inventory movements", async () => {
+  it("blocks unauthenticated inventory movement creation", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await createMovementRoute(
-      buildRequest("http://localhost/api/inventory/2/movements", "POST", { type: "out", quantity: 1 }, "doctor"),
+      buildUnauthedRequest("http://localhost/api/inventory/2/movements", "POST", { type: "out", quantity: 1 }),
       { params: Promise.resolve({ id: "2" }) }
     );
     const body = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(body).toEqual({ error: "Forbidden." });
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ error: "Unauthorized." });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -26,6 +26,9 @@ export default function DoctorSection() {
     setPatientLastName,
     patientDateOfBirth,
     setPatientDateOfBirth,
+    familyOptions,
+    selectedFamilyId,
+    setSelectedFamilyId,
     patientCode,
     nicNumber,
     nicIdentityLabel,
@@ -66,6 +69,8 @@ export default function DoctorSection() {
     consultationAllergies,
     vitalDrafts,
     setVitalDraft,
+    temperatureUnit,
+    setTemperatureUnit,
     canEditVitals,
     vitalsDisabledReason,
     vitalsFeedback,
@@ -168,6 +173,8 @@ export default function DoctorSection() {
                 onRemoveConsultationAllergy={removeConsultationAllergy}
                 vitalDrafts={vitalDrafts}
                 onVitalDraftChange={setVitalDraft}
+                temperatureUnit={temperatureUnit}
+                onTemperatureUnitChange={setTemperatureUnit}
                 canEditVitals={canEditVitals}
                 vitalsDisabledReason={vitalsDisabledReason}
                 vitalsFeedback={vitalsFeedback}
@@ -211,6 +218,9 @@ export default function DoctorSection() {
                 onPatientLastNameChange={setPatientLastName}
                 patientDateOfBirth={patientDateOfBirth}
                 onPatientDateOfBirthChange={setPatientDateOfBirth}
+                familyOptions={familyOptions}
+                selectedFamilyId={selectedFamilyId}
+                onSelectedFamilyIdChange={setSelectedFamilyId}
                 guardianName={guardianName}
                 onGuardianNameChange={setGuardianName}
                 guardianNic={guardianNic}

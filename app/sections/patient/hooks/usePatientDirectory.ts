@@ -187,7 +187,7 @@ async function fetchPatientDirectorySnapshot(): Promise<{
   loadState: LoadState;
 }> {
   try {
-    const patientRows = await listPatients();
+    const patientRows = await listPatients({ scope: "organization" });
 
     const normalized = patientRows.map((row, index) => {
       const patientId = toNumber(row.id ?? row.patient_id) ?? undefined;

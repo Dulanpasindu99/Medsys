@@ -31,6 +31,8 @@ type DoctorSidebarProps = {
     temperature: string;
     spo2: string;
   };
+  temperatureUnit: "C" | "F";
+  onTemperatureUnitChange: (value: "C" | "F") => void;
   onVitalDraftChange: (
     key: "bloodPressure" | "heartRate" | "temperature" | "spo2",
     value: string,
@@ -102,6 +104,8 @@ export function DoctorSidebar({
   consultationAllergies,
   onRemoveConsultationAllergy,
   vitalDrafts,
+  temperatureUnit,
+  onTemperatureUnitChange,
   onVitalDraftChange,
   canEditVitals = false,
   vitalsDisabledReason = null,
@@ -122,6 +126,20 @@ export function DoctorSidebar({
   const showPatientEditors = Boolean(
     selectedPatientProfileId || showDraftEditors,
   );
+  const vitalFieldMeta: Array<{
+    key: "bloodPressure" | "heartRate" | "temperature" | "spo2";
+    label: string;
+    placeholder: string;
+  }> = [
+    { key: "bloodPressure", label: "Blood Pressure", placeholder: "120/" },
+    { key: "heartRate", label: "Heart Rate", placeholder: "72" },
+    {
+      key: "temperature",
+      label: "Temperature",
+      placeholder: temperatureUnit === "F" ? "98.6" : "36.8",
+    },
+    { key: "spo2", label: "SpO2", placeholder: "99" },
+  ];
 
   return (
     <div className="order-2 col-span-12 flex h-auto min-h-0 flex-col lg:col-span-4 lg:h-full 2xl:col-span-3">
@@ -192,34 +210,60 @@ export function DoctorSidebar({
               {showPatientEditors ? (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {[
-                      ["bloodPressure", "Blood Pressure"],
-                      ["heartRate", "Heart Rate"],
-                      ["temperature", "Temperature"],
-                      ["spo2", "SpO2"],
-                    ].map(([key, label]) => (
+                    {vitalFieldMeta.map(({ key, label, placeholder }) => (
                       <label
                         key={key}
                         className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
                       >
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                          {label}
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {label}
+                          </p>
+                          {key === "temperature" ? (
+                            <FormControl size="small" sx={{ minWidth: 52 }}>
+                              <Select
+                                value={temperatureUnit}
+                                onChange={(event) =>
+                                  onTemperatureUnitChange(event.target.value as "C" | "F")
+                                }
+                                disabled={!canEditVitals}
+                                sx={{
+                                  ...appMuiSelectSx,
+                                  minHeight: 28,
+                                  height: 28,
+                                  borderRadius: "999px",
+                                  "& .MuiSelect-select": {
+                                    ...appMuiSelectSx["& .MuiSelect-select"],
+                                    minHeight: "28px",
+                                    py: 0,
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                  },
+                                }}
+                              >
+                                <MenuItem value="C">C</MenuItem>
+                                <MenuItem value="F">F</MenuItem>
+                              </Select>
+                            </FormControl>
+                          ) : null}
+                        </div>
                         <input
-                          value={vitalDrafts[key as keyof typeof vitalDrafts]}
+                          value={
+                            key === "bloodPressure"
+                              ? vitalDrafts.bloodPressure || "120/"
+                              : vitalDrafts[key]
+                          }
                           onChange={(event) =>
                             onVitalDraftChange(
-                              key as
-                                | "bloodPressure"
-                                | "heartRate"
-                                | "temperature"
-                                | "spo2",
-                              event.target.value,
+                              key,
+                              key === "bloodPressure"
+                                ? `120/${event.target.value.replace(/^120\//, "").replace(/[^\d]/g, "")}`
+                                : event.target.value
                             )
                           }
                           disabled={!canEditVitals}
-                          className="mt-2 h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
-                          placeholder={`Enter ${label.toLowerCase()}`}
+                          className="mt-2 h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-[12px] placeholder:font-medium placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
+                          placeholder={placeholder}
                         />
                       </label>
                     ))}

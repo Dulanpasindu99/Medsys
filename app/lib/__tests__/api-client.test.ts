@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  getAnalyticsDashboard,
   createAppointment,
   saveConsultation,
   createEncounter,
@@ -19,6 +20,7 @@ import {
   getPatientProfile,
   getPrescriptionById,
   listInventory,
+  listInventoryAlerts,
   searchInventory,
   listInventoryMovements,
   listEncounters,
@@ -43,24 +45,46 @@ describe("api client backend compatibility", () => {
   });
 
   it("loads patients through the BFF contract instead of direct backend adaptation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          patients: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            patients: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
-      )
+      fetchMock
     );
 
     await expect(listPatients()).resolves.toEqual([
       expect.objectContaining({ id: 7, name: "Jane Doe", nic: "990011223V" }),
     ]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/patients",
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("passes patient scope filters through the BFF query string", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ patients: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listPatients({ scope: "my_patients", doctorId: 8 })).resolves.toEqual([]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/patients?scope=my_patients&doctorId=8",
+      expect.objectContaining({ method: "GET" })
+    );
   });
 
   it("sends the current frontend patient payload shape to the BFF route", async () => {
@@ -442,6 +466,46 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/analytics/overview");
   });
 
+  it("loads analytics dashboard through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          roleContext: {
+            resolvedRole: "doctor",
+            actorRole: "doctor",
+            activeRole: "doctor",
+            roles: ["doctor"],
+            doctorId: 12,
+            assistantId: null,
+            workflowProfile: { mode: "self_service" },
+          },
+          generatedAt: "2026-04-03T12:00:00.000Z",
+          range: {
+            preset: "7d",
+            dateFrom: "2026-03-27T00:00:00.000Z",
+            dateTo: "2026-04-03T23:59:59.999Z",
+          },
+          summary: {},
+          charts: {},
+          insights: [],
+          tables: {},
+          alerts: [],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getAnalyticsDashboard({ range: "7d" })).resolves.toMatchObject({
+      roleContext: expect.objectContaining({ resolvedRole: "doctor" }),
+      range: expect.objectContaining({ preset: "7d" }),
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/analytics/dashboard?range=7d");
+  });
+
   it("rejects malformed analytics overview payloads with a contract error", async () => {
     vi.stubGlobal(
       "fetch",
@@ -557,6 +621,25 @@ describe("api client backend compatibility", () => {
     );
   });
 
+  it("loads inventory alerts through the dedicated BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ lowStockCount: 3, stockoutRiskCount: 1 }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listInventoryAlerts({ days: 30 })).resolves.toEqual({
+      lowStockCount: 3,
+      stockoutRiskCount: 1,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/inventory/alerts?days=30");
+  });
+
   it("writes inventory mutations through the dedicated BFF routes", async () => {
     const fetchMock = vi
       .fn()
@@ -583,10 +666,10 @@ describe("api client backend compatibility", () => {
     await createInventoryItem({
       name: "Ibuprofen",
       category: "medicine",
-      quantity: 10,
+      stock: 10,
       unit: "units",
     });
-    await updateInventoryItem(2, { quantity: 15 });
+    await updateInventoryItem(2, { stock: 15 });
     await createInventoryMovement(2, { type: "out", quantity: 1, note: "Quick out" });
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/inventory");

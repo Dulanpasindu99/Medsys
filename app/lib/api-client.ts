@@ -1,5 +1,10 @@
 import type { AppRole } from "./roles";
 import type { AppPermission } from "./authorization";
+import {
+  isAnalyticsDashboardResponse,
+  type AnalyticsDashboardQuery,
+  type AnalyticsDashboardResponse,
+} from "./analytics-types";
 
 export type ApiClientError = {
   message: string;
@@ -36,6 +41,140 @@ export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "c
 export type ApiRecord = Record<string, unknown>;
 export type VisitStartPriority = "low" | "normal" | "high" | "critical";
 export type ConsultationPriority = VisitStartPriority;
+export type InventoryCategory = "medicine" | "consumable" | "equipment" | "other";
+export type PrescriptionType = "clinical" | "outside" | "both";
+export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "near_expiry" | "expired";
+export type InventoryMovementType = "in" | "out" | "adjustment";
+export type InventoryItem = {
+  id: number;
+  organizationId?: string;
+  sku: string | null;
+  name: string;
+  genericName: string | null;
+  category: InventoryCategory;
+  subcategory: string | null;
+  description: string | null;
+  dosageForm: string | null;
+  strength: string | null;
+  unit: string;
+  route: string | null;
+  prescriptionType: PrescriptionType | null;
+  packageUnit: string | null;
+  packageSize: string | null;
+  brandName: string | null;
+  supplierName: string | null;
+  leadTimeDays: number | null;
+  stock: string;
+  reorderLevel: string;
+  minStockLevel: string | null;
+  maxStockLevel: string | null;
+  expiryDate: string | null;
+  batchNo: string | null;
+  storageLocation: string | null;
+  directDispenseAllowed: boolean;
+  isAntibiotic: boolean;
+  isControlled: boolean;
+  isPediatricSafe: boolean;
+  requiresPrescription: boolean;
+  clinicUseOnly: boolean;
+  notes: string | null;
+  stockStatus: StockStatus;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+};
+export type InventoryCreatePayload = {
+  sku?: string | null;
+  name: string;
+  genericName?: string | null;
+  category: InventoryCategory;
+  subcategory?: string | null;
+  description?: string | null;
+  dosageForm?: string | null;
+  strength?: string | null;
+  unit: string;
+  route?: string | null;
+  prescriptionType?: PrescriptionType | null;
+  packageUnit?: string | null;
+  packageSize?: number | null;
+  brandName?: string | null;
+  supplierName?: string | null;
+  leadTimeDays?: number | null;
+  stock?: number;
+  reorderLevel?: number;
+  minStockLevel?: number | null;
+  maxStockLevel?: number | null;
+  expiryDate?: string | null;
+  batchNo?: string | null;
+  storageLocation?: string | null;
+  directDispenseAllowed?: boolean;
+  isAntibiotic?: boolean;
+  isControlled?: boolean;
+  isPediatricSafe?: boolean;
+  requiresPrescription?: boolean;
+  clinicUseOnly?: boolean;
+  notes?: string | null;
+  isActive?: boolean;
+};
+export type InventoryUpdatePayload = Partial<InventoryCreatePayload>;
+export type InventoryMovementPayload = {
+  movementType?: InventoryMovementType;
+  type?: InventoryMovementType;
+  quantity: number;
+  reason?: "purchase" | "dispense" | "damage" | "expired" | "return" | "adjustment" | "manual" | null;
+  note?: string | null;
+  referenceType?: string | null;
+  referenceId?: number | null;
+};
+export type InventoryAlertItem = {
+  id: number;
+  sku: string | null;
+  name: string;
+  genericName: string | null;
+  category: InventoryCategory;
+  subcategory: string | null;
+  dosageForm: string | null;
+  strength: string | null;
+  unit: string;
+  route: string | null;
+  prescriptionType: PrescriptionType | null;
+  packageUnit: string | null;
+  packageSize: string | null;
+  brandName: string | null;
+  supplierName: string | null;
+  leadTimeDays: number;
+  stock: number;
+  reorderLevel: number;
+  minStockLevel: string | null;
+  maxStockLevel: string | null;
+  expiryDate: string | null;
+  batchNo: string | null;
+  storageLocation: string | null;
+  directDispenseAllowed: boolean;
+  stockStatus: StockStatus;
+  totalOutgoing: number;
+  averageDailyUsage: number;
+  projectedDaysRemaining: number | null;
+  recommendedReorderQty: number;
+  lowStock: boolean;
+  stockoutRisk: boolean;
+  expiryRisk: boolean;
+};
+export type InventoryAlertsResponse = {
+  generatedAt: string;
+  rangeDays: number;
+  summary: {
+    totalItems: number;
+    lowStockCount: number;
+    stockoutRiskCount: number;
+    nearExpiryCount: number;
+    expiredCount: number;
+    fastMovingCount: number;
+  };
+  alerts: InventoryAlertItem[];
+  recommendations: InventoryAlertItem[];
+};
 export type ConsultationSavePayload = {
   workflowType: "appointment" | "walk_in";
   appointmentId?: number;
@@ -46,6 +185,8 @@ export type ConsultationSavePayload = {
     nic?: string;
     gender?: "male" | "female";
     phone?: string;
+    familyId?: number;
+    familyCode?: string;
     guardianPatientId?: number;
     guardianName?: string;
     guardianNic?: string;
@@ -333,6 +474,11 @@ export type PatientUpdateInput = {
   guardianRelationship?: string | null;
 };
 
+export type ListPatientsInput = {
+  scope?: "my_patients" | "organization";
+  doctorId?: number | string;
+};
+
 export async function loginUser(email: string, password: string, roleHint?: AppRole) {
   const response = await fetch("/api/auth/login", {
     method: "POST",
@@ -467,8 +613,16 @@ export async function updateUserExtraPermissions(
   return response.user;
 }
 
-export async function listPatients() {
-  const response = await apiFetch<{ patients: unknown[] }>("/api/patients", { method: "GET" });
+export async function listPatients(input?: ListPatientsInput) {
+  const params = new URLSearchParams();
+  if (input?.scope) {
+    params.set("scope", input.scope);
+  }
+  if (input?.doctorId !== undefined && input.doctorId !== null && String(input.doctorId).trim()) {
+    params.set("doctorId", String(input.doctorId));
+  }
+  const query = params.size ? `?${params.toString()}` : "";
+  const response = await apiFetch<{ patients: unknown[] }>(`/api/patients${query}`, { method: "GET" });
   return expectApiRecordArray(response.patients, "patients");
 }
 
@@ -683,31 +837,53 @@ export async function getAnalyticsOverview() {
   return expectApiRecord(response, "analytics overview");
 }
 
+export async function getAnalyticsDashboard(
+  input: AnalyticsDashboardQuery = {}
+): Promise<AnalyticsDashboardResponse> {
+  const params = new URLSearchParams();
+  if (input.range) params.set("range", input.range);
+  if (input.role) params.set("role", input.role);
+  if (typeof input.doctorId === "number") params.set("doctorId", String(input.doctorId));
+  if (typeof input.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (input.dateFrom) params.set("dateFrom", input.dateFrom);
+  if (input.dateTo) params.set("dateTo", input.dateTo);
+  const query = params.size ? `?${params.toString()}` : "";
+  const response = await apiFetch<unknown>(`/api/analytics/dashboard${query}`, { method: "GET" });
+  if (!isAnalyticsDashboardResponse(response)) {
+    throw contractMismatch("analytics dashboard response is not an object.");
+  }
+  return response;
+}
+
 export async function listInventory() {
   const response = await apiFetch<unknown>("/api/inventory", { method: "GET" });
   return expectApiRecordArray(response, "inventory");
 }
 
+export async function listInventoryAlerts(input?: { days?: number }) {
+  const params = new URLSearchParams();
+  if (typeof input?.days === "number") params.set("days", String(input.days));
+  const query = params.size ? `?${params.toString()}` : "";
+  return apiFetch<InventoryAlertsResponse>(`/api/inventory/alerts${query}`, { method: "GET" });
+}
+
 export async function searchInventory(input: {
   q: string;
   limit?: number;
-  category?: "medicine" | "consumable" | "equipment" | "other";
+  category?: InventoryCategory;
+  activeOnly?: boolean;
 }) {
   const params = new URLSearchParams();
   params.set("q", input.q);
   if (typeof input.limit === "number") params.set("limit", String(input.limit));
   if (input.category) params.set("category", input.category);
+  if (typeof input.activeOnly === "boolean") params.set("activeOnly", String(input.activeOnly));
   const query = `?${params.toString()}`;
   const response = await apiFetch<unknown>(`/api/inventory/search${query}`, { method: "GET" });
   return expectApiRecordArray(response, "inventory search");
 }
 
-export async function createInventoryItem(input: {
-  name: string;
-  category: "medicine" | "consumable" | "equipment" | "other";
-  quantity: number;
-  unit?: string;
-}) {
+export async function createInventoryItem(input: InventoryCreatePayload) {
   return apiFetch("/api/inventory", {
     method: "POST",
     body: JSON.stringify(input),
@@ -716,7 +892,7 @@ export async function createInventoryItem(input: {
 
 export async function updateInventoryItem(
   inventoryId: number | string,
-  input: Record<string, unknown>
+  input: InventoryUpdatePayload
 ) {
   return apiFetch(`/api/inventory/${inventoryId}`, {
     method: "PATCH",
@@ -726,11 +902,7 @@ export async function updateInventoryItem(
 
 export async function createInventoryMovement(
   inventoryId: number | string,
-  input: {
-    type: "in" | "out" | "adjustment";
-    quantity: number;
-    note?: string;
-  }
+  input: InventoryMovementPayload
 ) {
   return apiFetch(`/api/inventory/${inventoryId}/movements`, {
     method: "POST",

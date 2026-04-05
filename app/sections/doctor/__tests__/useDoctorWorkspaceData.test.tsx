@@ -11,6 +11,7 @@ vi.mock("../../../lib/api-client", () => ({
 
 vi.mock("../../../lib/query-hooks", () => ({
   usePatientsQuery: vi.fn(),
+  useFamiliesQuery: vi.fn(),
   useAppointmentsQuery: vi.fn(),
   useCurrentUserQuery: vi.fn(),
   useInventoryQuery: vi.fn(),
@@ -23,6 +24,7 @@ import { saveConsultation } from "../../../lib/api-client";
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
+  useFamiliesQuery,
   useInventoryQuery,
   usePatientAllergiesQuery,
   usePatientProfileQuery,
@@ -32,6 +34,7 @@ import {
 
 const mockedSaveConsultation = vi.mocked(saveConsultation);
 const mockedUsePatientsQuery = vi.mocked(usePatientsQuery);
+const mockedUseFamiliesQuery = vi.mocked(useFamiliesQuery);
 const mockedUseAppointmentsQuery = vi.mocked(useAppointmentsQuery);
 const mockedUseCurrentUserQuery = vi.mocked(useCurrentUserQuery);
 const mockedUseInventoryQuery = vi.mocked(useInventoryQuery);
@@ -79,6 +82,14 @@ describe("useDoctorWorkspaceData", () => {
         data: [
           { id: 7, name: "Jane Doe", patient_code: "P-0007", nic: "990011223V", age: 31, gender: "female" },
           { id: 55, name: "Kasuni Silva", patient_code: "P-0055", nic: "198812345678", phone: "+94771112233", age: 38, gender: "female", family_id: 3 },
+        ],
+      }) as never
+    );
+    mockedUseFamiliesQuery.mockReturnValue(
+      buildQueryState({
+        data: [
+          { id: 3, name: "Silva Family", family_code: "FAM-0003" },
+          { id: 9, name: "Perera Family", family_code: "FAM-0009" },
         ],
       }) as never
     );
@@ -262,6 +273,43 @@ describe("useDoctorWorkspaceData", () => {
     expect(result.current.vitalsFeedback?.message).toMatch(/captured locally/i);
   });
 
+  it("converts fahrenheit temperature drafts to celsius before save", async () => {
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.handlePatientSelect({
+        patientId: 7,
+        appointmentId: 22,
+        doctorId: 5,
+        name: "Jane Doe",
+        patientCode: "P-0007",
+        nic: "990011223V",
+        age: 31,
+        gender: "Female",
+        reason: "Fever",
+        time: "10:30",
+        profileId: "7",
+      });
+      result.current.setTemperatureUnit("F");
+      result.current.setVitalDraft("temperature", "98.6");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vitals: expect.objectContaining({
+          temperatureC: 37,
+        }),
+      })
+    );
+  });
+
   it("adds allergies to the consultation draft without a separate backend call", async () => {
     const { result } = renderHook(
       () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
@@ -361,7 +409,7 @@ describe("useDoctorWorkspaceData", () => {
       })
     );
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
-      queryKey: queryKeys.patients.list,
+      queryKey: queryKeys.patients.list(),
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({
       queryKey: ["appointments"],
@@ -482,6 +530,34 @@ describe("useDoctorWorkspaceData", () => {
       })
     );
     expect(result.current.selectedPatientProfileId).toBe("55");
+  });
+
+  it("sends the selected family id for non-minor quick-create patients", async () => {
+    mockedSaveConsultation.mockResolvedValue({ patient: { id: 60 }, encounterId: 92 });
+
+    const { result } = renderHook(
+      () => useDoctorWorkspaceData(buildClinicalWorkflow(), buildVisitPlanner()),
+      { wrapper: createQueryWrapper() }
+    );
+
+    act(() => {
+      result.current.setPatientName("Amila Perera");
+      result.current.setPatientDateOfBirth("1995-01-10");
+      result.current.setSelectedFamilyId("9");
+    });
+
+    await act(async () => {
+      await result.current.handleSaveRecord();
+    });
+
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patientDraft: expect.objectContaining({
+          name: "Amila Perera",
+          familyId: 9,
+        }),
+      })
+    );
   });
 
   it("prefers guardianPatientId when an existing guardian is selected", async () => {
