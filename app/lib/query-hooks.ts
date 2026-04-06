@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AnalyticsDashboardQuery } from "./analytics-types";
 import {
+  getInventoryItem,
   getAnalyticsDashboard,
   getAnalyticsOverview,
   getAuthStatus,
@@ -21,7 +22,9 @@ import {
   listEncounters,
   listInventoryAlerts,
   listInventory,
+  listInventoryBatches,
   listInventoryMovements,
+  listInventoryReports,
   listPendingDispenseQueue,
   listPatients,
   type ListPatientsInput,
@@ -85,10 +88,26 @@ export function useInventoryQuery() {
   });
 }
 
+export function useInventoryDetailQuery(inventoryId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.inventory.detail(inventoryId),
+    queryFn: () => getInventoryItem(inventoryId),
+    enabled,
+  });
+}
+
 export function useInventoryAlertsQuery(days = 30, enabled = true) {
   return useQuery({
     queryKey: queryKeys.inventory.alerts(days),
     queryFn: () => listInventoryAlerts({ days }),
+    enabled,
+  });
+}
+
+export function useInventoryReportsQuery(days = 30, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.inventory.reports(days),
+    queryFn: () => listInventoryReports({ days }),
     enabled,
   });
 }
@@ -116,6 +135,14 @@ export function usePatientsQuery(input?: ListPatientsInput | boolean, enabled = 
     queryKey: queryKeys.patients.list(resolvedInput),
     queryFn: () => listPatients(resolvedInput),
     enabled: resolvedEnabled,
+  });
+}
+
+export function useInventoryBatchesQuery(inventoryId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.inventory.batches(inventoryId),
+    queryFn: () => listInventoryBatches(inventoryId),
+    enabled,
   });
 }
 

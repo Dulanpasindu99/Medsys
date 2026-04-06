@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AsyncNotice, AsyncStatePanel } from '../components/ui/AsyncStatePanel';
+import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import {
   ViewportBody,
   ViewportFrame,
@@ -63,9 +63,6 @@ export default function AiSection() {
               },
             ]}
           />
-
-          {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
-          {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
 
           {loadState.status === 'loading' ? (
             <AsyncStatePanel

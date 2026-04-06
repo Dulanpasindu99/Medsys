@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AppSelectField } from "../../../components/ui/AppSelectField";
 import { listFamilies, type ApiClientError, updatePatient } from "../../../lib/api-client";
 import { notifyError, notifySuccess } from "../../../lib/notifications";
 import { queryKeys } from "../../../lib/query-keys";
@@ -203,21 +204,28 @@ export function ProfileEditCard({ profile, onClose }: ProfileEditCardProps) {
             </label>
             <label className="space-y-2">
               <span className={labelClassName}>Gender</span>
-              <select className={inputClassName} value={formState.gender} onChange={(event) => setField("gender", event.target.value)}>
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-              </select>
+              <AppSelectField
+                value={formState.gender}
+                onValueChange={(value) => setField("gender", value)}
+                ariaLabel="Gender"
+                options={[
+                  { value: "Male", label: "Male" },
+                  { value: "Female", label: "Female" },
+                  { value: "Other", label: "Other" },
+                ]}
+              />
             </label>
             <label className="space-y-2">
               <span className={labelClassName}>Blood group</span>
-              <select className={inputClassName} value={formState.bloodGroup} onChange={(event) => setField("bloodGroup", event.target.value)}>
-                {BLOOD_GROUPS.map((group) => (
-                  <option key={group || "empty"} value={group}>
-                    {group || "Not provided"}
-                  </option>
-                ))}
-              </select>
+              <AppSelectField
+                value={formState.bloodGroup}
+                onValueChange={(value) => setField("bloodGroup", value)}
+                ariaLabel="Blood group"
+                options={BLOOD_GROUPS.map((group) => ({
+                  value: group,
+                  label: group || "Not provided",
+                }))}
+              />
             </label>
           </div>
         </section>
@@ -241,14 +249,22 @@ export function ProfileEditCard({ profile, onClose }: ProfileEditCardProps) {
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 md:col-span-2">
               <span className={labelClassName}>Family</span>
-              <select className={inputClassName} value={formState.familyId} onChange={(event) => setField("familyId", event.target.value)} disabled={loadingFamilies}>
-                <option value="">{loadingFamilies ? "Loading families..." : "No family selected"}</option>
-                {familyOptions.map((family) => (
-                  <option key={family.id} value={family.id}>
-                    {family.name}
-                  </option>
-                ))}
-              </select>
+              <AppSelectField
+                value={formState.familyId}
+                onValueChange={(value) => setField("familyId", value)}
+                ariaLabel="Family"
+                disabled={loadingFamilies}
+                options={[
+                  {
+                    value: "",
+                    label: loadingFamilies ? "Loading families..." : "No family selected",
+                  },
+                  ...familyOptions.map((family) => ({
+                    value: String(family.id),
+                    label: family.name,
+                  })),
+                ]}
+              />
             </label>
             <label className="space-y-2">
               <span className={labelClassName}>Guardian name</span>

@@ -59,8 +59,10 @@ export type InventoryItem = {
   unit: string;
   route: string | null;
   prescriptionType: PrescriptionType | null;
-  packageUnit: string | null;
-  packageSize: string | null;
+  dispenseUnit: string | null;
+  dispenseUnitSize: string | null;
+  purchaseUnit: string | null;
+  purchaseUnitSize: string | null;
   brandName: string | null;
   supplierName: string | null;
   leadTimeDays: number | null;
@@ -79,10 +81,43 @@ export type InventoryItem = {
   clinicUseOnly: boolean;
   notes: string | null;
   stockStatus: StockStatus;
+  stockSummary?: {
+    currentStock?: string | null;
+    minimumStock?: string | null;
+    shortBy?: string | null;
+    purchasePackEquivalent?: string | null;
+    dispensePackEquivalent?: string | null;
+  } | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
+};
+export type InventoryBatch = {
+  id?: number | null;
+  batchNo: string | null;
+  quantity: string | number | null;
+  expiryDate: string | null;
+  supplierName?: string | null;
+  storageLocation?: string | null;
+  status?: string | null;
+  daysUntilExpiry?: number | null;
+  note?: string | null;
+};
+export type InventoryBatchCreatePayload = {
+  batchNo: string;
+  expiryDate?: string | null;
+  quantity: number;
+  supplierName?: string | null;
+  storageLocation?: string | null;
+  note?: string | null;
+};
+export type InventoryDetailResponse = {
+  item?: InventoryItem | null;
+  stockSummary?: Record<string, unknown> | null;
+  movementSummary?: Record<string, unknown> | null;
+  recentMovements?: unknown[];
+  batchSummary?: Record<string, unknown> | null;
 };
 export type InventoryCreatePayload = {
   sku?: string | null;
@@ -96,8 +131,10 @@ export type InventoryCreatePayload = {
   unit: string;
   route?: string | null;
   prescriptionType?: PrescriptionType | null;
-  packageUnit?: string | null;
-  packageSize?: number | null;
+  dispenseUnit?: string | null;
+  dispenseUnitSize?: number | null;
+  purchaseUnit?: string | null;
+  purchaseUnitSize?: number | null;
   brandName?: string | null;
   supplierName?: string | null;
   leadTimeDays?: number | null;
@@ -121,11 +158,16 @@ export type InventoryUpdatePayload = Partial<InventoryCreatePayload>;
 export type InventoryMovementPayload = {
   movementType?: InventoryMovementType;
   type?: InventoryMovementType;
+  movementUnit?: string | null;
   quantity: number;
   reason?: "purchase" | "dispense" | "damage" | "expired" | "return" | "adjustment" | "manual" | null;
   note?: string | null;
   referenceType?: string | null;
   referenceId?: number | null;
+};
+export type InventoryAdjustStockPayload = {
+  actualStock: number;
+  note?: string | null;
 };
 export type InventoryAlertItem = {
   id: number;
@@ -139,8 +181,10 @@ export type InventoryAlertItem = {
   unit: string;
   route: string | null;
   prescriptionType: PrescriptionType | null;
-  packageUnit: string | null;
-  packageSize: string | null;
+  dispenseUnit: string | null;
+  dispenseUnitSize: string | null;
+  purchaseUnit: string | null;
+  purchaseUnitSize: string | null;
   brandName: string | null;
   supplierName: string | null;
   leadTimeDays: number;
@@ -157,6 +201,8 @@ export type InventoryAlertItem = {
   averageDailyUsage: number;
   projectedDaysRemaining: number | null;
   recommendedReorderQty: number;
+  suggestedPurchasePacks?: string | null;
+  suggestedDispensePacks?: string | null;
   lowStock: boolean;
   stockoutRisk: boolean;
   expiryRisk: boolean;
@@ -174,6 +220,15 @@ export type InventoryAlertsResponse = {
   };
   alerts: InventoryAlertItem[];
   recommendations: InventoryAlertItem[];
+};
+export type InventoryReportsResponse = {
+  generatedAt?: string;
+  rangeDays?: number;
+  supplierSummary?: unknown[];
+  fastMoving?: unknown[];
+  slowMoving?: unknown[];
+  deadStock?: unknown[];
+  expiringBatches?: unknown[];
 };
 export type ConsultationSavePayload = {
   workflowType: "appointment" | "walk_in";
@@ -860,11 +915,22 @@ export async function listInventory() {
   return expectApiRecordArray(response, "inventory");
 }
 
+export async function getInventoryItem(inventoryId: number | string) {
+  return apiFetch<InventoryDetailResponse>(`/api/inventory/${inventoryId}`, { method: "GET" });
+}
+
 export async function listInventoryAlerts(input?: { days?: number }) {
   const params = new URLSearchParams();
   if (typeof input?.days === "number") params.set("days", String(input.days));
   const query = params.size ? `?${params.toString()}` : "";
   return apiFetch<InventoryAlertsResponse>(`/api/inventory/alerts${query}`, { method: "GET" });
+}
+
+export async function listInventoryReports(input?: { days?: number }) {
+  const params = new URLSearchParams();
+  if (typeof input?.days === "number") params.set("days", String(input.days));
+  const query = params.size ? `?${params.toString()}` : "";
+  return apiFetch<InventoryReportsResponse>(`/api/inventory/reports${query}`, { method: "GET" });
 }
 
 export async function searchInventory(input: {
@@ -910,9 +976,34 @@ export async function createInventoryMovement(
   });
 }
 
+export async function adjustInventoryStock(
+  inventoryId: number | string,
+  input: InventoryAdjustStockPayload
+) {
+  return apiFetch(`/api/inventory/${inventoryId}/adjust-stock`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function listInventoryMovements(inventoryId: number | string) {
   const response = await apiFetch<unknown>(`/api/inventory/${inventoryId}/movements`, { method: "GET" });
   return expectApiRecordArray(response, "inventory movements");
+}
+
+export async function listInventoryBatches(inventoryId: number | string) {
+  const response = await apiFetch<unknown>(`/api/inventory/${inventoryId}/batches`, { method: "GET" });
+  return expectApiRecordArray(response, "inventory batches");
+}
+
+export async function createInventoryBatch(
+  inventoryId: number | string,
+  input: InventoryBatchCreatePayload
+) {
+  return apiFetch(`/api/inventory/${inventoryId}/batches`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export async function listAuditLogs(input?: {

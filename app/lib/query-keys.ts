@@ -33,9 +33,13 @@ export const queryKeys = {
   },
   inventory: {
     list: ["inventory", "list"] as const,
+    detail: (inventoryId: number | string) => ["inventory", "detail", String(inventoryId)] as const,
     alerts: (days = 30) => ["inventory", "alerts", days] as const,
+    reports: (days = 30) => ["inventory", "reports", days] as const,
     movements: (inventoryId: number | string) =>
       ["inventory", "movements", String(inventoryId)] as const,
+    batches: (inventoryId: number | string) =>
+      ["inventory", "batches", String(inventoryId)] as const,
   },
   audit: {
     logs: (limit?: number) =>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AsyncNotice, AsyncStatePanel } from '../components/ui/AsyncStatePanel';
+import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import { ViewportBody, ViewportFrame, ViewportHeader, ViewportPage, ViewportScrollBody } from '../components/ui/ViewportLayout';
 import { OwnerBadge } from './owner/components/OwnerBadge';
 import { OwnerStaffFormCard } from './owner/components/OwnerStaffFormCard';
@@ -32,7 +32,6 @@ export default function OwnerSection() {
     isUpdatingUser,
     loadState,
     createState,
-    createFeedback,
     isSyncing,
     refresh,
   } = useOwnerAccess();
@@ -70,16 +69,6 @@ export default function OwnerSection() {
               Owner only
             </span>
           </div>
-
-          {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
-          {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
-          {createFeedback ? <AsyncNotice tone={createFeedback.tone} message={createFeedback.message} /> : null}
-          {!loadState.error && !createFeedback ? (
-            <AsyncNotice
-              tone="info"
-              message="Staff accounts now sync from the backend users API, with audit and appointment feeds used as supplemental visibility for recent activity."
-            />
-          ) : null}
 
           <ViewportScrollBody>
             <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">

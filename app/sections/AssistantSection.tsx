@@ -1,6 +1,5 @@
 'use client';
 
-import { AsyncNotice } from '../components/ui/AsyncStatePanel';
 import { ViewportBody, ViewportFrame, ViewportPage, ViewportScrollBody } from '../components/ui/ViewportLayout';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { usePatientProfilePopup } from '../hooks/usePatientProfilePopup';
@@ -36,11 +35,8 @@ export default function AssistantSection() {
         setResolvedInventoryItem,
         loadState,
         createPatientState,
-        createPatientFeedback,
         scheduleAppointmentState,
-        scheduleAppointmentFeedback,
         dispenseState,
-        dispenseFeedback,
         canManageAssistantWorkflow,
         canCreatePatientsInWorkflow,
         patientActionDisabledReason,
@@ -71,15 +67,6 @@ export default function AssistantSection() {
                                         </button>
                                     </div>
                                 </div>
-                                {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
-                                {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
-                                {!canManageAssistantWorkflow && workflowActionDisabledReason ? (
-                                    <AsyncNotice tone="warning" message={workflowActionDisabledReason} />
-                                ) : null}
-                                {createPatientFeedback ? <AsyncNotice tone={createPatientFeedback.tone} message={createPatientFeedback.message} /> : null}
-                                {scheduleAppointmentFeedback ? <AsyncNotice tone={scheduleAppointmentFeedback.tone} message={scheduleAppointmentFeedback.message} /> : null}
-                                {dispenseFeedback ? <AsyncNotice tone={dispenseFeedback.tone} message={dispenseFeedback.message} /> : null}
-
                                 <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_1.92fr_1.16fr]">
                                     <AssistantPanelShell>
                                         <AssistantIntakePanel

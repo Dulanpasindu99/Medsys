@@ -1,4 +1,3 @@
-import { AsyncNotice } from "../../../components/ui/AsyncStatePanel";
 import { AssistantIntakePanel } from "../../assistant/components/AssistantIntakePanel";
 import { AssistantPanelShell } from "../../assistant/components/AssistantPanelShell";
 import { AssistantPickupPanel } from "../../assistant/components/AssistantPickupPanel";
@@ -69,27 +68,6 @@ export function DoctorAssistantCoverage({
           </div>
         ) : null}
       </div>
-
-      {workflow.loadState.error ? <AsyncNotice tone="error" message={workflow.loadState.error} /> : null}
-      {workflow.loadState.notice ? <AsyncNotice tone="warning" message={workflow.loadState.notice} /> : null}
-      {workflow.createPatientFeedback ? (
-        <AsyncNotice
-          tone={workflow.createPatientFeedback.tone}
-          message={workflow.createPatientFeedback.message}
-        />
-      ) : null}
-      {workflow.scheduleAppointmentFeedback ? (
-        <AsyncNotice
-          tone={workflow.scheduleAppointmentFeedback.tone}
-          message={workflow.scheduleAppointmentFeedback.message}
-        />
-      ) : null}
-      {workflow.dispenseFeedback ? (
-        <AsyncNotice
-          tone={workflow.dispenseFeedback.tone}
-          message={workflow.dispenseFeedback.message}
-        />
-      ) : null}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1.9fr_1.16fr]">
         <AssistantPanelShell>

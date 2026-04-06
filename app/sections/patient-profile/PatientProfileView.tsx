@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AsyncNotice, AsyncStatePanel } from '../../components/ui/AsyncStatePanel';
+import { AsyncStatePanel } from '../../components/ui/AsyncStatePanel';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { usePatientProfileData } from './hooks/usePatientProfileData';
 import { ProfileHeader } from './components/ProfileHeader';
@@ -82,8 +82,6 @@ export function PatientProfileView({ profileId }: { profileId: string }) {
                     onEdit={() => setIsEditing(true)}
                 />
             </SurfaceCard>
-            {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
-
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[1.3fr_0.8fr]">
                 <SurfaceCard className="flex min-h-0 flex-col p-5 md:p-6">
                     <TimelineCard timeline={timeline} formatDate={formatDate} />

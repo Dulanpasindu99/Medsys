@@ -9,7 +9,7 @@ import {
 
 function contractMismatchResponse() {
   return NextResponse.json(
-    { error: "Backend contract mismatch for the inventory item route." },
+    { error: "Backend contract mismatch for the inventory batches route." },
     { status: 502 }
   );
 }
@@ -29,7 +29,7 @@ export async function GET(
     return validationErrorResponse(id.issues);
   }
 
-  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}`, {
+  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}/batches`, {
     includeSearch: false,
   });
   if (!backend.ok) {
@@ -37,7 +37,7 @@ export async function GET(
   }
 
   if (!backend.response.ok) {
-    return toFrontendErrorResponse(backend.response, "Unable to load inventory item.");
+    return toFrontendErrorResponse(backend.response, "Unable to load inventory batches.");
   }
 
   let payload: unknown;
@@ -52,7 +52,7 @@ export async function GET(
   return response;
 }
 
-export async function PATCH(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -72,7 +72,7 @@ export async function PATCH(
     return validationErrorResponse(parsedBody.issues);
   }
 
-  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}`, {
+  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}/batches`, {
     body: JSON.stringify(parsedBody.value),
     includeSearch: false,
   });
@@ -81,7 +81,7 @@ export async function PATCH(
   }
 
   if (!backend.response.ok) {
-    return toFrontendErrorResponse(backend.response, "Unable to update inventory item.");
+    return toFrontendErrorResponse(backend.response, "Unable to create inventory batch.");
   }
 
   let payload: unknown;

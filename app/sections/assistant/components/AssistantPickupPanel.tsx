@@ -142,23 +142,23 @@ export function AssistantPickupPanel({
                                             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                                                 {entry.item.name} {entry.item.dose ? `(${entry.item.dose})` : ""}
                                             </span>
-                                            <select
+                                            <AppSelectField
                                                 value={entry.resolvedInventoryItemId ?? ""}
-                                                onChange={(event) => {
-                                                    const nextId = Number(event.target.value);
+                                                onValueChange={(value) => {
+                                                    const nextId = Number(value);
                                                     if (Number.isInteger(nextId) && nextId > 0 && onResolvedInventoryItemChange) {
                                                         onResolvedInventoryItemChange(entry.key, nextId);
                                                     }
                                                 }}
-                                                className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-sky-400"
-                                            >
-                                                <option value="">Select stock item</option>
-                                                {entry.options.map((option) => (
-                                                    <option key={option.id} value={option.id}>
-                                                        {option.name} | Qty {option.quantity}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                ariaLabel="Select stock item"
+                                                options={[
+                                                    { value: "", label: "Select stock item" },
+                                                    ...entry.options.map((option) => ({
+                                                        value: option.id,
+                                                        label: `${option.name} | Qty ${option.quantity}`,
+                                                    })),
+                                                ]}
+                                            />
                                             {!entry.options.length ? (
                                                 <p className="text-xs font-semibold text-amber-700">
                                                     No stock match found yet for this drug. Add or rename inventory items to continue.
@@ -200,3 +200,4 @@ export function AssistantPickupPanel({
         </>
     );
 }
+import { AppSelectField } from "../../../components/ui/AppSelectField";

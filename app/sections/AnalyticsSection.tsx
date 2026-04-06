@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AsyncNotice, AsyncStatePanel } from '../components/ui/AsyncStatePanel';
+import { AppSelectField } from '../components/ui/AppSelectField';
+import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import {
   ViewportBody,
   ViewportFrame,
@@ -844,36 +845,50 @@ export default function AnalyticsSection() {
     data?.range.dateTo
   );
   const generatedLabel = data ? getGeneratedLabel(data.generatedAt) : '--';
-  const compactFieldClass =
-    'w-full border-0 bg-transparent p-0 text-[0.74rem] font-semibold text-slate-800 outline-none';
+  const compactSelectSx = {
+    border: 0,
+    boxShadow: 'none',
+    backgroundColor: 'transparent',
+    '& .MuiOutlinedInput-notchedOutline': { border: 0 },
+    '& .MuiSelect-select': {
+      fontSize: '0.74rem',
+      fontWeight: 600,
+      px: '0 !important',
+      minHeight: 'unset',
+    },
+  };
   const heroControls = (
     <>
       <ScopeField label="Range">
-        <select
-          className={compactFieldClass}
+        <AppSelectField
           value={range}
-          onChange={(event) => setRange(event.target.value as typeof range)}
-        >
-          <option value="1d">1 Day</option>
-          <option value="7d">7 Days</option>
-          <option value="30d">30 Days</option>
-          <option value="custom">Custom</option>
-        </select>
+          onValueChange={(value) => setRange(value as typeof range)}
+          ariaLabel="Analytics range"
+          options={[
+            { value: '1d', label: '1 Day' },
+            { value: '7d', label: '7 Days' },
+            { value: '30d', label: '30 Days' },
+            { value: 'custom', label: 'Custom' },
+          ]}
+          sx={compactSelectSx}
+        />
       </ScopeField>
 
       {isOwner ? (
         <ScopeField label="Role">
-          <select
-            className={compactFieldClass}
+          <AppSelectField
             value={ownerView}
-            onChange={(event) =>
-              setOwnerView(event.target.value as 'organization' | 'doctor' | 'assistant')
+            onValueChange={(value) =>
+              setOwnerView(value as 'organization' | 'doctor' | 'assistant')
             }
-          >
-            <option value="organization">Organization</option>
-            <option value="doctor">Doctor Drill-down</option>
-            <option value="assistant">Assistant Drill-down</option>
-          </select>
+            ariaLabel="Analytics role"
+            options={[
+              { value: 'organization', label: 'Organization' },
+              { value: 'doctor', label: 'Doctor Drill-down' },
+              { value: 'assistant', label: 'Assistant Drill-down' },
+            ]}
+            sx={compactSelectSx}
+          />
         </ScopeField>
       ) : (
         <ScopeField label="Role">{resolvedRole ?? '--'}</ScopeField>
@@ -885,34 +900,36 @@ export default function AnalyticsSection() {
         ? ownerView === 'doctor'
           ? (
             <ScopeField label="Doctor">
-              <select
-                className={compactFieldClass}
+              <AppSelectField
                 value={selectedDoctorId}
-                onChange={(event) => setSelectedDoctorId(event.target.value)}
-              >
-                <option value="">Select doctor</option>
-                {doctorOptions.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setSelectedDoctorId}
+                ariaLabel="Doctor drill-down"
+                options={[
+                  { value: '', label: 'Select doctor' },
+                  ...doctorOptions.map((doctor) => ({
+                    value: String(doctor.id),
+                    label: doctor.name,
+                  })),
+                ]}
+                sx={compactSelectSx}
+              />
             </ScopeField>
           )
           : (
             <ScopeField label="Assistant">
-              <select
-                className={compactFieldClass}
+              <AppSelectField
                 value={selectedAssistantId}
-                onChange={(event) => setSelectedAssistantId(event.target.value)}
-              >
-                <option value="">Select assistant</option>
-                {assistantOptions.map((assistant) => (
-                  <option key={assistant.id} value={assistant.id}>
-                    {assistant.name}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setSelectedAssistantId}
+                ariaLabel="Assistant drill-down"
+                options={[
+                  { value: '', label: 'Select assistant' },
+                  ...assistantOptions.map((assistant) => ({
+                    value: String(assistant.id),
+                    label: assistant.name,
+                  })),
+                ]}
+                sx={compactSelectSx}
+              />
             </ScopeField>
           )
         : null}
@@ -961,9 +978,6 @@ export default function AnalyticsSection() {
               controls={heroControls}
             />
           )}
-
-          {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
-          {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
 
           {loadState.status === 'loading' ? (
             <AsyncStatePanel

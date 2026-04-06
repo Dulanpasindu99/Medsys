@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { AsyncNotice } from "../components/ui/AsyncStatePanel";
 import { ViewportBody, ViewportFrame, ViewportPage } from "../components/ui/ViewportLayout";
 import { usePatientProfilePopup } from "../hooks/usePatientProfilePopup";
 import { canAccessRoute } from "../lib/authorization";
@@ -85,8 +84,6 @@ export default function DoctorSection() {
     allergyFeedback,
     handleAddOrUpdateAllergy,
     removeConsultationAllergy,
-    queueState,
-    patientDetailsState,
     canSaveRecord,
     saveDisabledReason,
     selectedAppointmentStatus,
@@ -131,32 +128,6 @@ export default function DoctorSection() {
     <ViewportPage className="h-full min-h-0 text-slate-900">
       <ViewportFrame className="h-full max-w-[2200px] bg-[linear-gradient(135deg,rgba(255,255,255,0.94)_0%,rgba(241,245,249,0.96)_42%,rgba(219,234,254,0.94)_100%)] shadow-[0_18px_42px_rgba(28,63,99,0.12)] ring-sky-50/80 sm:rounded-[28px]">
         <ViewportBody className="relative overflow-y-auto p-2 sm:p-3 lg:overflow-hidden xl:p-4">
-          <div className="col-span-12 space-y-3">
-            {queueState.error ? (
-              <AsyncNotice tone="error" message={queueState.error} />
-            ) : null}
-            {queueState.notice ? (
-              <AsyncNotice tone="warning" message={queueState.notice} />
-            ) : null}
-            {queueState.status === "empty" ? (
-              <AsyncNotice
-                tone="warning"
-                message="No active queue visits are available right now. You can still search a patient and start a walk-in visit."
-              />
-            ) : null}
-            {patientDetailsState.notice ? (
-              <AsyncNotice
-                tone="warning"
-                message={patientDetailsState.notice}
-              />
-            ) : null}
-            {patientDetailsState.error ? (
-              <AsyncNotice
-                tone="warning"
-                message={patientDetailsState.error}
-              />
-            ) : null}
-          </div>
           <div className="mx-auto flex min-h-0 w-full flex-1">
             <div className="grid min-h-0 w-full flex-1 grid-cols-12 items-start gap-3 lg:items-stretch lg:gap-4">
               <DoctorSidebar

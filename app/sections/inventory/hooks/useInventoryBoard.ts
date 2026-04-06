@@ -1,9 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
+  adjustInventoryStock,
   createInventoryItem,
+  createInventoryBatch,
   createInventoryMovement,
   type InventoryAlertsResponse,
+  type InventoryAdjustStockPayload,
+  type InventoryBatchCreatePayload,
   type InventoryCategory,
   type InventoryCreatePayload,
   type InventoryItem,
@@ -32,14 +36,17 @@ import {
 import {
   useCurrentUserQuery,
   useInventoryAlertsQuery,
+  useInventoryBatchesQuery,
+  useInventoryDetailQuery,
   useInventoryMovementsQuery,
   useInventoryQuery,
+  useInventoryReportsQuery,
 } from "../../../lib/query-hooks";
 import { queryKeys } from "../../../lib/query-keys";
 
 type AnyRecord = Record<string, unknown>;
 
-export type InventoryTab = "overview" | "inventory" | "movements" | "alerts";
+export type InventoryTab = "overview" | "inventory" | "detail" | "movements" | "batches" | "alerts" | "reports";
 
 export type InventoryFormState = {
   sku: string;
@@ -53,8 +60,10 @@ export type InventoryFormState = {
   unit: string;
   route: string;
   prescriptionType: PrescriptionType | "";
-  packageUnit: string;
-  packageSize: string;
+  dispenseUnit: string;
+  dispenseUnitSize: string;
+  purchaseUnit: string;
+  purchaseUnitSize: string;
   brandName: string;
   supplierName: string;
   leadTimeDays: string;
@@ -97,8 +106,10 @@ export type InventoryItemView = {
   unit: string;
   route: string;
   prescriptionType: PrescriptionType | "";
-  packageUnit: string;
-  packageSize: number;
+  dispenseUnit: string;
+  dispenseUnitSize: number;
+  purchaseUnit: string;
+  purchaseUnitSize: number;
   brandName: string;
   supplierName: string;
   leadTimeDays: number;
@@ -117,6 +128,13 @@ export type InventoryItemView = {
   clinicUseOnly: boolean;
   notes: string;
   stockStatus: StockStatus;
+  stockSummary: {
+    currentStock: number;
+    minimumStock: number;
+    shortBy: number;
+    purchasePackEquivalent: string;
+    dispensePackEquivalent: string;
+  };
   isActive: boolean;
   lowStock: boolean;
   stockoutRisk: boolean;
@@ -134,6 +152,27 @@ export type InventoryMovementView = {
   createdAt: string;
 };
 
+export type InventoryBatchFormState = {
+  batchNo: string;
+  quantity: string;
+  expiryDate: string;
+  supplierName: string;
+  storageLocation: string;
+  note: string;
+};
+
+export type InventoryBatchView = {
+  id: number | null;
+  batchNo: string;
+  quantity: number;
+  expiryDate: string;
+  supplierName: string;
+  storageLocation: string;
+  status: string;
+  daysUntilExpiry: number | null;
+  note: string;
+};
+
 const EMPTY_FORM: InventoryFormState = {
   sku: "",
   name: "",
@@ -146,8 +185,10 @@ const EMPTY_FORM: InventoryFormState = {
   unit: "tablet",
   route: "",
   prescriptionType: "",
-  packageUnit: "box",
-  packageSize: "1",
+  dispenseUnit: "card",
+  dispenseUnitSize: "1",
+  purchaseUnit: "box",
+  purchaseUnitSize: "1",
   brandName: "",
   supplierName: "",
   leadTimeDays: "7",
@@ -175,6 +216,15 @@ const EMPTY_MOVEMENT_FORM: MovementFormState = {
   note: "",
   referenceType: "",
   referenceId: "",
+};
+
+const EMPTY_BATCH_FORM: InventoryBatchFormState = {
+  batchNo: "",
+  quantity: "1",
+  expiryDate: "",
+  supplierName: "",
+  storageLocation: "",
+  note: "",
 };
 
 function asRecord(value: unknown): AnyRecord | null {
@@ -242,12 +292,25 @@ function getNullableNumber(value: unknown) {
 }
 
 function normalizeItem(row: AnyRecord): InventoryItemView {
-  const stock = toNumber(
-    row.stock ?? row.quantity ?? row.currentStock ?? row.current_stock ?? row.available
-  ) ?? 0;
-  const reorderLevel = toNumber(row.reorderLevel ?? row.reorder_level) ?? 0;
+  const stockSummaryRecord = asRecord(row.stockSummary ?? row.stock_summary);
+  const stock =
+    toNumber(
+      stockSummaryRecord?.currentStock ??
+        row.stock ??
+        row.quantity ??
+        row.currentStock ??
+        row.current_stock ??
+        row.available
+    ) ?? 0;
+  const reorderLevel =
+    toNumber(
+      stockSummaryRecord?.minimumStock ?? row.reorderLevel ?? row.reorder_level
+    ) ?? 0;
   const leadTimeDays = toNumber(row.leadTimeDays ?? row.lead_time_days) ?? 0;
-  const packageSize = toNumber(row.packageSize ?? row.package_size) ?? 1;
+  const dispenseUnitSize =
+    toNumber(row.dispenseUnitSize ?? row.dispense_unit_size ?? row.packageSize ?? row.package_size) ?? 1;
+  const purchaseUnitSize =
+    toNumber(row.purchaseUnitSize ?? row.purchase_unit_size ?? row.packageSize ?? row.package_size) ?? 1;
   const stockStatus = getText(row.stockStatus ?? row.stock_status, "") as StockStatus;
   const lowStock = toBoolean(
     row.lowStock ??
@@ -281,8 +344,10 @@ function normalizeItem(row: AnyRecord): InventoryItemView {
     unit: toString(row.unit, "unit"),
     route: toString(row.route, ""),
     prescriptionType: ((row.prescriptionType ?? row.prescription_type ?? "") as PrescriptionType | "") || "",
-    packageUnit: toString(row.packageUnit ?? row.package_unit, "pack"),
-    packageSize,
+    dispenseUnit: toString(row.dispenseUnit ?? row.dispense_unit ?? row.packageUnit ?? row.package_unit, "unit"),
+    dispenseUnitSize,
+    purchaseUnit: toString(row.purchaseUnit ?? row.purchase_unit ?? row.packageUnit ?? row.package_unit, "pack"),
+    purchaseUnitSize,
     brandName: toString(row.brandName ?? row.brand_name, "N/A"),
     supplierName: toString(row.supplierName ?? row.supplier_name, "N/A"),
     leadTimeDays,
@@ -301,6 +366,21 @@ function normalizeItem(row: AnyRecord): InventoryItemView {
     clinicUseOnly: toBoolean(row.clinicUseOnly ?? row.clinic_use_only, false),
     notes: toString(row.notes, ""),
     stockStatus: stockStatus || (stock <= 0 ? "out_of_stock" : lowStock ? "low_stock" : "in_stock"),
+    stockSummary: {
+      currentStock: stock,
+      minimumStock: reorderLevel,
+      shortBy:
+        toNumber(stockSummaryRecord?.shortBy ?? stockSummaryRecord?.short_by) ??
+        Math.max(0, reorderLevel - stock),
+      purchasePackEquivalent: toString(
+        stockSummaryRecord?.purchasePackEquivalent ?? stockSummaryRecord?.purchase_pack_equivalent,
+        ""
+      ),
+      dispensePackEquivalent: toString(
+        stockSummaryRecord?.dispensePackEquivalent ?? stockSummaryRecord?.dispense_pack_equivalent,
+        ""
+      ),
+    },
     isActive: toBoolean(row.isActive ?? row.is_active, true),
     lowStock,
     stockoutRisk,
@@ -321,6 +401,20 @@ function normalizeMovement(row: AnyRecord): InventoryMovementView {
   };
 }
 
+function normalizeBatch(row: AnyRecord): InventoryBatchView {
+  return {
+    id: toNumber(row.id ?? row.batchId ?? row.batch_id),
+    batchNo: toString(row.batchNo ?? row.batch_no, "No batch"),
+    quantity: toNumber(row.quantity) ?? 0,
+    expiryDate: toString(row.expiryDate ?? row.expiry_date, ""),
+    supplierName: toString(row.supplierName ?? row.supplier_name, ""),
+    storageLocation: toString(row.storageLocation ?? row.storage_location, ""),
+    status: toString(row.status, ""),
+    daysUntilExpiry: toNumber(row.daysUntilExpiry ?? row.days_until_expiry),
+    note: toString(row.note, ""),
+  };
+}
+
 function toFormState(item?: InventoryItemView | null): InventoryFormState {
   if (!item) return EMPTY_FORM;
 
@@ -338,8 +432,10 @@ function toFormState(item?: InventoryItemView | null): InventoryFormState {
     unit: item.unit,
     route: item.route,
     prescriptionType: item.prescriptionType,
-    packageUnit: item.packageUnit,
-    packageSize: String(item.packageSize || 1),
+    dispenseUnit: item.dispenseUnit,
+    dispenseUnitSize: String(item.dispenseUnitSize || 1),
+    purchaseUnit: item.purchaseUnit,
+    purchaseUnitSize: String(item.purchaseUnitSize || 1),
     brandName: item.brandName === "N/A" ? "" : item.brandName,
     supplierName: item.supplierName === "N/A" ? "" : item.supplierName,
     leadTimeDays: String(item.leadTimeDays || 0),
@@ -377,6 +473,14 @@ function toNullableNumber(value: string) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function normalizeComparableText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function sanitizeUnitSize(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 1;
+}
+
 export function useInventoryBoard() {
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
@@ -385,6 +489,7 @@ export function useInventoryBoard() {
   const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<InventoryFormState>(EMPTY_FORM);
   const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);
+  const [batchForm, setBatchForm] = useState<InventoryBatchFormState>(EMPTY_BATCH_FORM);
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [inventorySearch, setInventorySearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -408,7 +513,16 @@ export function useInventoryBoard() {
   }, [items, selectedItemId]);
 
   const alertsQuery = useInventoryAlertsQuery(alertDays);
+  const reportsQuery = useInventoryReportsQuery(alertDays);
+  const detailQuery = useInventoryDetailQuery(
+    resolvedSelectedItemId ?? "none",
+    resolvedSelectedItemId !== null
+  );
   const movementQuery = useInventoryMovementsQuery(
+    resolvedSelectedItemId ?? "none",
+    resolvedSelectedItemId !== null
+  );
+  const batchesQuery = useInventoryBatchesQuery(
     resolvedSelectedItemId ?? "none",
     resolvedSelectedItemId !== null
   );
@@ -417,11 +531,32 @@ export function useInventoryBoard() {
     () => asArray(movementQuery.data).map(normalizeMovement),
     [movementQuery.data]
   );
+  const batches = useMemo(
+    () => asArray(batchesQuery.data).map(normalizeBatch),
+    [batchesQuery.data]
+  );
 
   const selectedItem = useMemo(
     () => items.find((item) => item.id === resolvedSelectedItemId) ?? null,
     [items, resolvedSelectedItemId]
   );
+  const movementUnitType = useMemo(() => {
+    if (movementForm.type === "in") return "purchase";
+    if (movementForm.type === "out") return "dispense";
+    return "base";
+  }, [movementForm.type]);
+  const movementUnitLabel = useMemo(() => {
+    if (!selectedItem) return "unit";
+    if (movementUnitType === "purchase") return selectedItem.purchaseUnit || selectedItem.unit;
+    if (movementUnitType === "dispense") return selectedItem.dispenseUnit || selectedItem.unit;
+    return selectedItem.unit;
+  }, [movementUnitType, selectedItem]);
+  const movementUnitSize = useMemo(() => {
+    if (!selectedItem) return 1;
+    if (movementUnitType === "purchase") return sanitizeUnitSize(selectedItem.purchaseUnitSize);
+    if (movementUnitType === "dispense") return sanitizeUnitSize(selectedItem.dispenseUnitSize);
+    return 1;
+  }, [movementUnitType, selectedItem]);
 
   const canWriteInventory =
     !!currentUserQuery.data && hasPermission(currentUserQuery.data, "inventory.write");
@@ -548,6 +683,14 @@ export function useInventoryBoard() {
       averageDailyUsage: toNumber(row.averageDailyUsage ?? row.avgDailyUsage ?? row.average_daily_usage) ?? 0,
       projectedDaysRemaining: toNumber(row.projectedDaysRemaining ?? row.projected_days_remaining) ?? 0,
       recommendedReorderQty: toNumber(row.recommendedReorderQty ?? row.recommended_reorder_qty ?? row.recommendedQty) ?? 0,
+      suggestedPurchasePacks: toString(
+        row.suggestedPurchasePacks ?? row.suggested_purchase_packs,
+        ""
+      ),
+      suggestedDispensePacks: toString(
+        row.suggestedDispensePacks ?? row.suggested_dispense_packs,
+        ""
+      ),
     }));
   }, [alertsPayload]);
 
@@ -571,11 +714,121 @@ export function useInventoryBoard() {
       totalItems: items.length,
       activeCount,
       inactiveCount: items.length - activeCount,
-      totalUnits: items.reduce((sum, item) => sum + item.stock, 0),
+      totalUnits: items.reduce((sum, item) => sum + item.stockSummary.currentStock, 0),
       lowStockCount: lowStockItems.length,
       stockoutRiskCount: stockoutRiskItems.length,
     };
   }, [items, lowStockItems.length, stockoutRiskItems.length]);
+
+  const detailPayload = detailQuery.data;
+  const detailSummary = useMemo(() => {
+    const summary = asRecord(
+      getNested(detailPayload, "item", "stockSummary") ??
+        getNested(detailPayload, "stockSummary")
+    );
+    const movementSummary = asRecord(getNested(detailPayload, "movementSummary"));
+    const batchSummary = asRecord(getNested(detailPayload, "batchSummary"));
+    return {
+      currentStock:
+        toNumber(summary?.currentStock ?? summary?.current_stock) ??
+        selectedItem?.stockSummary.currentStock ??
+        0,
+      minimumStock:
+        toNumber(summary?.minimumStock ?? summary?.minimum_stock) ??
+        selectedItem?.stockSummary.minimumStock ??
+        0,
+      shortBy:
+        toNumber(summary?.shortageToMinimum ?? summary?.short_by ?? summary?.shortBy) ??
+        selectedItem?.stockSummary.shortBy ??
+        0,
+      purchasePackEquivalent: toString(
+        summary?.purchasePackEquivalent ?? summary?.purchase_pack_equivalent,
+        selectedItem?.stockSummary.purchasePackEquivalent ?? ""
+      ),
+      dispensePackEquivalent: toString(
+        summary?.dispensePackEquivalent ?? summary?.dispense_pack_equivalent,
+        selectedItem?.stockSummary.dispensePackEquivalent ?? ""
+      ),
+      totalMovementCount: toNumber(movementSummary?.totalMovementCount ?? movementSummary?.count) ?? movements.length,
+      totalBatchCount: toNumber(batchSummary?.totalBatchCount ?? batchSummary?.count) ?? batches.length,
+    };
+  }, [batches.length, detailPayload, movements.length, selectedItem]);
+
+  const detailRecentMovements = useMemo(() => {
+    const rows = getRecordArrayAtPaths(detailPayload, [["recentMovements"]]);
+    return rows.length ? rows.map(normalizeMovement) : movements.slice(0, 8);
+  }, [detailPayload, movements]);
+
+  const reportsPayload = reportsQuery.data;
+  const reportSections = useMemo(() => {
+    const supplierSummary = getRecordArrayAtPaths(reportsPayload, [["supplierSummary"]]);
+    const fastMoving = getRecordArrayAtPaths(reportsPayload, [["fastMoving"]]);
+    const slowMoving = getRecordArrayAtPaths(reportsPayload, [["slowMoving"]]);
+    const deadStock = getRecordArrayAtPaths(reportsPayload, [["deadStock"]]);
+    const expiringBatches = getRecordArrayAtPaths(reportsPayload, [["expiringBatches"]]);
+    return { supplierSummary, fastMoving, slowMoving, deadStock, expiringBatches };
+  }, [reportsPayload]);
+
+  const duplicateItem = useMemo(() => {
+    const name = normalizeComparableText(itemForm.name);
+    const genericName = normalizeComparableText(itemForm.genericName);
+    const strength = normalizeComparableText(itemForm.strength);
+    const dosageForm = normalizeComparableText(itemForm.dosageForm);
+    const brandName = normalizeComparableText(itemForm.brandName);
+    const sku = normalizeComparableText(itemForm.sku);
+
+    if (!name && !genericName && !sku) {
+      return null;
+    }
+
+    return (
+      items.find((item) => {
+        if (isEditingItem && resolvedSelectedItemId !== null && item.id === resolvedSelectedItemId) {
+          return false;
+        }
+
+        const itemName = normalizeComparableText(item.name);
+        const itemGenericName = normalizeComparableText(item.genericName);
+        const itemStrength = normalizeComparableText(item.strength);
+        const itemDosageForm = normalizeComparableText(item.dosageForm);
+        const itemBrandName = normalizeComparableText(item.brandName === "N/A" ? "" : item.brandName);
+        const itemSku = normalizeComparableText(item.sku === "N/A" ? "" : item.sku);
+
+        if (sku && itemSku && sku === itemSku) {
+          return true;
+        }
+
+        const samePrimaryName =
+          (name && name === itemName) ||
+          (genericName && genericName === itemGenericName) ||
+          (name && itemGenericName && name === itemGenericName) ||
+          (genericName && itemName && genericName === itemName);
+
+        if (!samePrimaryName) {
+          return false;
+        }
+
+        const strengthMatches =
+          !strength || !itemStrength || strength === itemStrength;
+        const dosageMatches =
+          !dosageForm || !itemDosageForm || dosageForm === itemDosageForm;
+        const brandMatches =
+          !brandName || !itemBrandName || brandName === itemBrandName;
+
+        return strengthMatches && dosageMatches && brandMatches;
+      }) ?? null
+    );
+  }, [
+    isEditingItem,
+    itemForm.brandName,
+    itemForm.dosageForm,
+    itemForm.genericName,
+    itemForm.name,
+    itemForm.sku,
+    itemForm.strength,
+    items,
+    resolvedSelectedItemId,
+  ]);
 
   const resetCreateState = () => {
     setCreateState((current) => (current.status === "idle" ? current : idleMutationState()));
@@ -628,8 +881,13 @@ export function useInventoryBoard() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.list }),
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts(alertDays) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.reports(alertDays) }),
       ...(resolvedSelectedItemId !== null
-        ? [queryClient.invalidateQueries({ queryKey: queryKeys.inventory.movements(resolvedSelectedItemId) })]
+        ? [
+            queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(resolvedSelectedItemId) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.inventory.movements(resolvedSelectedItemId) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.inventory.batches(resolvedSelectedItemId) }),
+          ]
         : []),
     ]);
   };
@@ -639,13 +897,15 @@ export function useInventoryBoard() {
     await Promise.all([
       inventoryQuery.refetch(),
       alertsQuery.refetch(),
-      ...(resolvedSelectedItemId !== null ? [movementQuery.refetch()] : []),
+      reportsQuery.refetch(),
+      ...(resolvedSelectedItemId !== null
+        ? [detailQuery.refetch(), movementQuery.refetch(), batchesQuery.refetch()]
+        : []),
     ]);
   };
 
-  const buildItemPayload = (): InventoryCreatePayload => {
-    const stock = Number(itemForm.stock) || 0;
-    return {
+  const buildItemPayload = (options?: { includeStock?: boolean }): InventoryCreatePayload => {
+    const payload: InventoryCreatePayload = {
       sku: toNullableText(itemForm.sku),
       name: itemForm.name.trim(),
       genericName: toNullableText(itemForm.genericName),
@@ -657,12 +917,13 @@ export function useInventoryBoard() {
       unit: itemForm.unit.trim() || "unit",
       route: toNullableText(itemForm.route),
       prescriptionType: itemForm.prescriptionType === "" ? null : itemForm.prescriptionType,
-      packageUnit: toNullableText(itemForm.packageUnit),
-      packageSize: toNullableNumber(itemForm.packageSize),
+      dispenseUnit: toNullableText(itemForm.dispenseUnit),
+      dispenseUnitSize: toNullableNumber(itemForm.dispenseUnitSize),
+      purchaseUnit: toNullableText(itemForm.purchaseUnit),
+      purchaseUnitSize: toNullableNumber(itemForm.purchaseUnitSize),
       brandName: toNullableText(itemForm.brandName),
       supplierName: toNullableText(itemForm.supplierName),
       leadTimeDays: toNullableNumber(itemForm.leadTimeDays),
-      stock,
       reorderLevel: Number(itemForm.reorderLevel) || 0,
       minStockLevel: toNullableNumber(itemForm.minStockLevel),
       maxStockLevel: toNullableNumber(itemForm.maxStockLevel),
@@ -678,6 +939,10 @@ export function useInventoryBoard() {
       notes: toNullableText(itemForm.notes),
       isActive: itemForm.isActive,
     };
+    if (options?.includeStock) {
+      payload.stock = Number(itemForm.stock) || 0;
+    }
+    return payload;
   };
 
   const handleSaveItem = async () => {
@@ -690,14 +955,23 @@ export function useInventoryBoard() {
       return;
     }
 
-    if (!itemForm.name.trim()) {
-      setCreateState(errorMutationState("Item name is required before saving inventory."));
-      return;
-    }
+      if (!itemForm.name.trim()) {
+        setCreateState(errorMutationState("Item name is required before saving inventory."));
+        return;
+      }
 
-    try {
+      if (!isEditingItem && duplicateItem) {
+        setCreateState(
+          errorMutationState(
+            "A matching inventory item already exists. Edit the existing item instead of creating a duplicate."
+          )
+        );
+        return;
+      }
+
+      try {
       setCreateState(pendingMutationState());
-      const payload = buildItemPayload();
+      const payload = buildItemPayload({ includeStock: !isEditingItem });
       if (isEditingItem && resolvedSelectedItemId !== null) {
         await updateInventoryItem(resolvedSelectedItemId, payload);
       } else {
@@ -730,38 +1004,102 @@ export function useInventoryBoard() {
           writeDisabledReason ?? "Inventory write permission is required before posting movements."
         )
       );
-      return;
+      return false;
     }
 
     if (!resolvedSelectedItemId) {
       setMovementState(errorMutationState("Select an inventory item before posting stock movements."));
-      return;
+      return false;
     }
 
-    const quantity = Number(movementForm.quantity) || 0;
-    if (quantity <= 0) {
+    const enteredQuantity = Number(movementForm.quantity) || 0;
+    if (enteredQuantity <= 0) {
       setMovementState(errorMutationState("Movement quantity must be greater than zero."));
-      return;
+      return false;
     }
 
     try {
       setMovementNotice(null);
       setMovementState(pendingMutationState());
-      await createInventoryMovement(resolvedSelectedItemId, {
-        type: movementForm.type,
-        quantity,
-        reason: movementForm.reason,
-        note: movementForm.note.trim() || undefined,
-        referenceType: movementForm.referenceType.trim() || undefined,
-        referenceId: toNullableNumber(movementForm.referenceId),
-      });
+      if (movementForm.type === "adjustment") {
+        const payload: InventoryAdjustStockPayload = {
+          actualStock: enteredQuantity,
+          note: movementForm.note.trim() || undefined,
+        };
+        await adjustInventoryStock(resolvedSelectedItemId, payload);
+      } else {
+        await createInventoryMovement(resolvedSelectedItemId, {
+          movementType: movementForm.type,
+          movementUnit: movementUnitLabel,
+          quantity: enteredQuantity,
+          reason: movementForm.reason,
+          note: movementForm.note.trim() || undefined,
+          referenceType: movementForm.referenceType.trim() || undefined,
+          referenceId: toNullableNumber(movementForm.referenceId),
+        });
+      }
 
       await invalidateInventoryQueries();
       await Promise.allSettled([movementQuery.refetch(), inventoryQuery.refetch(), alertsQuery.refetch()]);
       setMovementForm(EMPTY_MOVEMENT_FORM);
       setMovementState(successMutationState("Stock movement posted."));
+      return true;
     } catch (error) {
       setMovementState(errorMutationState(formatApiError(error, "Failed to post movement.")));
+      return false;
+    }
+  };
+
+  const updateBatchForm = <K extends keyof InventoryBatchFormState>(
+    field: K,
+    value: InventoryBatchFormState[K]
+  ) => {
+    setBatchForm((current) => ({ ...current, [field]: value }));
+    setCreateState(idleMutationState());
+  };
+
+  const handleCreateBatch = async () => {
+    if (!canWriteInventory) {
+      setCreateState(
+        errorMutationState(
+          writeDisabledReason ?? "Inventory write permission is required before adding batches."
+        )
+      );
+      return;
+    }
+
+    if (!resolvedSelectedItemId) {
+      setCreateState(errorMutationState("Select an inventory item before adding a batch."));
+      return;
+    }
+
+    if (!batchForm.batchNo.trim()) {
+      setCreateState(errorMutationState("Batch number is required."));
+      return;
+    }
+
+    const quantity = Number(batchForm.quantity) || 0;
+    if (quantity <= 0) {
+      setCreateState(errorMutationState("Batch quantity must be greater than zero."));
+      return;
+    }
+
+    try {
+      setCreateState(pendingMutationState());
+      const payload: InventoryBatchCreatePayload = {
+        batchNo: batchForm.batchNo.trim(),
+        quantity,
+        expiryDate: toNullableText(batchForm.expiryDate),
+        supplierName: toNullableText(batchForm.supplierName),
+        storageLocation: toNullableText(batchForm.storageLocation),
+        note: toNullableText(batchForm.note),
+      };
+      await createInventoryBatch(resolvedSelectedItemId, payload);
+      await refreshInventoryQueries();
+      setBatchForm(EMPTY_BATCH_FORM);
+      setCreateState(successMutationState("Inventory batch created."));
+    } catch (error) {
+      setCreateState(errorMutationState(formatApiError(error, "Failed to create inventory batch.")));
     }
   };
 
@@ -787,14 +1125,15 @@ export function useInventoryBoard() {
       reason: type === "in" ? "purchase" : "dispense",
       note: `Quick ${type} from frontend`,
     });
-    try {
-      setMovementState(pendingMutationState());
-      await createInventoryMovement(resolvedSelectedItemId, {
-        type,
-        quantity: 1,
-        reason: type === "in" ? "purchase" : "dispense",
-        note: `Quick ${type} from frontend`,
-      });
+      try {
+        setMovementState(pendingMutationState());
+        await createInventoryMovement(resolvedSelectedItemId, {
+          movementType: type,
+          movementUnit: type === "in" ? selectedItem?.purchaseUnit || selectedItem?.unit : selectedItem?.dispenseUnit || selectedItem?.unit,
+          quantity: 1,
+          reason: type === "in" ? "purchase" : "dispense",
+          note: `Quick ${type} from frontend`,
+        });
       await invalidateInventoryQueries();
       await Promise.allSettled([movementQuery.refetch(), inventoryQuery.refetch(), alertsQuery.refetch()]);
       setMovementState(successMutationState(`Stock ${type === "in" ? "added" : "removed"} successfully.`));
@@ -847,7 +1186,13 @@ export function useInventoryBoard() {
     updateItemForm,
     movementForm,
     updateMovementForm,
+    batchForm,
+    updateBatchForm,
+    movementUnitType,
+    movementUnitLabel,
+    movementUnitSize,
     isEditingItem,
+    duplicateItem,
     startCreateItem,
     startEditItem,
     newItemName: itemForm.name,
@@ -859,6 +1204,10 @@ export function useInventoryBoard() {
     createFeedback,
     movementState,
     movementFeedback,
+    detailSummary,
+    detailRecentMovements,
+    batches,
+    reportSections,
     refresh: () => {
       setMovementNotice(null);
       void refreshInventoryQueries();
@@ -867,5 +1216,6 @@ export function useInventoryBoard() {
     handleSaveItem,
     handleSubmitMovement,
     handleQuickMovement,
+    handleCreateBatch,
   };
 }

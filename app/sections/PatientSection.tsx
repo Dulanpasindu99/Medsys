@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AsyncNotice, AsyncStatePanel } from '../components/ui/AsyncStatePanel';
+import { AppSelectField } from '../components/ui/AppSelectField';
+import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import {
   ViewportBody,
   ViewportFrame,
@@ -85,9 +86,6 @@ export default function PatientSection() {
             </button>
           </div>
 
-          {loadState.error ? <AsyncNotice tone="error" message={loadState.error} /> : null}
-          {loadState.notice ? <AsyncNotice tone="warning" message={loadState.notice} /> : null}
-
           <SectionShell>
             <PatientFilters
               search={search}
@@ -126,17 +124,18 @@ export default function PatientSection() {
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Per page</span>
-                  <select
-                    value={pageSize}
-                    onChange={(event) => setPageSize(Number(event.target.value))}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-sky-300 focus:outline-none"
-                  >
-                    {PAGE_SIZE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="min-w-[84px]">
+                    <AppSelectField
+                      value={pageSize}
+                      onValueChange={(value) => setPageSize(Number(value))}
+                      ariaLabel="Patients per page"
+                      options={PAGE_SIZE_OPTIONS.map((option) => ({
+                        value: option,
+                        label: String(option),
+                      }))}
+                      sx={{ "& .MuiSelect-select": { fontSize: "0.875rem", fontWeight: 600 } }}
+                    />
+                  </div>
                 </label>
                 <div className="flex items-center gap-2">
                   <button

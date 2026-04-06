@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission, requireSession } from "@/app/lib/api-auth";
+import { requirePermission } from "@/app/lib/api-auth";
 import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
 import {
   parseJsonBody,
@@ -9,50 +9,12 @@ import {
 
 function contractMismatchResponse() {
   return NextResponse.json(
-    { error: "Backend contract mismatch for the inventory item route." },
+    { error: "Backend contract mismatch for the inventory stock adjustment route." },
     { status: 502 }
   );
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const auth = requireSession(request);
-  if (auth.error) {
-    return auth.error;
-  }
-
-  const { id: idParam } = await params;
-  const id = parsePositiveInteger(idParam, "id");
-  if (!id.ok) {
-    return validationErrorResponse(id.issues);
-  }
-
-  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}`, {
-    includeSearch: false,
-  });
-  if (!backend.ok) {
-    return backend.response;
-  }
-
-  if (!backend.response.ok) {
-    return toFrontendErrorResponse(backend.response, "Unable to load inventory item.");
-  }
-
-  let payload: unknown;
-  try {
-    payload = await backend.response.json();
-  } catch {
-    return contractMismatchResponse();
-  }
-
-  const response = NextResponse.json(payload);
-  backend.applyTo(response);
-  return response;
-}
-
-export async function PATCH(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -72,7 +34,7 @@ export async function PATCH(
     return validationErrorResponse(parsedBody.issues);
   }
 
-  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}`, {
+  const backend = await callBackendRoute(request, `/v1/inventory/${id.value}/adjust-stock`, {
     body: JSON.stringify(parsedBody.value),
     includeSearch: false,
   });
@@ -81,7 +43,7 @@ export async function PATCH(
   }
 
   if (!backend.response.ok) {
-    return toFrontendErrorResponse(backend.response, "Unable to update inventory item.");
+    return toFrontendErrorResponse(backend.response, "Unable to adjust inventory stock.");
   }
 
   let payload: unknown;
