@@ -178,6 +178,143 @@ function ItemSignals({ item }: { item: InventoryItemView }) {
   );
 }
 
+function asReportRecord(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function asReportArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((row): row is Record<string, unknown> => !!row && typeof row === "object")
+    : [];
+}
+
+function reportValue(value: unknown) {
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return "--";
+}
+
+function ReportMetricGrid({
+  summary,
+  emptyMessage,
+}: {
+  summary: Record<string, unknown>;
+  emptyMessage: string;
+}) {
+  const entries = Object.entries(summary).slice(0, 6);
+  if (!entries.length) {
+    return <p className="text-sm text-slate-500">{emptyMessage}</p>;
+  }
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {entries.map(([key, value]) => (
+        <MetricCard
+          key={key}
+          label={key.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}
+          value={reportValue(value)}
+          tone="sky"
+        />
+      ))}
+    </div>
+  );
+}
+
+function ReportListPanel({
+  title,
+  rows,
+  labelKeys,
+  valueKeys,
+  emptyMessage,
+}: {
+  title: string;
+  rows: Record<string, unknown>[];
+  labelKeys: string[];
+  valueKeys: string[];
+  emptyMessage: string;
+}) {
+  return (
+    <ViewportPanel>
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+        {title}
+      </p>
+      <div className="mt-4 space-y-2">
+        {rows.length ? (
+          rows.slice(0, 8).map((row, index) => {
+            const primary =
+              labelKeys.map((key) => row[key]).find((value) => typeof value === "string" && value) ?? "Unnamed row";
+            const secondary = valueKeys
+              .map((key) => row[key])
+              .filter((value) => value !== undefined && value !== null && value !== "");
+            return (
+              <div
+                key={`${title}-${index}`}
+                className="flex items-center justify-between rounded-2xl bg-slate-50/85 px-4 py-3 ring-1 ring-slate-100"
+              >
+                <div>
+                  <p className="font-semibold text-slate-900">{String(primary)}</p>
+                  <p className="text-xs text-slate-500">
+                    {secondary.length ? secondary.map(reportValue).join(" | ") : "No extra detail"}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-sm text-slate-500">{emptyMessage}</p>
+        )}
+      </div>
+    </ViewportPanel>
+  );
+}
+
+function ReportTablePanel({
+  title,
+  rows,
+  emptyMessage,
+}: {
+  title: string;
+  rows: Record<string, unknown>[];
+  emptyMessage: string;
+}) {
+  const columns = rows.length ? Object.keys(rows[0]).slice(0, 5) : [];
+  return (
+    <ViewportPanel>
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+        {title}
+      </p>
+      {rows.length ? (
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                {columns.map((column) => (
+                  <th key={column} className="px-2 py-2 font-semibold">
+                    {column.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 8).map((row, index) => (
+                <tr key={`${title}-${index}`} className="border-b border-slate-50">
+                  {columns.map((column) => (
+                    <td key={column} className="px-2 py-3 text-slate-700">
+                      {reportValue(row[column])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-slate-500">{emptyMessage}</p>
+      )}
+    </ViewportPanel>
+  );
+}
+
 function ActionIcon({
   kind,
 }: {
@@ -1339,6 +1476,9 @@ function InventoryItemModal({
 }
 
 export default function InventorySection() {
+  const [activeReportView, setActiveReportView] = useState<
+    "clinic-overview" | "doctor-performance" | "assistant-performance" | "inventory-usage" | "patient-followup"
+  >("inventory-usage");
   const {
     activeTab,
     setActiveTab,
@@ -1367,6 +1507,18 @@ export default function InventorySection() {
     setStatusFilter,
     alertDays,
     setAlertDays,
+    reportsRange,
+    setReportsRange,
+    reportsDateFrom,
+    setReportsDateFrom,
+    reportsDateTo,
+    setReportsDateTo,
+    reportsDoctorId,
+    setReportsDoctorId,
+    reportsAssistantId,
+    setReportsAssistantId,
+    doctorOptions,
+    assistantOptions,
     itemForm,
     updateItemForm,
     movementForm,
@@ -1385,12 +1537,14 @@ export default function InventorySection() {
     movementState,
     detailSummary,
     detailRecentMovements,
+    reportShell,
     reportSections,
+    currentUser,
     refresh,
     handleSaveItem,
     handleSubmitMovement,
     handleCreateBatch,
-  } = useInventoryBoard();
+  } = useInventoryBoard(activeReportView);
 
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [isStockActionModalOpen, setIsStockActionModalOpen] = useState(false);
@@ -1410,6 +1564,28 @@ export default function InventorySection() {
     const start = inventoryPage * inventoryPageSize;
     return filteredItems.slice(start, start + inventoryPageSize);
   }, [filteredItems, inventoryPage]);
+  const reportRole = currentUser?.role ?? "owner";
+  const reportViewOptions = useMemo(() => {
+    if (reportRole === "doctor") {
+      return [
+        { key: "doctor-performance", label: "Doctor Performance" },
+        { key: "patient-followup", label: "Patient Follow-up" },
+      ] as const;
+    }
+    if (reportRole === "assistant") {
+      return [
+        { key: "assistant-performance", label: "Assistant Performance" },
+        { key: "inventory-usage", label: "Inventory Usage" },
+      ] as const;
+    }
+    return [
+      { key: "clinic-overview", label: "Clinic Overview" },
+      { key: "doctor-performance", label: "Doctor Performance" },
+      { key: "assistant-performance", label: "Assistant Performance" },
+      { key: "inventory-usage", label: "Inventory Usage" },
+      { key: "patient-followup", label: "Patient Follow-up" },
+    ] as const;
+  }, [reportRole]);
 
   useEffect(() => {
     if (createState.status === "success") {
@@ -1426,6 +1602,12 @@ export default function InventorySection() {
       setInventoryPage(Math.max(0, inventoryPageCount - 1));
     }
   }, [inventoryPage, inventoryPageCount]);
+
+  useEffect(() => {
+    if (!reportViewOptions.some((option) => option.key === activeReportView)) {
+      setActiveReportView(reportViewOptions[0]?.key ?? "inventory-usage");
+    }
+  }, [activeReportView, reportViewOptions]);
 
   useEffect(() => {
     if (activeTab !== "inventory") return;
@@ -2383,141 +2565,231 @@ export default function InventorySection() {
 
           {activeTab === "reports" ? (
             <div className="space-y-5">
-              <div className="grid gap-5 xl:grid-cols-2">
-                <ViewportPanel>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                    Supplier Summary
-                  </p>
-                  <div className="mt-4 space-y-2">
-                    {reportSections.supplierSummary.length ? (
-                      reportSections.supplierSummary
-                        .slice(0, 8)
-                        .map((row, index) => (
-                          <div
-                            key={`supplier-${index}`}
-                            className="flex items-center justify-between rounded-2xl bg-slate-50/85 px-4 py-3 ring-1 ring-slate-100"
-                          >
-                            <div>
-                              <p className="font-semibold text-slate-900">
-                                {toString(
-                                  row.supplierName ?? row.supplier_name,
-                                  "Unknown supplier",
-                                )}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                Items{" "}
-                                {toString(row.itemCount ?? row.item_count, "0")}{" "}
-                                | Low stock{" "}
-                                {toString(
-                                  row.lowStockCount ?? row.low_stock_count,
-                                  "0",
-                                )}
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${badgeClass("sky")}`}
-                            >
-                              {toString(
-                                row.recommendedReorderQty ??
-                                  row.recommended_reorder_qty,
-                                "0",
-                              )}
-                            </span>
-                          </div>
-                        ))
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        No supplier summary returned yet.
-                      </p>
-                    )}
-                  </div>
-                </ViewportPanel>
-                <ViewportPanel>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                    Fast Moving
-                  </p>
-                  <div className="mt-4 space-y-2">
-                    {reportSections.fastMoving.length ? (
-                      reportSections.fastMoving
-                        .slice(0, 8)
-                        .map((row, index) => (
-                          <div
-                            key={`fast-${index}`}
-                            className="flex items-center justify-between rounded-2xl bg-slate-50/85 px-4 py-3 ring-1 ring-slate-100"
-                          >
-                            <div>
-                              <p className="font-semibold text-slate-900">
-                                {toString(
-                                  row.name ?? row.itemName,
-                                  "Unnamed item",
-                                )}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                Avg/day{" "}
-                                {toString(
-                                  row.averageDailyUsage ??
-                                    row.average_daily_usage,
-                                  "0",
-                                )}{" "}
-                                | Stock{" "}
-                                {toString(row.currentStock ?? row.stock, "0")}
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${badgeClass("emerald")}`}
-                            >
-                              {toString(row.status, "active")}
-                            </span>
-                          </div>
-                        ))
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        No fast-moving items returned yet.
-                      </p>
-                    )}
-                  </div>
-                </ViewportPanel>
-              </div>
-              <div className="grid gap-5 xl:grid-cols-3">
-                {[
-                  { title: "Slow Moving", rows: reportSections.slowMoving },
-                  { title: "Dead Stock", rows: reportSections.deadStock },
-                  {
-                    title: "Expiring Batches",
-                    rows: reportSections.expiringBatches,
-                  },
-                ].map((section) => (
-                  <ViewportPanel key={section.title}>
+              <ViewportPanel>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                      {section.title}
+                      Reports Workspace
                     </p>
-                    <div className="mt-4 space-y-2">
-                      {section.rows.length ? (
-                        section.rows.slice(0, 6).map((row, index) => (
-                          <div
-                            key={`${section.title}-${index}`}
-                            className="rounded-2xl bg-slate-50/85 px-4 py-3 ring-1 ring-slate-100"
-                          >
-                            <p className="font-semibold text-slate-900">
-                              {toString(
-                                row.name ?? row.itemName ?? row.batchNo,
-                                "Unnamed row",
-                              )}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {toString(row.status, "No extra detail")}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-slate-500">
-                          No {section.title.toLowerCase()} returned yet.
-                        </p>
-                      )}
+                    <h2 className="mt-1 text-xl font-bold text-slate-900">
+                      Role-based operational reports
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Open one focused report at a time and let the backend summaries do the heavy work.
+                    </p>
+                  </div>
+                  <div className="grid min-w-[260px] gap-2 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                        Generated
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {reportShell.generatedAt || "--"}
+                      </p>
                     </div>
-                  </ViewportPanel>
-                ))}
-              </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                        Role
+                      </p>
+                      <p className="mt-1 text-sm font-semibold capitalize text-slate-900">
+                        {reportRole}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <FormField label="Range">
+                    <AppSelectField
+                      value={reportsRange}
+                      onValueChange={(value) => setReportsRange(value as "7d" | "30d" | "custom")}
+                      ariaLabel="Reports range"
+                      options={[
+                        { value: "7d", label: "Last 7 days" },
+                        { value: "30d", label: "Last 30 days" },
+                        { value: "custom", label: "Custom range" },
+                      ]}
+                    />
+                  </FormField>
+                  {reportsRange === "custom" ? (
+                    <>
+                      <FormField label="Date from">
+                        <input
+                          className={fieldClass}
+                          type="date"
+                          value={reportsDateFrom}
+                          onChange={(event) => setReportsDateFrom(event.target.value)}
+                        />
+                      </FormField>
+                      <FormField label="Date to">
+                        <input
+                          className={fieldClass}
+                          type="date"
+                          value={reportsDateTo}
+                          onChange={(event) => setReportsDateTo(event.target.value)}
+                        />
+                      </FormField>
+                    </>
+                  ) : null}
+                  {reportRole === "owner" ? (
+                    <>
+                      <FormField label="Doctor filter" optional>
+                        <AppSelectField
+                          value={reportsDoctorId}
+                          onValueChange={setReportsDoctorId}
+                          ariaLabel="Doctor reports filter"
+                          options={[
+                            { value: "", label: "All doctors" },
+                            ...doctorOptions.map((doctor) => ({
+                              value: String(doctor.id),
+                              label: doctor.name,
+                            })),
+                          ]}
+                        />
+                      </FormField>
+                      <FormField label="Assistant filter" optional>
+                        <AppSelectField
+                          value={reportsAssistantId}
+                          onValueChange={setReportsAssistantId}
+                          ariaLabel="Assistant reports filter"
+                          options={[
+                            { value: "", label: "All assistants" },
+                            ...assistantOptions.map((assistant) => ({
+                              value: String(assistant.id),
+                              label: assistant.name,
+                            })),
+                          ]}
+                        />
+                      </FormField>
+                    </>
+                  ) : null}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {reportViewOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setActiveReportView(option.key)}
+                      className={
+                        activeReportView === option.key
+                          ? "rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                          : "rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700"
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </ViewportPanel>
+
+              {activeReportView === "clinic-overview" ? (
+                <div className="space-y-5">
+                  <ReportMetricGrid summary={reportShell.summary} emptyMessage="No clinic overview summary returned yet." />
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <ReportListPanel
+                      title="Appointment Status Distribution"
+                      rows={asReportArray(reportShell.charts.appointmentStatusDistribution)}
+                      labelKeys={["label", "status", "name"]}
+                      valueKeys={["count", "value"]}
+                      emptyMessage="No appointment status chart returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Recent Appointments"
+                      rows={asReportArray(reportShell.tables.recentAppointments)}
+                      emptyMessage="No recent appointments returned yet."
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {activeReportView === "doctor-performance" ? (
+                <div className="space-y-5">
+                  <ReportMetricGrid summary={reportShell.summary} emptyMessage="No doctor performance summary returned yet." />
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <ReportListPanel
+                      title="Encounters By Doctor"
+                      rows={asReportArray(reportShell.charts.encountersByDoctor)}
+                      labelKeys={["label", "doctorName", "name"]}
+                      valueKeys={["count", "value", "encounters"]}
+                      emptyMessage="No doctor chart returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Doctors"
+                      rows={asReportArray(reportShell.tables.doctors)}
+                      emptyMessage="No doctor table returned yet."
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {activeReportView === "assistant-performance" ? (
+                <div className="space-y-5">
+                  <ReportMetricGrid summary={reportShell.summary} emptyMessage="No assistant performance summary returned yet." />
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <ReportListPanel
+                      title="Throughput By Assistant"
+                      rows={asReportArray(reportShell.charts.throughputByAssistant)}
+                      labelKeys={["label", "assistantName", "name"]}
+                      valueKeys={["count", "value", "throughput"]}
+                      emptyMessage="No assistant throughput chart returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Assistants"
+                      rows={asReportArray(reportShell.tables.assistants)}
+                      emptyMessage="No assistant table returned yet."
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {activeReportView === "inventory-usage" ? (
+                <div className="space-y-5">
+                  <ReportMetricGrid summary={reportShell.summary} emptyMessage="No inventory usage summary returned yet." />
+                  <div className="grid gap-5 xl:grid-cols-3">
+                    <ReportListPanel
+                      title="Top Consumed Items"
+                      rows={asReportArray(reportShell.charts.topConsumedItems).length ? asReportArray(reportShell.charts.topConsumedItems) : reportSections.fastMoving}
+                      labelKeys={["label", "name", "itemName"]}
+                      valueKeys={["count", "value", "averageDailyUsage", "currentStock"]}
+                      emptyMessage="No top consumed items returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Low Stock Items"
+                      rows={asReportArray(reportShell.tables.lowStockItems).length ? asReportArray(reportShell.tables.lowStockItems) : reportSections.deadStock}
+                      emptyMessage="No low stock table returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Consumed Inventory"
+                      rows={asReportArray(reportShell.tables.topConsumedItems).length ? asReportArray(reportShell.tables.topConsumedItems) : reportSections.fastMoving}
+                      emptyMessage="No top consumed inventory table returned yet."
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {activeReportView === "patient-followup" ? (
+                <div className="space-y-5">
+                  <ReportMetricGrid summary={reportShell.summary} emptyMessage="No follow-up summary returned yet." />
+                  <div className="grid gap-5 xl:grid-cols-3">
+                    <ReportListPanel
+                      title="Follow-up Buckets"
+                      rows={asReportArray(reportShell.charts.followupBuckets)}
+                      labelKeys={["label", "bucket", "name"]}
+                      valueKeys={["count", "value"]}
+                      emptyMessage="No follow-up bucket chart returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Overdue"
+                      rows={asReportArray(reportShell.tables.overdue)}
+                      emptyMessage="No overdue rows returned yet."
+                    />
+                    <ReportTablePanel
+                      title="Due Soon"
+                      rows={asReportArray(reportShell.tables.dueSoon)}
+                      emptyMessage="No due-soon rows returned yet."
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </ViewportBody>

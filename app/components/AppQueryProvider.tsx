@@ -42,6 +42,15 @@ function getErrorDetails(error: unknown): {
 }
 
 function notifyForError(error: unknown) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    (error as { status?: unknown }).status === 401
+  ) {
+    return;
+  }
+
   const details = getErrorDetails(error);
 
   if (details.requestId) {

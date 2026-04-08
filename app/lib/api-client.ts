@@ -221,14 +221,52 @@ export type InventoryAlertsResponse = {
   alerts: InventoryAlertItem[];
   recommendations: InventoryAlertItem[];
 };
-export type InventoryReportsResponse = {
+export type ReportsQuery = {
+  range?: "7d" | "30d" | "custom";
+  dateFrom?: string;
+  dateTo?: string;
+  doctorId?: number;
+  assistantId?: number;
+  visitMode?: "walk_in" | "appointment";
+  doctorWorkflowMode?: "self_service" | "clinic_supported";
+};
+export type DailySummaryQuery = {
+  date?: string;
+  role?: "doctor" | "assistant" | "owner";
+  doctorId?: number;
+  assistantId?: number;
+  visitMode?: "walk_in" | "appointment";
+  doctorWorkflowMode?: "self_service" | "clinic_supported";
+};
+export type DailySummaryHistoryQuery = DailySummaryQuery & {
+  limit?: number;
+};
+export type ReportType =
+  | "clinic-overview"
+  | "doctor-performance"
+  | "assistant-performance"
+  | "inventory-usage"
+  | "patient-followup";
+export type ReportResponse = {
+  generatedAt: string;
+  range: {
+    preset: "7d" | "30d" | "custom";
+    dateFrom: string;
+    dateTo: string;
+  };
+  filters?: Record<string, unknown>;
+  summary: Record<string, unknown>;
+  charts: Record<string, unknown>;
+  tables: Record<string, unknown>;
+};
+export type DailySummaryResponse = {
   generatedAt?: string;
-  rangeDays?: number;
-  supplierSummary?: unknown[];
-  fastMoving?: unknown[];
-  slowMoving?: unknown[];
-  deadStock?: unknown[];
-  expiringBatches?: unknown[];
+  date?: string;
+  filterContext?: Record<string, unknown>;
+  summary?: Record<string, unknown>;
+  insights?: Array<Record<string, unknown>>;
+  alerts?: Array<Record<string, unknown>>;
+  history?: Array<Record<string, unknown>>;
 };
 export type ConsultationSavePayload = {
   workflowType: "appointment" | "walk_in";
@@ -926,11 +964,52 @@ export async function listInventoryAlerts(input?: { days?: number }) {
   return apiFetch<InventoryAlertsResponse>(`/api/inventory/alerts${query}`, { method: "GET" });
 }
 
-export async function listInventoryReports(input?: { days?: number }) {
+export async function listInventoryReports(input?: { days?: number; activeOnly?: boolean }) {
   const params = new URLSearchParams();
   if (typeof input?.days === "number") params.set("days", String(input.days));
+  if (typeof input?.activeOnly === "boolean") {
+    params.set("activeOnly", String(input.activeOnly));
+  }
   const query = params.size ? `?${params.toString()}` : "";
-  return apiFetch<InventoryReportsResponse>(`/api/inventory/reports${query}`, { method: "GET" });
+  return apiFetch<ReportResponse>(`/api/inventory/reports${query}`, { method: "GET" });
+}
+
+export async function getReport(reportType: ReportType, input?: ReportsQuery) {
+  const params = new URLSearchParams();
+  if (input?.range) params.set("range", input.range);
+  if (input?.dateFrom) params.set("dateFrom", input.dateFrom);
+  if (input?.dateTo) params.set("dateTo", input.dateTo);
+  if (typeof input?.doctorId === "number") params.set("doctorId", String(input.doctorId));
+  if (typeof input?.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (input?.visitMode) params.set("visitMode", input.visitMode);
+  if (input?.doctorWorkflowMode) params.set("doctorWorkflowMode", input.doctorWorkflowMode);
+  const query = params.size ? `?${params.toString()}` : "";
+  return apiFetch<ReportResponse>(`/api/reports/${reportType}${query}`, { method: "GET" });
+}
+
+export async function getDailySummary(input?: DailySummaryQuery) {
+  const params = new URLSearchParams();
+  if (input?.date) params.set("date", input.date);
+  if (input?.role) params.set("role", input.role);
+  if (typeof input?.doctorId === "number") params.set("doctorId", String(input.doctorId));
+  if (typeof input?.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (input?.visitMode) params.set("visitMode", input.visitMode);
+  if (input?.doctorWorkflowMode) params.set("doctorWorkflowMode", input.doctorWorkflowMode);
+  const query = params.size ? `?${params.toString()}` : "";
+  return apiFetch<DailySummaryResponse>(`/api/reports/daily-summary${query}`, { method: "GET" });
+}
+
+export async function getDailySummaryHistory(input?: DailySummaryHistoryQuery) {
+  const params = new URLSearchParams();
+  if (typeof input?.limit === "number") params.set("limit", String(input.limit));
+  if (input?.date) params.set("date", input.date);
+  if (input?.role) params.set("role", input.role);
+  if (typeof input?.doctorId === "number") params.set("doctorId", String(input.doctorId));
+  if (typeof input?.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (input?.visitMode) params.set("visitMode", input.visitMode);
+  if (input?.doctorWorkflowMode) params.set("doctorWorkflowMode", input.doctorWorkflowMode);
+  const query = params.size ? `?${params.toString()}` : "";
+  return apiFetch<unknown>(`/api/reports/daily-summary/history${query}`, { method: "GET" });
 }
 
 export async function searchInventory(input: {

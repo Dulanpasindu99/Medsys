@@ -28,6 +28,73 @@ export const queryKeys = {
         input?.dateTo ?? "none",
       ] as const),
   },
+  reports: {
+    view: (
+      reportType: string,
+      input?: {
+        range?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        doctorId?: number;
+        assistantId?: number;
+        visitMode?: string;
+        doctorWorkflowMode?: string;
+      }
+    ) =>
+      ([
+        "reports",
+        reportType,
+        input?.range ?? "30d",
+        input?.dateFrom ?? "none",
+        input?.dateTo ?? "none",
+        input?.doctorId ?? "none",
+        input?.assistantId ?? "none",
+        input?.visitMode ?? "all",
+        input?.doctorWorkflowMode ?? "all",
+      ] as const),
+    dailySummary: (
+      input?: {
+        date?: string;
+        role?: string;
+        doctorId?: number;
+        assistantId?: number;
+        visitMode?: string;
+        doctorWorkflowMode?: string;
+      }
+    ) =>
+      ([
+        "reports",
+        "daily-summary",
+        input?.date ?? "today",
+        input?.role ?? "default",
+        input?.doctorId ?? "none",
+        input?.assistantId ?? "none",
+        input?.visitMode ?? "all",
+        input?.doctorWorkflowMode ?? "all",
+      ] as const),
+    dailySummaryHistory: (
+      input?: {
+        limit?: number;
+        date?: string;
+        role?: string;
+        doctorId?: number;
+        assistantId?: number;
+        visitMode?: string;
+        doctorWorkflowMode?: string;
+      }
+    ) =>
+      ([
+        "reports",
+        "daily-summary-history",
+        input?.limit ?? 7,
+        input?.date ?? "today",
+        input?.role ?? "default",
+        input?.doctorId ?? "none",
+        input?.assistantId ?? "none",
+        input?.visitMode ?? "all",
+        input?.doctorWorkflowMode ?? "all",
+      ] as const),
+  },
   encounters: {
     list: ["encounters", "list"] as const,
   },
@@ -35,7 +102,13 @@ export const queryKeys = {
     list: ["inventory", "list"] as const,
     detail: (inventoryId: number | string) => ["inventory", "detail", String(inventoryId)] as const,
     alerts: (days = 30) => ["inventory", "alerts", days] as const,
-    reports: (days = 30) => ["inventory", "reports", days] as const,
+    reports: (input?: { days?: number; activeOnly?: boolean }) =>
+      ([
+        "inventory",
+        "reports",
+        input?.days ?? 30,
+        input?.activeOnly ?? "all",
+      ] as const),
     movements: (inventoryId: number | string) =>
       ["inventory", "movements", String(inventoryId)] as const,
     batches: (inventoryId: number | string) =>

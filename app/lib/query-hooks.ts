@@ -3,11 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AnalyticsDashboardQuery } from "./analytics-types";
 import {
+  getDailySummary,
+  getDailySummaryHistory,
   getInventoryItem,
   getAnalyticsDashboard,
   getAnalyticsOverview,
   getAuthStatus,
   getCurrentUser,
+  getReport,
   getPatientConsultations,
   getPatientFamily,
   getPatientProfile,
@@ -27,6 +30,10 @@ import {
   listInventoryReports,
   listPendingDispenseQueue,
   listPatients,
+  type DailySummaryHistoryQuery,
+  type DailySummaryQuery,
+  type ReportType,
+  type ReportsQuery,
   type ListPatientsInput,
   type AppointmentStatus,
 } from "./api-client";
@@ -104,10 +111,37 @@ export function useInventoryAlertsQuery(days = 30, enabled = true) {
   });
 }
 
-export function useInventoryReportsQuery(days = 30, enabled = true) {
+export function useInventoryReportsQuery(
+  input?: { days?: number; activeOnly?: boolean },
+  enabled = true
+) {
   return useQuery({
-    queryKey: queryKeys.inventory.reports(days),
-    queryFn: () => listInventoryReports({ days }),
+    queryKey: queryKeys.inventory.reports(input),
+    queryFn: () => listInventoryReports(input),
+    enabled,
+  });
+}
+
+export function useReportsQuery(reportType: ReportType, input?: ReportsQuery, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.reports.view(reportType, input),
+    queryFn: () => getReport(reportType, input),
+    enabled,
+  });
+}
+
+export function useDailySummaryQuery(input?: DailySummaryQuery, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.reports.dailySummary(input),
+    queryFn: () => getDailySummary(input),
+    enabled,
+  });
+}
+
+export function useDailySummaryHistoryQuery(input?: DailySummaryHistoryQuery, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.reports.dailySummaryHistory(input),
+    queryFn: () => getDailySummaryHistory(input),
     enabled,
   });
 }

@@ -72,7 +72,7 @@ describe("AnalyticsSection", () => {
 
     render(<AnalyticsSection />);
 
-    expect(screen.getByText("Realtime Analytics")).toBeInTheDocument();
+    expect(screen.getByText("Insights & Reports")).toBeInTheDocument();
     expect(screen.getByText("Queue")).toBeInTheDocument();
     expect(screen.getByText("Top Diagnoses")).toBeInTheDocument();
     expect(screen.getByText(/peak load between 10:00 and 11:00/i)).toBeInTheDocument();

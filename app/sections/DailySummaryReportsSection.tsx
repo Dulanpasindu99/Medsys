@@ -1322,9 +1322,134 @@ export default function AnalyticsSection() {
     reload,
     isRefreshing,
   } = useAnalyticsDashboard();
+  const [workspaceMode, setWorkspaceMode] = useState<AnalyticsWorkspaceMode>('dashboard');
+  const [dailySummaryTab, setDailySummaryTab] = useState<DailySummaryTab>('summary');
+  const [summaryDate, setSummaryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [reportVisitMode, setReportVisitMode] = useState('');
+  const [reportWorkflowMode, setReportWorkflowMode] = useState('');
+
   const resolvedRole = data?.roleContext.resolvedRole ?? currentUser?.role ?? null;
   const isOwner = currentUser?.role === 'owner';
+  const reportOptions = useMemo(() => getReportOptionsForRole(resolvedRole), [resolvedRole]);
+  const [activeReportType, setActiveReportType] = useState<ReportType>(
+    reportOptions[0]?.key ?? 'clinic-overview'
+  );
+
+  useEffect(() => {
+    if (!reportOptions.some((option) => option.key === activeReportType)) {
+      setActiveReportType(reportOptions[0]?.key ?? 'clinic-overview');
+    }
+  }, [activeReportType, reportOptions]);
+
   const generatedLabel = data ? getGeneratedLabel(data.generatedAt) : '--';
+  const dailySummaryQueryInput = useMemo(() => {
+    const next: {
+      date?: string;
+      role?: 'doctor' | 'assistant' | 'owner';
+      doctorId?: number;
+      assistantId?: number;
+      visitMode?: 'walk_in' | 'appointment';
+      doctorWorkflowMode?: 'self_service' | 'clinic_supported';
+    } = {
+      date: summaryDate,
+      role: isOwner
+        ? ownerView === 'organization'
+          ? 'owner'
+          : ownerView
+        : ((resolvedRole as 'doctor' | 'assistant' | 'owner' | null) ?? undefined),
+    };
+
+    if (isOwner && ownerView === 'doctor' && selectedDoctorId.trim()) {
+      next.doctorId = Number(selectedDoctorId);
+    }
+    if (isOwner && ownerView === 'assistant' && selectedAssistantId.trim()) {
+      next.assistantId = Number(selectedAssistantId);
+    }
+    if (reportVisitMode === 'walk_in' || reportVisitMode === 'appointment') {
+      next.visitMode = reportVisitMode;
+    }
+    if (reportWorkflowMode === 'self_service' || reportWorkflowMode === 'clinic_supported') {
+      next.doctorWorkflowMode = reportWorkflowMode;
+    }
+
+    return next;
+  }, [
+    isOwner,
+    ownerView,
+    reportVisitMode,
+    reportWorkflowMode,
+    resolvedRole,
+    selectedAssistantId,
+    selectedDoctorId,
+    summaryDate,
+  ]);
+  const reportsQueryInput = useMemo(() => {
+    const next: {
+      range?: '7d' | '30d' | 'custom';
+      dateFrom?: string;
+      dateTo?: string;
+      doctorId?: number;
+      assistantId?: number;
+      visitMode?: 'walk_in' | 'appointment';
+      doctorWorkflowMode?: 'self_service' | 'clinic_supported';
+    } = { range: range === '1d' ? 'custom' : range };
+
+    if (range === 'custom' || range === '1d') {
+      next.dateFrom = customDateFrom;
+      next.dateTo = customDateTo;
+    }
+
+    if (isOwner) {
+      if (
+        (activeReportType === 'doctor-performance' || activeReportType === 'patient-followup') &&
+        selectedDoctorId.trim()
+      ) {
+        next.doctorId = Number(selectedDoctorId);
+      }
+      if (activeReportType === 'assistant-performance' && selectedAssistantId.trim()) {
+        next.assistantId = Number(selectedAssistantId);
+      }
+    }
+
+    if (reportVisitMode === 'walk_in' || reportVisitMode === 'appointment') {
+      next.visitMode = reportVisitMode;
+    }
+    if (reportWorkflowMode === 'self_service' || reportWorkflowMode === 'clinic_supported') {
+      next.doctorWorkflowMode = reportWorkflowMode;
+    }
+
+    return next;
+  }, [
+    activeReportType,
+    customDateFrom,
+    customDateTo,
+    isOwner,
+    range,
+    reportVisitMode,
+    reportWorkflowMode,
+    selectedAssistantId,
+    selectedDoctorId,
+  ]);
+  const reportQuery = useReportsQuery(activeReportType, reportsQueryInput, workspaceMode === 'reports');
+  const dailySummaryQuery = useDailySummaryQuery(dailySummaryQueryInput, workspaceMode === 'dashboard');
+  const dailySummaryHistoryQuery = useDailySummaryHistoryQuery(
+    { ...dailySummaryQueryInput, limit: 7 },
+    workspaceMode === 'dashboard' && dailySummaryTab === 'history'
+  );
+  const reportData = useMemo(
+    () =>
+      reportQuery.data && typeof reportQuery.data === 'object'
+        ? (reportQuery.data as Record<string, unknown>)
+        : null,
+    [reportQuery.data]
+  );
+  const dailySummaryData = useMemo(
+    () =>
+      dailySummaryQuery.data && typeof dailySummaryQuery.data === 'object'
+        ? (dailySummaryQuery.data as Record<string, unknown>)
+        : null,
+    [dailySummaryQuery.data]
+  );
   const compactSelectSx = {
     border: 0,
     boxShadow: 'none',
@@ -1374,7 +1499,7 @@ export default function AnalyticsSection() {
         <ScopeField label="Role">{resolvedRole ?? '--'}</ScopeField>
       )}
 
-            <ScopeField label="Generated">{generatedLabel}</ScopeField>
+      <ScopeField label="Generated">{generatedLabel}</ScopeField>
 
       {isOwner && ownerView !== 'organization'
         ? ownerView === 'doctor'
@@ -1410,7 +1535,7 @@ export default function AnalyticsSection() {
                 ]}
                 sx={compactSelectSx}
               />
-              </ScopeField>
+            </ScopeField>
           )
         : null}
     </>
@@ -1422,19 +1547,19 @@ export default function AnalyticsSection() {
         <ViewportBody className="flex min-h-0 flex-col gap-3 overflow-hidden px-4 py-3 sm:px-5 sm:py-4 lg:px-6">
           <ViewportHeader
             eyebrow="Insights Control Room"
-            title="Realtime Analytics"
+            title="Daily Summary & Reports"
             description={
-              resolvedRole
-                ? `Role-based ${resolvedRole} analytics view for trends, distributions, and operational insight.`
-                : 'Role-based analytics view for trends, distributions, and operational insight.'
+              workspaceMode === 'dashboard'
+                ? 'See what is happening today, what looks unusual, and what needs attention first.'
+                : 'Use deeper reports for clinic performance, doctor load, assistant operations, follow-up, and inventory usage.'
             }
             actions={
               <div className="flex items-center gap-2">
                 <Link
-                  href="/daily-summary-reports"
+                  href="/analytics"
                   className="rounded-2xl border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
                 >
-                  Daily Summary & Reports
+                  Back to Analytics
                 </Link>
                 <button
                   type="button"
@@ -1442,54 +1567,288 @@ export default function AnalyticsSection() {
                   className="ios-button-primary rounded-2xl px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
                   disabled={isRefreshing}
                 >
-                  {isRefreshing ? 'Refreshing...' : 'Refresh analytics'}
+                  {isRefreshing
+                    ? 'Refreshing...'
+                    : workspaceMode === 'dashboard'
+                      ? 'Refresh summary'
+                      : 'Refresh reports'}
                 </button>
               </div>
             }
           />
 
-          <div className="min-h-0 flex-1 overflow-y-scroll pr-1">
-            <div className="space-y-3 pb-1">
+          <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70">
+            <div className="min-w-[120px]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    View Mode
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    Switch between daily summary and deep reports
+                  </p>
+                </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode('dashboard')}
+                className={
+                  workspaceMode === 'dashboard'
+                    ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
+                    : 'rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700'
+                }
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode('reports')}
+                className={
+                  workspaceMode === 'reports'
+                    ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
+                    : 'rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700'
+                }
+              >
+                Reports
+              </button>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-hidden">
+          {workspaceMode === 'dashboard' ? (
+            <div className="h-full space-y-3 overflow-y-scroll pr-1 pb-1">
+              <div className="grid gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70 md:grid-cols-2 xl:grid-cols-5">
+                <ScopeField label="Date">
+                  <input
+                    type="date"
+                    value={summaryDate}
+                    onChange={(event) => setSummaryDate(event.target.value)}
+                    className="w-full bg-transparent text-[0.74rem] font-semibold text-slate-800 outline-none"
+                  />
+                </ScopeField>
+                <ScopeField label="Visit Mode">
+                  <AppSelectField
+                    value={reportVisitMode}
+                    onValueChange={setReportVisitMode}
+                    ariaLabel="Daily summary visit mode"
+                    options={[
+                      { value: '', label: 'All' },
+                      { value: 'walk_in', label: 'Walk-in' },
+                      { value: 'appointment', label: 'Appointment' },
+                    ]}
+                    sx={compactSelectSx}
+                  />
+                </ScopeField>
+                <ScopeField label="Workflow Mode">
+                  <AppSelectField
+                    value={reportWorkflowMode}
+                    onValueChange={setReportWorkflowMode}
+                    ariaLabel="Daily summary workflow mode"
+                    options={[
+                      { value: '', label: 'All' },
+                      { value: 'self_service', label: 'Self Service' },
+                      { value: 'clinic_supported', label: 'Clinic Supported' },
+                    ]}
+                    sx={compactSelectSx}
+                  />
+                </ScopeField>
+                {isOwner ? (
+                  ownerView === 'assistant' ? (
+                    <ScopeField label="Assistant">
+                      <AppSelectField
+                        value={selectedAssistantId}
+                        onValueChange={setSelectedAssistantId}
+                        ariaLabel="Daily summary assistant filter"
+                        options={[
+                          { value: '', label: 'All assistants' },
+                          ...assistantOptions.map((assistant) => ({
+                            value: String(assistant.id),
+                            label: assistant.name,
+                          })),
+                        ]}
+                        sx={compactSelectSx}
+                      />
+                    </ScopeField>
+                  ) : (
+                    <ScopeField label="Doctor">
+                      <AppSelectField
+                        value={selectedDoctorId}
+                        onValueChange={setSelectedDoctorId}
+                        ariaLabel="Daily summary doctor filter"
+                        options={[
+                          { value: '', label: 'All doctors' },
+                          ...doctorOptions.map((doctor) => ({
+                            value: String(doctor.id),
+                            label: doctor.name,
+                          })),
+                        ]}
+                        sx={compactSelectSx}
+                      />
+                    </ScopeField>
+                  )
+                ) : (
+                  <ScopeField label="Role">{resolvedRole ?? '--'}</ScopeField>
+                )}
+                <ScopeField label="Generated">
+                  {dailySummaryData && typeof dailySummaryData.generatedAt === 'string'
+                    ? getGeneratedLabel(dailySummaryData.generatedAt)
+                    : generatedLabel}
+                </ScopeField>
+              </div>
+
+              <DailySummaryContent
+                data={dailySummaryData}
+                history={dailySummaryHistoryQuery.data}
+                activeTab={dailySummaryTab}
+                onTabChange={setDailySummaryTab}
+                isLoading={dailySummaryQuery.isPending || dailySummaryQuery.isFetching || (dailySummaryTab === 'history' && (dailySummaryHistoryQuery.isPending || dailySummaryHistoryQuery.isFetching))}
+                error={
+                  dailySummaryQuery.isError
+                    ? (dailySummaryQuery.error as { message?: string } | undefined)?.message ?? 'Unable to load daily summary.'
+                    : dailySummaryTab === 'history' && dailySummaryHistoryQuery.isError
+                      ? (dailySummaryHistoryQuery.error as { message?: string } | undefined)?.message ?? 'Unable to load daily summary history.'
+                      : null
+                }
+              />
+            </div>
+          ) : (
+            <div className="h-full space-y-3 overflow-y-scroll pr-1 pb-1">
               {data && isDoctorAnalytics(data) ? (
                 <div className="grid auto-rows-fr items-stretch gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
                   <MetricStrip title="Doctor Focus" metrics={getDoctorKpiMetrics(data)} />
                   <DashboardHero
                     resolvedRole={resolvedRole}
                     controls={heroControls}
+                    title="Reports Scope"
+                    description="Use report filters to review performance, follow-up, and mode-based clinic trends in more detail."
                   />
                 </div>
               ) : (
                 <DashboardHero
                   resolvedRole={resolvedRole}
                   controls={heroControls}
+                  title="Reports Scope"
+                  description="Use report filters to review performance, follow-up, and mode-based clinic trends in more detail."
                 />
               )}
+              <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70">
+                <div className="min-w-[120px]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Reports
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    Select a report view
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {reportOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setActiveReportType(option.key)}
+                      className={
+                        option.key === activeReportType
+                          ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
+                          : 'rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-semibold text-sky-800'
+                      }
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              {loadState.status === 'loading' ? (
-                <AsyncStatePanel
-                  eyebrow="Loading"
-                  title="Loading analytics"
-                  description="The selected analytics view is being prepared."
-                  tone="loading"
-                />
-              ) : loadState.status === 'error' ? (
-                <AsyncStatePanel
-                  eyebrow="Error"
-                  title="Analytics could not be loaded"
-                  description={loadState.error ?? 'Unable to load analytics dashboard.'}
-                  tone="error"
-                />
-              ) : loadState.status === 'empty' || !data ? (
-                <AsyncStatePanel
-                  eyebrow="No Data"
-                  title="No analytics data yet"
-                  description={loadState.notice ?? 'No analytics data is available for the selected range.'}
-                  tone="empty"
-                />
-              ) : (
-                <RoleAnalyticsPanels data={data} />
-              )}
+              <div className="grid gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70 md:grid-cols-2 xl:grid-cols-5">
+                <ScopeField label="Range">
+                  <AppSelectField
+                    value={range}
+                    onValueChange={(value) => setRange(value as typeof range)}
+                    ariaLabel="Reports range"
+                    options={[
+                      { value: '1d', label: '1 Day' },
+                      { value: '7d', label: '7 Days' },
+                      { value: '30d', label: '30 Days' },
+                      { value: 'custom', label: 'Custom' },
+                    ]}
+                    sx={compactSelectSx}
+                  />
+                </ScopeField>
+                <ScopeField label="Visit Mode">
+                  <AppSelectField
+                    value={reportVisitMode}
+                    onValueChange={setReportVisitMode}
+                    ariaLabel="Report visit mode"
+                    options={[
+                      { value: '', label: 'All' },
+                      { value: 'walk_in', label: 'Walk-in' },
+                      { value: 'appointment', label: 'Appointment' },
+                    ]}
+                    sx={compactSelectSx}
+                  />
+                </ScopeField>
+                <ScopeField label="Workflow Mode">
+                  <AppSelectField
+                    value={reportWorkflowMode}
+                    onValueChange={setReportWorkflowMode}
+                    ariaLabel="Report workflow mode"
+                    options={[
+                      { value: '', label: 'All' },
+                      { value: 'self_service', label: 'Self Service' },
+                      { value: 'clinic_supported', label: 'Clinic Supported' },
+                    ]}
+                    sx={compactSelectSx}
+                  />
+                </ScopeField>
+                {isOwner ? (
+                  activeReportType === 'assistant-performance' ? (
+                    <ScopeField label="Assistant">
+                      <AppSelectField
+                        value={selectedAssistantId}
+                        onValueChange={setSelectedAssistantId}
+                        ariaLabel="Report assistant filter"
+                        options={[
+                          { value: '', label: 'All assistants' },
+                          ...assistantOptions.map((assistant) => ({
+                            value: String(assistant.id),
+                            label: assistant.name,
+                          })),
+                        ]}
+                        sx={compactSelectSx}
+                      />
+                    </ScopeField>
+                  ) : (
+                    <ScopeField label="Doctor">
+                      <AppSelectField
+                        value={selectedDoctorId}
+                        onValueChange={setSelectedDoctorId}
+                        ariaLabel="Report doctor filter"
+                        options={[
+                          { value: '', label: 'All doctors' },
+                          ...doctorOptions.map((doctor) => ({
+                            value: String(doctor.id),
+                            label: doctor.name,
+                          })),
+                        ]}
+                        sx={compactSelectSx}
+                      />
+                    </ScopeField>
+                  )
+                ) : (
+                  <ScopeField label="Role">{resolvedRole ?? '--'}</ScopeField>
+                )}
+                <ScopeField label="Generated">
+                  {reportData && typeof reportData.generatedAt === 'string'
+                    ? getGeneratedLabel(reportData.generatedAt)
+                    : generatedLabel}
+                </ScopeField>
+              </div>
+
+              <ReportContent
+                reportType={activeReportType}
+                data={reportData}
+                isLoading={reportQuery.isPending || reportQuery.isFetching}
+                error={reportQuery.isError ? (reportQuery.error as { message?: string } | undefined)?.message ?? 'Unable to load report data.' : null}
+              />
             </div>
+          )}
           </div>
         </ViewportBody>
       </ViewportFrame>

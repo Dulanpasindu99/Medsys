@@ -24,13 +24,20 @@ export const appMuiSelectSx = {
     display: "flex",
     alignItems: "center",
     boxSizing: "border-box",
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
     paddingTop: "0 !important",
     paddingBottom: "0 !important",
     paddingLeft: "1rem",
-    paddingRight: "2.5rem",
+    paddingRight: "2.85rem",
   },
   "& .MuiSvgIcon-root": {
     color: "#64748b",
+    right: "0.8rem",
+    top: "calc(50% - 0.5em)",
+    fontSize: "1.15rem",
   },
   "@media (max-width:1279px)": {
     fontSize: "0.8125rem",
@@ -38,8 +45,13 @@ export const appMuiSelectSx = {
     height: 38,
     "& .MuiSelect-select": {
       minHeight: "38px",
+      lineHeight: 1.2,
       paddingLeft: "0.875rem",
-      paddingRight: "2.25rem",
+      paddingRight: "2.6rem",
+    },
+    "& .MuiSvgIcon-root": {
+      right: "0.72rem",
+      fontSize: "1.08rem",
     },
   },
   "@media (max-width:767px)": {
@@ -48,8 +60,13 @@ export const appMuiSelectSx = {
     height: 36,
     "& .MuiSelect-select": {
       minHeight: "36px",
+      lineHeight: 1.15,
       paddingLeft: "0.75rem",
-      paddingRight: "2rem",
+      paddingRight: "2.35rem",
+    },
+    "& .MuiSvgIcon-root": {
+      right: "0.65rem",
+      fontSize: "1rem",
     },
   },
 } as const;

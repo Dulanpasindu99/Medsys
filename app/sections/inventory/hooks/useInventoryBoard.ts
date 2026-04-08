@@ -40,13 +40,15 @@ import {
   useInventoryDetailQuery,
   useInventoryMovementsQuery,
   useInventoryQuery,
-  useInventoryReportsQuery,
-} from "../../../lib/query-hooks";
+    useReportsQuery,
+    useUsersQuery,
+  } from "../../../lib/query-hooks";
 import { queryKeys } from "../../../lib/query-keys";
 
 type AnyRecord = Record<string, unknown>;
 
 export type InventoryTab = "overview" | "inventory" | "detail" | "movements" | "batches" | "alerts" | "reports";
+export type ReportsRangePreset = "7d" | "30d" | "custom";
 
 export type InventoryFormState = {
   sku: string;
@@ -481,7 +483,29 @@ function sanitizeUnitSize(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 1;
 }
 
-export function useInventoryBoard() {
+function formatIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getPastIsoDate(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return formatIsoDate(date);
+}
+
+function asUserRows(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((row): row is Record<string, unknown> => !!row && typeof row === "object");
+}
+
+export function useInventoryBoard(
+  reportType:
+    | "clinic-overview"
+    | "doctor-performance"
+    | "assistant-performance"
+    | "inventory-usage"
+    | "patient-followup" = "inventory-usage"
+) {
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
   const inventoryQuery = useInventoryQuery();
@@ -495,6 +519,11 @@ export function useInventoryBoard() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [alertDays, setAlertDays] = useState(30);
+  const [reportsRange, setReportsRange] = useState<ReportsRangePreset>("30d");
+  const [reportsDateFrom, setReportsDateFrom] = useState(getPastIsoDate(29));
+  const [reportsDateTo, setReportsDateTo] = useState(formatIsoDate(new Date()));
+  const [reportsDoctorId, setReportsDoctorId] = useState("");
+  const [reportsAssistantId, setReportsAssistantId] = useState("");
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
   const [movementState, setMovementState] = useState<MutationState>(idleMutationState());
   const [movementNotice, setMovementNotice] = useState<string | null>(null);
@@ -513,7 +542,56 @@ export function useInventoryBoard() {
   }, [items, selectedItemId]);
 
   const alertsQuery = useInventoryAlertsQuery(alertDays);
-  const reportsQuery = useInventoryReportsQuery(alertDays);
+  const isOwner = currentUserQuery.data?.role === "owner";
+  const canReadUsers = Boolean(currentUserQuery.data?.permissions?.includes("user.read"));
+  const doctorsQuery = useUsersQuery(isOwner ? { role: "doctor" } : undefined, isOwner && canReadUsers);
+  const assistantsQuery = useUsersQuery(
+    isOwner ? { role: "assistant" } : undefined,
+    isOwner && canReadUsers
+  );
+  const doctorOptions = useMemo(
+    () =>
+      asUserRows(doctorsQuery.data)
+        .map((row) => ({
+          id: toNumber(row.id ?? row.userId),
+          name: toString(row.name ?? row.fullName ?? row.email, ""),
+        }))
+        .filter((row): row is { id: number; name: string } => row.id !== null && Boolean(row.name)),
+    [doctorsQuery.data]
+  );
+  const assistantOptions = useMemo(
+    () =>
+      asUserRows(assistantsQuery.data)
+        .map((row) => ({
+          id: toNumber(row.id ?? row.userId),
+          name: toString(row.name ?? row.fullName ?? row.email, ""),
+        }))
+        .filter((row): row is { id: number; name: string } => row.id !== null && Boolean(row.name)),
+    [assistantsQuery.data]
+  );
+  const reportsQueryInput = useMemo(() => {
+    const next: {
+      range: ReportsRangePreset;
+      dateFrom?: string;
+      dateTo?: string;
+      doctorId?: number;
+      assistantId?: number;
+    } = { range: reportsRange };
+    if (reportsRange === "custom") {
+      next.dateFrom = reportsDateFrom;
+      next.dateTo = reportsDateTo;
+    }
+    if (isOwner) {
+      if (reportsDoctorId.trim()) {
+        next.doctorId = Number(reportsDoctorId);
+      }
+      if (reportsAssistantId.trim()) {
+        next.assistantId = Number(reportsAssistantId);
+      }
+    }
+    return next;
+  }, [isOwner, reportsAssistantId, reportsDateFrom, reportsDateTo, reportsDoctorId, reportsRange]);
+  const reportsQuery = useReportsQuery(reportType, reportsQueryInput);
   const detailQuery = useInventoryDetailQuery(
     resolvedSelectedItemId ?? "none",
     resolvedSelectedItemId !== null
@@ -760,12 +838,22 @@ export function useInventoryBoard() {
   }, [detailPayload, movements]);
 
   const reportsPayload = reportsQuery.data;
+  const reportShell = useMemo(() => {
+    const root = asRecord(reportsPayload);
+    return {
+      generatedAt: toString(root?.generatedAt, ""),
+      range: asRecord(root?.range),
+      summary: asRecord(root?.summary) ?? {},
+      charts: asRecord(root?.charts) ?? {},
+      tables: asRecord(root?.tables) ?? {},
+    };
+  }, [reportsPayload]);
   const reportSections = useMemo(() => {
-    const supplierSummary = getRecordArrayAtPaths(reportsPayload, [["supplierSummary"]]);
-    const fastMoving = getRecordArrayAtPaths(reportsPayload, [["fastMoving"]]);
-    const slowMoving = getRecordArrayAtPaths(reportsPayload, [["slowMoving"]]);
-    const deadStock = getRecordArrayAtPaths(reportsPayload, [["deadStock"]]);
-    const expiringBatches = getRecordArrayAtPaths(reportsPayload, [["expiringBatches"]]);
+    const supplierSummary = getRecordArrayAtPaths(reportsPayload, [["tables", "supplierSummary"], ["supplierSummary"]]);
+    const fastMoving = getRecordArrayAtPaths(reportsPayload, [["tables", "fastMoving"], ["fastMoving"]]);
+    const slowMoving = getRecordArrayAtPaths(reportsPayload, [["tables", "slowMoving"], ["slowMoving"]]);
+    const deadStock = getRecordArrayAtPaths(reportsPayload, [["tables", "deadStock"], ["deadStock"]]);
+    const expiringBatches = getRecordArrayAtPaths(reportsPayload, [["tables", "expiringBatches"], ["expiringBatches"]]);
     return { supplierSummary, fastMoving, slowMoving, deadStock, expiringBatches };
   }, [reportsPayload]);
 
@@ -881,7 +969,7 @@ export function useInventoryBoard() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.list }),
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.alerts(alertDays) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.reports(alertDays) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports.view(reportType, reportsQueryInput) }),
       ...(resolvedSelectedItemId !== null
         ? [
             queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(resolvedSelectedItemId) }),
@@ -1182,6 +1270,18 @@ export function useInventoryBoard() {
     setStatusFilter,
     alertDays,
     setAlertDays,
+    reportsRange,
+    setReportsRange,
+    reportsDateFrom,
+    setReportsDateFrom,
+    reportsDateTo,
+    setReportsDateTo,
+    reportsDoctorId,
+    setReportsDoctorId,
+    reportsAssistantId,
+    setReportsAssistantId,
+    doctorOptions,
+    assistantOptions,
     itemForm,
     updateItemForm,
     movementForm,
@@ -1207,7 +1307,9 @@ export function useInventoryBoard() {
     detailSummary,
     detailRecentMovements,
     batches,
+    reportShell,
     reportSections,
+    currentUser: currentUserQuery.data ?? null,
     refresh: () => {
       setMovementNotice(null);
       void refreshInventoryQueries();
