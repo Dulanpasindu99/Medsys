@@ -1,0 +1,119 @@
+export type LoadStatus = "idle" | "loading" | "ready" | "empty" | "error";
+export type MutationStatus = "idle" | "pending" | "success" | "error";
+
+export type LoadState = {
+  status: LoadStatus;
+  error: string | null;
+  notice: string | null;
+};
+
+export type MutationState = {
+  status: MutationStatus;
+  error: string | null;
+  message: string | null;
+};
+
+export type MutationFeedback = {
+  tone: "info" | "success" | "error";
+  message: string;
+};
+
+export const idleLoadState = (): LoadState => ({
+  status: "idle",
+  error: null,
+  notice: null,
+});
+
+export const loadingLoadState = (): LoadState => ({
+  status: "loading",
+  error: null,
+  notice: null,
+});
+
+export const readyLoadState = (notice?: string | null): LoadState => ({
+  status: "ready",
+  error: null,
+  notice: notice ?? null,
+});
+
+export const emptyLoadState = (notice?: string | null): LoadState => ({
+  status: "empty",
+  error: null,
+  notice: notice ?? null,
+});
+
+export const errorLoadState = (
+  error: string,
+  notice?: string | null
+): LoadState => ({
+  status: "error",
+  error,
+  notice: notice ?? null,
+});
+
+export const idleMutationState = (): MutationState => ({
+  status: "idle",
+  error: null,
+  message: null,
+});
+
+export const pendingMutationState = (): MutationState => ({
+  status: "pending",
+  error: null,
+  message: null,
+});
+
+export const successMutationState = (message?: string | null): MutationState => ({
+  status: "success",
+  error: null,
+  message: message ?? null,
+});
+
+export const errorMutationState = (
+  error: string,
+  message?: string | null
+): MutationState => ({
+  status: "error",
+  error,
+  message: message ?? null,
+});
+
+export function getMutationFeedback(
+  state: MutationState,
+  options?: {
+    pendingMessage?: string;
+    successMessage?: string;
+    errorMessage?: string;
+  }
+): MutationFeedback | null {
+  if (state.status === "pending") {
+    return options?.pendingMessage
+      ? {
+          tone: "info",
+          message: options.pendingMessage,
+        }
+      : null;
+  }
+
+  if (state.status === "success") {
+    const message = state.message ?? options?.successMessage ?? null;
+    return message
+      ? {
+          tone: "success",
+          message,
+        }
+      : null;
+  }
+
+  if (state.status === "error") {
+    const message = state.error ?? options?.errorMessage ?? null;
+    return message
+      ? {
+          tone: "error",
+          message,
+        }
+      : null;
+  }
+
+  return null;
+}

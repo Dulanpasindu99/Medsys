@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/app/lib/api-auth";
+import { callBackendRoute, toFrontendErrorResponse } from "@/app/lib/backend-route-client";
+import {
+  parseJsonBody,
+  parsePositiveInteger,
+  validateAppointmentUpdatePayload,
+  validationErrorResponse,
+} from "@/app/lib/api-validation";
+
+function contractMismatchResponse() {
+  return NextResponse.json(
+    { error: "Backend contract mismatch for the appointment detail route." },
+    { status: 502 }
+  );
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = requirePermission(request, "appointment.update");
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { id: idParam } = await params;
+  const id = parsePositiveInteger(idParam, "id");
+  if (!id.ok) {
+    return validationErrorResponse(id.issues);
+  }
+
+  const parsedBody = await parseJsonBody(request);
+  if (!parsedBody.ok) {
+    return validationErrorResponse(parsedBody.issues);
+  }
+
+  const validated = validateAppointmentUpdatePayload(parsedBody.value);
+  if (!validated.ok) {
+    return validationErrorResponse(validated.issues);
+  }
+
+  const backend = await callBackendRoute(request, `/v1/appointments/${id.value}`, {
+    body: JSON.stringify(validated.value),
+    includeSearch: false,
+  });
+  if (!backend.ok) {
+    return backend.response;
+  }
+
+  if (!backend.response.ok) {
+    return toFrontendErrorResponse(backend.response, "Unable to update appointment.");
+  }
+
+  let payload: unknown;
+  try {
+    payload = await backend.response.json();
+  } catch {
+    return contractMismatchResponse();
+  }
+
+  const response = NextResponse.json(payload);
+  backend.applyTo(response);
+  return response;
+}

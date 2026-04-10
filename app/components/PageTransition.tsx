@@ -3,10 +3,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { navigationItems } from './NavigationPanel';
+import { getNavigationIndexForPath } from '../lib/authorization';
 
-const getNavigationIndex = (path: string) =>
-  navigationItems.findIndex((item) => item.href === path);
+const getNavigationIndex = (path: string) => getNavigationIndexForPath(path);
 
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,11 +56,11 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`page-transition page-transition--${transitionDirection} ${
+      className={`page-transition h-full min-h-0 overflow-hidden page-transition--${transitionDirection} ${
         transitionStage === 'idle' ? '' : `page-transition--${transitionStage}`
       }`}
     >
-      <div className="page-transition__content">{displayedContent}</div>
+      <div className="page-transition__content h-full min-h-0 overflow-hidden">{displayedContent}</div>
     </div>
   );
 }

@@ -1,0 +1,1270 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 2426 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F2 22 Tf
+1 0 0 1 54 755 Tm
+(Medsys Developer Documentation) Tj
+/F1 11 Tf
+1 0 0 1 54 723 Tm
+(Architecture, Implementation, and Delivery Status) Tj
+/F1 11 Tf
+1 0 0 1 54 695 Tm
+(Version: 1.3) Tj
+/F1 11 Tf
+1 0 0 1 54 675 Tm
+(Date: March 24, 2026) Tj
+/F1 11 Tf
+1 0 0 1 54 655 Tm
+(Document Status: Developer Reference) Tj
+/F1 11 Tf
+1 0 0 1 54 635 Tm
+(System Version: Frontend `0.1.0`) Tj
+/F1 11 Tf
+1 0 0 1 54 615 Tm
+(Audience: Frontend developers, backend developers, QA, technical leads, solution) Tj
+/F1 11 Tf
+1 0 0 1 54 599 Tm
+(architects) Tj
+/F2 16 Tf
+1 0 0 1 54 562 Tm
+(1. Purpose) Tj
+/F1 11 Tf
+1 0 0 1 54 534 Tm
+(This document is the developer-facing reference for the Medsys frontend repository.) Tj
+/F1 11 Tf
+1 0 0 1 54 518 Tm
+(It consolidates implementation details, architecture decisions, current code) Tj
+/F1 11 Tf
+1 0 0 1 54 502 Tm
+(organization, backend integration behavior, delivered phases, open gaps, and the) Tj
+/F1 11 Tf
+1 0 0 1 54 486 Tm
+(remaining work tracks.) Tj
+/F1 11 Tf
+1 0 0 1 54 458 Tm
+(It is intended to replace the earlier split across roadmap, requirements, contract,) Tj
+/F1 11 Tf
+1 0 0 1 54 442 Tm
+(and closure documents.) Tj
+/F2 16 Tf
+1 0 0 1 54 405 Tm
+(2. Application Summary) Tj
+/F1 11 Tf
+1 0 0 1 54 377 Tm
+(Medsys is a Next.js App Router application for clinic operations. It supports:) Tj
+/F1 11 Tf
+1 0 0 1 68 349 Tm
+(- authentication and role-based shell access) Tj
+/F1 11 Tf
+1 0 0 1 68 331 Tm
+(- doctor consultation workflows) Tj
+/F1 11 Tf
+1 0 0 1 68 313 Tm
+(- assistant intake and dispensing workflows) Tj
+/F1 11 Tf
+1 0 0 1 68 295 Tm
+(- patient directory and patient profile flows) Tj
+/F1 11 Tf
+1 0 0 1 68 277 Tm
+(- owner staff-management visibility) Tj
+/F1 11 Tf
+1 0 0 1 68 259 Tm
+(- appointments, encounters, prescriptions, and inventory workflows) Tj
+/F1 11 Tf
+1 0 0 1 68 241 Tm
+(- analytics and AI-assisted operational summaries) Tj
+/F1 11 Tf
+1 0 0 1 54 215 Tm
+(The frontend is implemented as a browser client plus a same-origin BFF layer. Browser) Tj
+/F1 11 Tf
+1 0 0 1 54 199 Tm
+(code calls `/api/...` routes. Those routes validate or normalize payloads as needed) Tj
+/F1 11 Tf
+1 0 0 1 54 183 Tm
+(and forward server-side to backend `/v1/...` routes using secure backend auth) Tj
+/F1 11 Tf
+1 0 0 1 54 167 Tm
+(cookies.) Tj
+/F2 16 Tf
+1 0 0 1 54 130 Tm
+(3. Stack) Tj
+/F2 16 Tf
+1 0 0 1 54 93 Tm
+(3.1 Runtime Stack) Tj
+/F1 11 Tf
+1 0 0 1 68 65 Tm
+(- Next.js `16.0.1`) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 2303 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- React `19.2.0`) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- TypeScript `5`) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- Tailwind CSS `4`) Tj
+/F1 11 Tf
+1 0 0 1 68 718 Tm
+(- TanStack Query `5.90.21`) Tj
+/F2 16 Tf
+1 0 0 1 54 683 Tm
+(3.2 Quality Tooling) Tj
+/F1 11 Tf
+1 0 0 1 68 655 Tm
+(- ESLint `9`) Tj
+/F1 11 Tf
+1 0 0 1 68 637 Tm
+(- Vitest `4.0.18`) Tj
+/F1 11 Tf
+1 0 0 1 68 619 Tm
+(- Testing Library) Tj
+/F1 11 Tf
+1 0 0 1 68 601 Tm
+(- TypeScript strict checking) Tj
+/F2 16 Tf
+1 0 0 1 54 566 Tm
+(3.3 Current NPM Commands) Tj
+/F1 11 Tf
+1 0 0 1 68 538 Tm
+(- `npm run dev`) Tj
+/F1 11 Tf
+1 0 0 1 68 520 Tm
+(- `npm run build`) Tj
+/F1 11 Tf
+1 0 0 1 68 502 Tm
+(- `npm run lint`) Tj
+/F1 11 Tf
+1 0 0 1 68 484 Tm
+(- `npm run typecheck`) Tj
+/F1 11 Tf
+1 0 0 1 68 466 Tm
+(- `npm run test:unit`) Tj
+/F1 11 Tf
+1 0 0 1 68 448 Tm
+(- `npm test`) Tj
+/F2 16 Tf
+1 0 0 1 54 413 Tm
+(4. Architecture Overview) Tj
+/F2 16 Tf
+1 0 0 1 54 376 Tm
+(4.1 High-Level Architecture) Tj
+/F1 11 Tf
+1 0 0 1 68 348 Tm
+(1. Browser UI calls frontend `/api/...` routes.) Tj
+/F1 11 Tf
+1 0 0 1 68 330 Tm
+(2. Frontend BFF routes validate and normalize browser-facing contracts.) Tj
+/F1 11 Tf
+1 0 0 1 68 312 Tm
+(3. BFF routes forward to backend `/v1/...` services using server-side credentials.) Tj
+/F1 11 Tf
+1 0 0 1 68 294 Tm
+(4. Signed app session and backend auth cookies maintain authenticated access.) Tj
+/F1 11 Tf
+1 0 0 1 68 276 Tm
+(5. Shared authorization rules drive route access, navigation visibility, and) Tj
+/F1 11 Tf
+1 0 0 1 68 260 Tm
+(   selected action affordances.) Tj
+/F2 16 Tf
+1 0 0 1 54 225 Tm
+(4.2 Auth Model) Tj
+/F1 11 Tf
+1 0 0 1 54 197 Tm
+(Current auth/session architecture:) Tj
+/F1 11 Tf
+1 0 0 1 68 169 Tm
+(- login goes through `POST /api/auth/login`) Tj
+/F1 11 Tf
+1 0 0 1 68 151 Tm
+(- app identity goes through `GET /api/auth/me`) Tj
+/F1 11 Tf
+1 0 0 1 68 133 Tm
+(- auth bootstrap state goes through `GET /api/auth/status`) Tj
+/F1 11 Tf
+1 0 0 1 68 115 Tm
+(- logout goes through `POST /api/auth/logout`) Tj
+/F1 11 Tf
+1 0 0 1 68 97 Tm
+(- backend access and refresh tokens are stored in secure `httpOnly` cookies) Tj
+/F1 11 Tf
+1 0 0 1 68 79 Tm
+(- app session is stored in a signed session cookie) Tj
+/F1 11 Tf
+1 0 0 1 68 61 Tm
+(- backend token refresh is handled server-side in the proxy/BFF layer) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Length 1789 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F2 16 Tf
+1 0 0 1 54 755 Tm
+(4.3 BFF Model) Tj
+/F1 11 Tf
+1 0 0 1 54 727 Tm
+(Current browser-facing routes are backend-backed through dedicated BFF routes or the) Tj
+/F1 11 Tf
+1 0 0 1 54 711 Tm
+(generic authenticated proxy:) Tj
+/F1 11 Tf
+1 0 0 1 68 683 Tm
+(- auth) Tj
+/F1 11 Tf
+1 0 0 1 68 665 Tm
+(- patients) Tj
+/F1 11 Tf
+1 0 0 1 68 647 Tm
+(- patient history) Tj
+/F1 11 Tf
+1 0 0 1 68 629 Tm
+(- patient-profile support feeds) Tj
+/F1 11 Tf
+1 0 0 1 68 611 Tm
+(- families) Tj
+/F1 11 Tf
+1 0 0 1 68 593 Tm
+(- users) Tj
+/F1 11 Tf
+1 0 0 1 68 575 Tm
+(- appointments) Tj
+/F1 11 Tf
+1 0 0 1 68 557 Tm
+(- encounters) Tj
+/F1 11 Tf
+1 0 0 1 68 539 Tm
+(- prescriptions and dispense) Tj
+/F1 11 Tf
+1 0 0 1 68 521 Tm
+(- inventory) Tj
+/F1 11 Tf
+1 0 0 1 68 503 Tm
+(- analytics overview) Tj
+/F1 11 Tf
+1 0 0 1 68 485 Tm
+(- audit logs) Tj
+/F1 11 Tf
+1 0 0 1 68 467 Tm
+(- clinical diagnoses) Tj
+/F1 11 Tf
+1 0 0 1 68 449 Tm
+(- clinical tests) Tj
+/F1 11 Tf
+1 0 0 1 68 431 Tm
+(- diagnosis-driven recommended tests) Tj
+/F2 16 Tf
+1 0 0 1 54 396 Tm
+(5. Repository Layout) Tj
+/F2 16 Tf
+1 0 0 1 54 359 Tm
+(5.1 Key Top-Level Paths) Tj
+/F1 11 Tf
+1 0 0 1 68 331 Tm
+(- `app`) Tj
+/F1 11 Tf
+1 0 0 1 68 313 Tm
+(- `public`) Tj
+/F1 11 Tf
+1 0 0 1 68 295 Tm
+(- `scripts`) Tj
+/F1 11 Tf
+1 0 0 1 68 277 Tm
+(- `tmp`) Tj
+/F1 11 Tf
+1 0 0 1 68 259 Tm
+(- `docs`) Tj
+/F2 16 Tf
+1 0 0 1 54 224 Tm
+(5.2 Frontend App Structure) Tj
+/F1 11 Tf
+1 0 0 1 54 196 Tm
+(Important application paths:) Tj
+/F1 11 Tf
+1 0 0 1 68 168 Tm
+(- `app/layout.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 150 Tm
+(- `app/login`) Tj
+/F1 11 Tf
+1 0 0 1 68 132 Tm
+(- `app/\(shell\)`) Tj
+/F1 11 Tf
+1 0 0 1 68 114 Tm
+(- `app/api`) Tj
+/F1 11 Tf
+1 0 0 1 68 96 Tm
+(- `app/components`) Tj
+/F1 11 Tf
+1 0 0 1 68 78 Tm
+(- `app/hooks`) Tj
+/F1 11 Tf
+1 0 0 1 68 60 Tm
+(- `app/lib`) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Length 2255 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- `app/sections`) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- `app/utils`) Tj
+/F2 16 Tf
+1 0 0 1 54 719 Tm
+(5.3 Important Library Files) Tj
+/F1 11 Tf
+1 0 0 1 68 691 Tm
+(- `app/lib/api-client.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 673 Tm
+(- browser-facing API access layer) Tj
+/F1 11 Tf
+1 0 0 1 68 655 Tm
+(- `app/lib/query-hooks.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 637 Tm
+(- shared TanStack Query hooks) Tj
+/F1 11 Tf
+1 0 0 1 68 619 Tm
+(- `app/lib/query-keys.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 601 Tm
+(- shared query keys) Tj
+/F1 11 Tf
+1 0 0 1 68 583 Tm
+(- `app/lib/api-auth.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 565 Tm
+(- frontend route auth helpers) Tj
+/F1 11 Tf
+1 0 0 1 68 547 Tm
+(- `app/lib/authorization.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 529 Tm
+(- shared permission model) Tj
+/F1 11 Tf
+1 0 0 1 68 511 Tm
+(- `app/lib/api-validation.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 493 Tm
+(- request validation helpers) Tj
+/F1 11 Tf
+1 0 0 1 68 475 Tm
+(- `app/lib/api-serializers.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 457 Tm
+(- response normalization helpers) Tj
+/F1 11 Tf
+1 0 0 1 68 439 Tm
+(- `app/lib/backend-route-client.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 421 Tm
+(- server-side backend forwarding helper) Tj
+/F1 11 Tf
+1 0 0 1 68 403 Tm
+(- `app/lib/backend-auth-cookies.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 385 Tm
+(- backend token cookie handling) Tj
+/F1 11 Tf
+1 0 0 1 68 367 Tm
+(- `app/lib/session.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 349 Tm
+(- signed app session handling) Tj
+/F1 11 Tf
+1 0 0 1 68 331 Tm
+(- `app/lib/backend-contract-adapters.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 313 Tm
+(- remaining server-side compatibility normalization) Tj
+/F2 16 Tf
+1 0 0 1 54 278 Tm
+(5.4 Feature Sections) Tj
+/F1 11 Tf
+1 0 0 1 68 250 Tm
+(- `app/sections/AssistantSection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 232 Tm
+(- `app/sections/DoctorSection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 214 Tm
+(- `app/sections/OwnerSection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 196 Tm
+(- `app/sections/PatientSection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 178 Tm
+(- `app/sections/AnalyticsSection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 160 Tm
+(- `app/sections/AiSection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 142 Tm
+(- `app/sections/InventorySection.tsx`) Tj
+/F1 11 Tf
+1 0 0 1 68 124 Tm
+(- `app/sections/patient-profile`) Tj
+/F2 16 Tf
+1 0 0 1 54 89 Tm
+(6. Current Implementation Status) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Length 2352 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F2 16 Tf
+1 0 0 1 54 767 Tm
+(6.1 Implemented Foundation) Tj
+/F1 11 Tf
+1 0 0 1 54 739 Tm
+(Implemented and active:) Tj
+/F1 11 Tf
+1 0 0 1 68 711 Tm
+(- backend-driven auth and session model) Tj
+/F1 11 Tf
+1 0 0 1 68 693 Tm
+(- shared permission matrix) Tj
+/F1 11 Tf
+1 0 0 1 68 675 Tm
+(- backend-backed BFF route structure) Tj
+/F1 11 Tf
+1 0 0 1 68 657 Tm
+(- prototype store retirement) Tj
+/F1 11 Tf
+1 0 0 1 68 639 Tm
+(- BE-020 frontend closure) Tj
+/F1 11 Tf
+1 0 0 1 68 621 Tm
+(- shared query layer rollout across the major read-heavy screens) Tj
+/F1 11 Tf
+1 0 0 1 68 603 Tm
+(- owner workflow hardening to backend-backed user list/create) Tj
+/F1 11 Tf
+1 0 0 1 68 585 Tm
+(- analytics, AI, and patient-profile stable read contract cleanup) Tj
+/F2 16 Tf
+1 0 0 1 54 550 Tm
+(6.2 Frontend Delivery Status By Track) Tj
+/F2 13 Tf
+1 0 0 1 54 518 Tm
+(Track A: Shared Query Layer) Tj
+/F1 11 Tf
+1 0 0 1 54 492 Tm
+(Status: `Implemented for current core reads`) Tj
+/F1 11 Tf
+1 0 0 1 54 464 Tm
+(Implemented:) Tj
+/F1 11 Tf
+1 0 0 1 68 436 Tm
+(- auth current-user and auth status) Tj
+/F1 11 Tf
+1 0 0 1 68 418 Tm
+(- patient directory) Tj
+/F1 11 Tf
+1 0 0 1 68 400 Tm
+(- doctor queue and patient details) Tj
+/F1 11 Tf
+1 0 0 1 68 382 Tm
+(- assistant operational reads) Tj
+/F1 11 Tf
+1 0 0 1 68 364 Tm
+(- owner operational reads) Tj
+/F1 11 Tf
+1 0 0 1 68 346 Tm
+(- analytics snapshot) Tj
+/F1 11 Tf
+1 0 0 1 68 328 Tm
+(- AI insight feeds) Tj
+/F1 11 Tf
+1 0 0 1 68 310 Tm
+(- patient-profile feeds) Tj
+/F1 11 Tf
+1 0 0 1 68 292 Tm
+(- inventory board reads) Tj
+/F1 11 Tf
+1 0 0 1 54 266 Tm
+(Remaining:) Tj
+/F1 11 Tf
+1 0 0 1 68 238 Tm
+(- future adoption for new read-heavy features) Tj
+/F2 13 Tf
+1 0 0 1 54 208 Tm
+(Track B: Adapter And Contract Cleanup) Tj
+/F1 11 Tf
+1 0 0 1 54 182 Tm
+(Status: `Implemented for current active flows`) Tj
+/F1 11 Tf
+1 0 0 1 54 154 Tm
+(Implemented:) Tj
+/F1 11 Tf
+1 0 0 1 68 126 Tm
+(- browser auth/register flows now consume normalized `/api/...` responses directly) Tj
+/F1 11 Tf
+1 0 0 1 68 108 Tm
+(- stable read-feed guards now live in `app/lib/api-client.ts`) Tj
+/F1 11 Tf
+1 0 0 1 68 90 Tm
+(- analytics, AI, and patient-profile hooks no longer carry broad mixed-shape) Tj
+/F1 11 Tf
+1 0 0 1 68 74 Tm
+(  parsing for their stabilized feeds) Tj
+/F1 11 Tf
+1 0 0 1 68 56 Tm
+(- browser-side adapter coupling is removed from the active API client) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Length 2814 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- backend compatibility normalization remains server-side only for the route) Tj
+/F1 11 Tf
+1 0 0 1 68 756 Tm
+(  families that still need it) Tj
+/F1 11 Tf
+1 0 0 1 54 730 Tm
+(Remaining:) Tj
+/F1 11 Tf
+1 0 0 1 68 702 Tm
+(- trim `app/lib/backend-contract-adapters.ts` further only when backend drift) Tj
+/F1 11 Tf
+1 0 0 1 68 686 Tm
+(  disappears completely) Tj
+/F2 13 Tf
+1 0 0 1 54 656 Tm
+(Track C: Permission And UX Alignment) Tj
+/F1 11 Tf
+1 0 0 1 54 630 Tm
+(Status: `Implemented for current active workflows`) Tj
+/F1 11 Tf
+1 0 0 1 54 602 Tm
+(Implemented:) Tj
+/F1 11 Tf
+1 0 0 1 68 574 Tm
+(- appointment-create policy aligned to current backend behavior) Tj
+/F1 11 Tf
+1 0 0 1 68 556 Tm
+(- owner and assistant allowed) Tj
+/F1 11 Tf
+1 0 0 1 68 538 Tm
+(- doctor denied) Tj
+/F1 11 Tf
+1 0 0 1 68 520 Tm
+(- assistant, doctor, owner, and inventory UI affordances reviewed against live) Tj
+/F1 11 Tf
+1 0 0 1 68 504 Tm
+(  frontend permission rules) Tj
+/F1 11 Tf
+1 0 0 1 68 486 Tm
+(- actions that predictably return `403` or fail due to missing local workflow) Tj
+/F1 11 Tf
+1 0 0 1 68 470 Tm
+(  context are now blocked earlier in the UI) Tj
+/F1 11 Tf
+1 0 0 1 54 444 Tm
+(Remaining:) Tj
+/F1 11 Tf
+1 0 0 1 68 416 Tm
+(- repeat the same review for new feature work as it is added) Tj
+/F2 13 Tf
+1 0 0 1 54 386 Tm
+(Track D: Workflow Hardening) Tj
+/F1 11 Tf
+1 0 0 1 54 360 Tm
+(Status: `Implemented for current active workflows`) Tj
+/F1 11 Tf
+1 0 0 1 54 332 Tm
+(Implemented:) Tj
+/F1 11 Tf
+1 0 0 1 68 304 Tm
+(- owner staff management now uses backend users API) Tj
+/F1 11 Tf
+1 0 0 1 68 286 Tm
+(- assistant and doctor workflows use backend-backed production paths) Tj
+/F1 11 Tf
+1 0 0 1 68 268 Tm
+(- analytics and AI use shared query-backed reads) Tj
+/F1 11 Tf
+1 0 0 1 68 250 Tm
+(- write-heavy workflows now clear stale feedback when context changes) Tj
+/F1 11 Tf
+1 0 0 1 68 232 Tm
+(- inventory, doctor, assistant, and owner actions use tighter disabled states) Tj
+/F1 11 Tf
+1 0 0 1 68 216 Tm
+(  before invalid operations) Tj
+/F1 11 Tf
+1 0 0 1 68 198 Tm
+(- duplicate-key list rendering issues in owner and assistant workflows are) Tj
+/F1 11 Tf
+1 0 0 1 68 182 Tm
+(  resolved and covered by tests) Tj
+/F1 11 Tf
+1 0 0 1 68 164 Tm
+(- doctor consultation save supports appointment and walk-in modes through one) Tj
+/F1 11 Tf
+1 0 0 1 68 148 Tm
+(  payload) Tj
+/F1 11 Tf
+1 0 0 1 68 130 Tm
+(- doctor workflow now supports prescription printing after a successful save) Tj
+/F1 11 Tf
+1 0 0 1 68 112 Tm
+(- assistant dispense flow resolves unmapped clinical drugs through backend) Tj
+/F1 11 Tf
+1 0 0 1 68 96 Tm
+(  inventory search before submit) Tj
+/F1 11 Tf
+1 0 0 1 68 78 Tm
+(- assistant dispense throttling now surfaces cooldown feedback from backend) Tj
+/F1 11 Tf
+1 0 0 1 68 62 Tm
+(  `Retry-After`) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Length 1921 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 54 764 Tm
+(Remaining:) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- additional UX polish only when future business rules evolve) Tj
+/F2 13 Tf
+1 0 0 1 54 706 Tm
+(Track E: Artifact Retirement) Tj
+/F1 11 Tf
+1 0 0 1 54 680 Tm
+(Status: `Implemented`) Tj
+/F1 11 Tf
+1 0 0 1 54 652 Tm
+(Implemented:) Tj
+/F1 11 Tf
+1 0 0 1 68 624 Tm
+(- `app/lib/store.ts` removed) Tj
+/F1 11 Tf
+1 0 0 1 68 606 Tm
+(- BE-020 closure documented) Tj
+/F1 11 Tf
+1 0 0 1 68 588 Tm
+(- stale prototype live-path references removed from active code) Tj
+/F2 16 Tf
+1 0 0 1 54 553 Tm
+(7. Backend Alignment Status) Tj
+/F2 16 Tf
+1 0 0 1 54 516 Tm
+(7.1 Current Frontend Position) Tj
+/F1 11 Tf
+1 0 0 1 54 488 Tm
+(From the frontend perspective:) Tj
+/F1 11 Tf
+1 0 0 1 68 460 Tm
+(- browser production-path calls are on `/api/...`) Tj
+/F1 11 Tf
+1 0 0 1 68 442 Tm
+(- BFF routes forward to backend `/v1/...`) Tj
+/F1 11 Tf
+1 0 0 1 68 424 Tm
+(- clinical terminology search is backend-aligned) Tj
+/F1 11 Tf
+1 0 0 1 68 406 Tm
+(- active prototype persistence is retired) Tj
+/F1 11 Tf
+1 0 0 1 68 388 Tm
+(- frontend BE-020 is closed) Tj
+/F2 16 Tf
+1 0 0 1 54 353 Tm
+(7.2 Current Backend Alignment Snapshot) Tj
+/F1 11 Tf
+1 0 0 1 54 325 Tm
+(Backend alignment is strongest for:) Tj
+/F1 11 Tf
+1 0 0 1 68 297 Tm
+(- auth login) Tj
+/F1 11 Tf
+1 0 0 1 68 279 Tm
+(- auth refresh) Tj
+/F1 11 Tf
+1 0 0 1 68 261 Tm
+(- auth me) Tj
+/F1 11 Tf
+1 0 0 1 68 243 Tm
+(- auth status) Tj
+/F1 11 Tf
+1 0 0 1 68 225 Tm
+(- patients) Tj
+/F1 11 Tf
+1 0 0 1 68 207 Tm
+(- patient history) Tj
+/F1 11 Tf
+1 0 0 1 68 189 Tm
+(- users) Tj
+/F1 11 Tf
+1 0 0 1 68 171 Tm
+(- appointments) Tj
+/F1 11 Tf
+1 0 0 1 68 153 Tm
+(- encounters) Tj
+/F1 11 Tf
+1 0 0 1 68 135 Tm
+(- prescriptions and dispensing) Tj
+/F1 11 Tf
+1 0 0 1 68 117 Tm
+(- inventory) Tj
+/F1 11 Tf
+1 0 0 1 68 99 Tm
+(- analytics overview) Tj
+/F1 11 Tf
+1 0 0 1 68 81 Tm
+(- audit logs) Tj
+/F1 11 Tf
+1 0 0 1 68 63 Tm
+(- clinical diagnoses) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Length 2349 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- clinical tests) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- diagnosis-driven recommended tests) Tj
+/F1 11 Tf
+1 0 0 1 54 728 Tm
+(Backend alignment areas still treated as ongoing:) Tj
+/F1 11 Tf
+1 0 0 1 68 700 Tm
+(- full permission-name alignment on the backend) Tj
+/F1 11 Tf
+1 0 0 1 68 682 Tm
+(- full validation-envelope consistency across all backend endpoints) Tj
+/F1 11 Tf
+1 0 0 1 68 664 Tm
+(- further reduction of server-side compatibility adapters as backend contracts) Tj
+/F1 11 Tf
+1 0 0 1 68 648 Tm
+(  stabilize) Tj
+/F2 16 Tf
+1 0 0 1 54 613 Tm
+(8. Browser-Facing BFF Coverage) Tj
+/F1 11 Tf
+1 0 0 1 54 585 Tm
+(Current primary browser-facing BFF route families:) Tj
+/F1 11 Tf
+1 0 0 1 68 557 Tm
+(- `/api/auth/login`) Tj
+/F1 11 Tf
+1 0 0 1 68 539 Tm
+(- `/api/auth/logout`) Tj
+/F1 11 Tf
+1 0 0 1 68 521 Tm
+(- `/api/auth/me`) Tj
+/F1 11 Tf
+1 0 0 1 68 503 Tm
+(- `/api/auth/status`) Tj
+/F1 11 Tf
+1 0 0 1 68 485 Tm
+(- `/api/auth/register`) Tj
+/F1 11 Tf
+1 0 0 1 68 467 Tm
+(- `/api/patients`) Tj
+/F1 11 Tf
+1 0 0 1 68 449 Tm
+(- `/api/patients/:id`) Tj
+/F1 11 Tf
+1 0 0 1 68 431 Tm
+(- `/api/patients/:id/history`) Tj
+/F1 11 Tf
+1 0 0 1 68 413 Tm
+(- `/api/patients/:id/profile`) Tj
+/F1 11 Tf
+1 0 0 1 68 395 Tm
+(- `/api/patients/:id/family`) Tj
+/F1 11 Tf
+1 0 0 1 68 377 Tm
+(- `/api/patients/:id/vitals`) Tj
+/F1 11 Tf
+1 0 0 1 68 359 Tm
+(- `/api/patients/:id/allergies`) Tj
+/F1 11 Tf
+1 0 0 1 68 341 Tm
+(- `/api/patients/:id/conditions`) Tj
+/F1 11 Tf
+1 0 0 1 68 323 Tm
+(- `/api/patients/:id/timeline`) Tj
+/F1 11 Tf
+1 0 0 1 68 305 Tm
+(- `/api/users`) Tj
+/F1 11 Tf
+1 0 0 1 68 287 Tm
+(- `/api/families`) Tj
+/F1 11 Tf
+1 0 0 1 68 269 Tm
+(- `/api/appointments`) Tj
+/F1 11 Tf
+1 0 0 1 68 251 Tm
+(- `/api/encounters`) Tj
+/F1 11 Tf
+1 0 0 1 68 233 Tm
+(- `/api/consultations/save`) Tj
+/F1 11 Tf
+1 0 0 1 68 215 Tm
+(- `/api/prescriptions/queue/pending-dispense`) Tj
+/F1 11 Tf
+1 0 0 1 68 197 Tm
+(- `/api/prescriptions/:id`) Tj
+/F1 11 Tf
+1 0 0 1 68 179 Tm
+(- `/api/prescriptions/:id/dispense`) Tj
+/F1 11 Tf
+1 0 0 1 68 161 Tm
+(- `/api/inventory`) Tj
+/F1 11 Tf
+1 0 0 1 68 143 Tm
+(- `/api/inventory/search`) Tj
+/F1 11 Tf
+1 0 0 1 68 125 Tm
+(- `/api/inventory/:id`) Tj
+/F1 11 Tf
+1 0 0 1 68 107 Tm
+(- `/api/inventory/:id/movements`) Tj
+/F1 11 Tf
+1 0 0 1 68 89 Tm
+(- `/api/analytics/overview`) Tj
+/F1 11 Tf
+1 0 0 1 68 71 Tm
+(- `/api/audit/logs`) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Length 2458 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- `/api/clinical/icd10`) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- `/api/clinical/diagnoses`) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- `/api/clinical/tests`) Tj
+/F1 11 Tf
+1 0 0 1 68 718 Tm
+(- `/api/clinical/diagnoses/:code/recommended-tests`) Tj
+/F2 16 Tf
+1 0 0 1 54 683 Tm
+(9. Testing Status) Tj
+/F1 11 Tf
+1 0 0 1 54 655 Tm
+(Current quality gate:) Tj
+/F1 11 Tf
+1 0 0 1 68 627 Tm
+(- `npm test`) Tj
+/F1 11 Tf
+1 0 0 1 68 609 Tm
+(- lint) Tj
+/F1 11 Tf
+1 0 0 1 68 591 Tm
+(- typecheck) Tj
+/F1 11 Tf
+1 0 0 1 68 573 Tm
+(- unit/component/route tests) Tj
+/F1 11 Tf
+1 0 0 1 54 547 Tm
+(Current implemented verification baseline:) Tj
+/F1 11 Tf
+1 0 0 1 68 519 Tm
+(- 35 passing test files) Tj
+/F1 11 Tf
+1 0 0 1 68 501 Tm
+(- 161 passing tests) Tj
+/F1 11 Tf
+1 0 0 1 54 475 Tm
+(Current note:) Tj
+/F1 11 Tf
+1 0 0 1 68 447 Tm
+(- `baseline-browser-mapping` is stale and still emits a non-blocking warning) Tj
+/F1 11 Tf
+1 0 0 1 68 431 Tm
+(  during the test run) Tj
+/F2 16 Tf
+1 0 0 1 54 396 Tm
+(10. Implemented Functional Areas) Tj
+/F1 11 Tf
+1 0 0 1 54 368 Tm
+(Implemented in active frontend scope:) Tj
+/F1 11 Tf
+1 0 0 1 68 340 Tm
+(- login, logout, auth status, current-user resolution) Tj
+/F1 11 Tf
+1 0 0 1 68 322 Tm
+(- role-based shell access) Tj
+/F1 11 Tf
+1 0 0 1 68 304 Tm
+(- doctor encounter workflow) Tj
+/F1 11 Tf
+1 0 0 1 68 286 Tm
+(- appointment-mode and walk-in-mode doctor consultation save orchestration) Tj
+/F1 11 Tf
+1 0 0 1 68 268 Tm
+(- backend-backed diagnosis search and normalized diagnosis selection) Tj
+/F1 11 Tf
+1 0 0 1 68 250 Tm
+(- backend-backed clinical test search for lab tests and observations) Tj
+/F1 11 Tf
+1 0 0 1 68 232 Tm
+(- diagnosis-driven recommended test suggestions) Tj
+/F1 11 Tf
+1 0 0 1 68 214 Tm
+(- assistant intake and dispense workflow) Tj
+/F1 11 Tf
+1 0 0 1 68 196 Tm
+(- assistant-side stock resolution for clinical queue items without an inventory) Tj
+/F1 11 Tf
+1 0 0 1 68 180 Tm
+(  mapping) Tj
+/F1 11 Tf
+1 0 0 1 68 162 Tm
+(- patient directory and profile) Tj
+/F1 11 Tf
+1 0 0 1 68 144 Tm
+(- owner staff list/create via backend users API) Tj
+/F1 11 Tf
+1 0 0 1 68 126 Tm
+(- appointment list and creation) Tj
+/F1 11 Tf
+1 0 0 1 68 108 Tm
+(- encounter list and submission) Tj
+/F1 11 Tf
+1 0 0 1 68 90 Tm
+(- prescription queue, detail, and dispense) Tj
+/F1 11 Tf
+1 0 0 1 68 72 Tm
+(- prescription print flow after doctor save) Tj
+/F1 11 Tf
+1 0 0 1 68 54 Tm
+(- inventory list, item creation, update, and movements) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Length 2915 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 770 Tm
+(- analytics overview) Tj
+/F1 11 Tf
+1 0 0 1 68 752 Tm
+(- AI insight summary view) Tj
+/F1 11 Tf
+1 0 0 1 68 734 Tm
+(- audit log visibility) Tj
+/F1 11 Tf
+1 0 0 1 68 716 Tm
+(- backend-backed diagnosis and clinical-test suggestions) Tj
+/F1 11 Tf
+1 0 0 1 68 698 Tm
+(- backend-backed diagnosis recommended-test suggestions) Tj
+/F2 16 Tf
+1 0 0 1 54 663 Tm
+(10. Workflow Notes) Tj
+/F1 11 Tf
+1 0 0 1 68 635 Tm
+(- doctor save now sends one consultation payload containing either `patientId` or) Tj
+/F1 11 Tf
+1 0 0 1 68 619 Tm
+(  `patientDraft`) Tj
+/F1 11 Tf
+1 0 0 1 68 601 Tm
+(- `workflowType` distinguishes appointment and walk-in save behavior) Tj
+/F1 11 Tf
+1 0 0 1 68 583 Tm
+(- save responses may include `workflow_status`, `dispense_status`,) Tj
+/F1 11 Tf
+1 0 0 1 68 567 Tm
+(  `clinical_item_count`, and `outside_item_count`) Tj
+/F1 11 Tf
+1 0 0 1 68 549 Tm
+(- doctor-side success messaging and assistant-handoff affordances now use those) Tj
+/F1 11 Tf
+1 0 0 1 68 533 Tm
+(  backend values) Tj
+/F1 11 Tf
+1 0 0 1 68 515 Tm
+(- prescription item `source` is operationally meaningful:) Tj
+/F1 11 Tf
+1 0 0 1 68 497 Tm
+(- `clinical` items drive queueing, dispense, stock lookup, and completion logic) Tj
+/F1 11 Tf
+1 0 0 1 68 479 Tm
+(- `outside` items are preserved for print and history only) Tj
+/F1 11 Tf
+1 0 0 1 68 461 Tm
+(- pending dispense queue is expected to contain prescriptions with clinical items) Tj
+/F1 11 Tf
+1 0 0 1 68 445 Tm
+(  only, and queue `items` should represent clinical items only) Tj
+/F1 11 Tf
+1 0 0 1 68 427 Tm
+(- assistant dispense submit must never send an empty `items` array) Tj
+/F2 16 Tf
+1 0 0 1 54 392 Tm
+(11. Not Yet Implemented Or Not Fully Mature) Tj
+/F1 11 Tf
+1 0 0 1 54 364 Tm
+(Not fully implemented or not yet enterprise-complete:) Tj
+/F1 11 Tf
+1 0 0 1 68 336 Tm
+(- patient self-service portal) Tj
+/F1 11 Tf
+1 0 0 1 68 318 Tm
+(- billing and claims) Tj
+/F1 11 Tf
+1 0 0 1 68 300 Tm
+(- laboratory and imaging integrations) Tj
+/F1 11 Tf
+1 0 0 1 68 282 Tm
+(- persistent test-code storage in saved encounter test rows) Tj
+/F1 11 Tf
+1 0 0 1 68 264 Tm
+(- deep compliance controls and governance workflows) Tj
+/F1 11 Tf
+1 0 0 1 68 246 Tm
+(- advanced audit governance tooling) Tj
+/F1 11 Tf
+1 0 0 1 68 228 Tm
+(- full backend permission-name parity across every domain action) Tj
+/F1 11 Tf
+1 0 0 1 68 210 Tm
+(- full elimination of server-side compatibility adapters) Tj
+/F1 11 Tf
+1 0 0 1 68 192 Tm
+(- future workflow polish driven by new backend rules or new feature delivery) Tj
+/F2 16 Tf
+1 0 0 1 54 157 Tm
+(12. Developer Workflow Guidance) Tj
+/F1 11 Tf
+1 0 0 1 54 129 Tm
+(When extending this codebase:) Tj
+/F1 11 Tf
+1 0 0 1 68 101 Tm
+(- keep browser code on `/api/...` only) Tj
+/F1 11 Tf
+1 0 0 1 68 83 Tm
+(- keep backend quirks inside BFF or server-side normalization layers) Tj
+/F1 11 Tf
+1 0 0 1 68 65 Tm
+(- prefer shared query hooks for remote reads) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Length 2298 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- use explicit loading, empty, error, and retry states) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- align action affordances with backend permissions before exposing UI actions) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- avoid reintroducing broad `unknown` response parsing in feature hooks for) Tj
+/F1 11 Tf
+1 0 0 1 68 720 Tm
+(  stabilized BFF routes) Tj
+/F2 16 Tf
+1 0 0 1 54 685 Tm
+(13. Current Priorities) Tj
+/F1 11 Tf
+1 0 0 1 54 657 Tm
+(Immediate next priorities:) Tj
+/F1 11 Tf
+1 0 0 1 68 629 Tm
+(1. maintain shared query invalidation and permission-aligned affordances for newly) Tj
+/F1 11 Tf
+1 0 0 1 68 613 Tm
+(   added workflows) Tj
+/F1 11 Tf
+1 0 0 1 68 595 Tm
+(2. trim remaining server-side contract-adapter debt as backend stabilizes) Tj
+/F1 11 Tf
+1 0 0 1 68 577 Tm
+(3. keep the full lint, typecheck, and test gate green during feature delivery) Tj
+/F1 11 Tf
+1 0 0 1 68 559 Tm
+(4. continue reducing documentation drift whenever workflow-state or dispense rules) Tj
+/F1 11 Tf
+1 0 0 1 68 543 Tm
+(   change) Tj
+/F2 16 Tf
+1 0 0 1 54 508 Tm
+(14. Environment And Runtime Notes) Tj
+/F1 11 Tf
+1 0 0 1 54 480 Tm
+(Expected important environment values:) Tj
+/F1 11 Tf
+1 0 0 1 68 452 Tm
+(- `BACKEND_URL`) Tj
+/F1 11 Tf
+1 0 0 1 68 434 Tm
+(- `MEDSYS_SESSION_SECRET`) Tj
+/F1 11 Tf
+1 0 0 1 68 416 Tm
+(- optional `NEXT_PUBLIC_ORGANIZATION_ID`) Tj
+/F1 11 Tf
+1 0 0 1 54 390 Tm
+(Current behavior:) Tj
+/F1 11 Tf
+1 0 0 1 68 362 Tm
+(- frontend requires backend availability for protected shell rendering) Tj
+/F1 11 Tf
+1 0 0 1 68 344 Tm
+(- same-origin BFF routes act as the application trust boundary) Tj
+/F2 16 Tf
+1 0 0 1 54 309 Tm
+(15. Conclusion) Tj
+/F1 11 Tf
+1 0 0 1 54 281 Tm
+(The Medsys frontend now has a stable production-oriented architecture: backend-backed) Tj
+/F1 11 Tf
+1 0 0 1 54 265 Tm
+(BFF routes, secure session handling, shared authorization, shared query) Tj
+/F1 11 Tf
+1 0 0 1 54 249 Tm
+(infrastructure, and retired prototype persistence. Workflow hardening for the active) Tj
+/F1 11 Tf
+1 0 0 1 54 233 Tm
+(production UI is complete. Remaining work is now steady-state maintenance,) Tj
+/F1 11 Tf
+1 0 0 1 54 217 Tm
+(backend-alignment refinement, and future feature delivery rather than migration or) Tj
+/F1 11 Tf
+1 0 0 1 54 201 Tm
+(core operational stabilization.) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+15 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+16 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+17 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 6 0 R >>
+endobj
+18 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+19 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 8 0 R >>
+endobj
+20 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+21 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 10 0 R >>
+endobj
+22 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+23 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 12 0 R >>
+endobj
+24 0 obj
+<< /Type /Page /Parent 25 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 13 0 R >>
+endobj
+25 0 obj
+<< /Type /Pages /Count 11 /Kids [14 0 R 15 0 R 16 0 R 17 0 R 18 0 R 19 0 R 20 0 R 21 0 R 22 0 R 23 0 R 24 0 R] >>
+endobj
+26 0 obj
+<< /Type /Catalog /Pages 25 0 R >>
+endobj
+xref
+0 27
+0000000000 65535 f 
+0000000015 00000 n 
+0000000085 00000 n 
+0000000160 00000 n 
+0000002638 00000 n 
+0000004993 00000 n 
+0000006834 00000 n 
+0000009141 00000 n 
+0000011545 00000 n 
+0000014411 00000 n 
+0000016384 00000 n 
+0000018786 00000 n 
+0000021297 00000 n 
+0000024265 00000 n 
+0000026616 00000 n 
+0000026754 00000 n 
+0000026892 00000 n 
+0000027030 00000 n 
+0000027168 00000 n 
+0000027306 00000 n 
+0000027444 00000 n 
+0000027582 00000 n 
+0000027721 00000 n 
+0000027860 00000 n 
+0000027999 00000 n 
+0000028138 00000 n 
+0000028268 00000 n 
+trailer
+<< /Size 27 /Root 26 0 R >>
+startxref
+28319
+%%EOF

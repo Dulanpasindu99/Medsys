@@ -1,0 +1,1025 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 2637 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F2 22 Tf
+1 0 0 1 54 755 Tm
+(Medsys Client Documentation) Tj
+/F1 11 Tf
+1 0 0 1 54 723 Tm
+(Client Overview, Scope, and Requirements Baseline) Tj
+/F1 11 Tf
+1 0 0 1 54 695 Tm
+(Version: 1.3) Tj
+/F1 11 Tf
+1 0 0 1 54 675 Tm
+(Date: March 24, 2026) Tj
+/F1 11 Tf
+1 0 0 1 54 655 Tm
+(Document Status: Client Issue Copy) Tj
+/F1 11 Tf
+1 0 0 1 54 635 Tm
+(System Version: Frontend `0.1.0`) Tj
+/F1 11 Tf
+1 0 0 1 54 615 Tm
+(Audience: Clients, sponsors, business stakeholders, delivery management) Tj
+/F2 16 Tf
+1 0 0 1 54 578 Tm
+(1. Executive Summary) Tj
+/F1 11 Tf
+1 0 0 1 54 550 Tm
+(Medsys is a web-based healthcare operations platform designed for internal clinic) Tj
+/F1 11 Tf
+1 0 0 1 54 534 Tm
+(use. The current product supports role-based workflows for owners, doctors, and) Tj
+/F1 11 Tf
+1 0 0 1 54 518 Tm
+(assistants across patient management, appointments, encounters, prescriptions,) Tj
+/F1 11 Tf
+1 0 0 1 54 502 Tm
+(inventory, analytics, AI-assisted summaries, and patient-profile viewing.) Tj
+/F1 11 Tf
+1 0 0 1 54 474 Tm
+(The application is positioned as an operational clinical workspace rather than a) Tj
+/F1 11 Tf
+1 0 0 1 54 458 Tm
+(public patient portal. It is built to give staff one controlled interface for) Tj
+/F1 11 Tf
+1 0 0 1 54 442 Tm
+(day-to-day patient flow, consultation support, dispensing support, staff) Tj
+/F1 11 Tf
+1 0 0 1 54 426 Tm
+(administration, and operational visibility.) Tj
+/F2 16 Tf
+1 0 0 1 54 389 Tm
+(2. Purpose) Tj
+/F1 11 Tf
+1 0 0 1 54 361 Tm
+(This document provides a client-facing view of the Medsys application. It explains:) Tj
+/F1 11 Tf
+1 0 0 1 68 333 Tm
+(- what the system is) Tj
+/F1 11 Tf
+1 0 0 1 68 315 Tm
+(- why it exists) Tj
+/F1 11 Tf
+1 0 0 1 68 297 Tm
+(- what it currently does) Tj
+/F1 11 Tf
+1 0 0 1 68 279 Tm
+(- which user roles it supports) Tj
+/F1 11 Tf
+1 0 0 1 68 261 Tm
+(- the major UI flows) Tj
+/F1 11 Tf
+1 0 0 1 68 243 Tm
+(- the current functional and non-functional requirements baseline) Tj
+/F1 11 Tf
+1 0 0 1 68 225 Tm
+(- the current technology baseline) Tj
+/F1 11 Tf
+1 0 0 1 54 199 Tm
+(This document is intended to support product review, stakeholder communication,) Tj
+/F1 11 Tf
+1 0 0 1 54 183 Tm
+(procurement discussion, implementation planning, and business sign-off conversations.) Tj
+/F2 16 Tf
+1 0 0 1 54 146 Tm
+(3. Aims And Objectives) Tj
+/F1 11 Tf
+1 0 0 1 54 118 Tm
+(The current Medsys implementation is intended to:) Tj
+/F1 11 Tf
+1 0 0 1 68 90 Tm
+(- centralize clinic operations in one browser-based workspace) Tj
+/F1 11 Tf
+1 0 0 1 68 72 Tm
+(- reduce fragmented staff workflows across patient intake, consultation, and) Tj
+/F1 11 Tf
+1 0 0 1 68 56 Tm
+(  dispensing) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 2387 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- provide clear role-based access to operational and clinical functions) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- improve visibility of appointments, patient records, prescriptions, and) Tj
+/F1 11 Tf
+1 0 0 1 68 738 Tm
+(  inventory) Tj
+/F1 11 Tf
+1 0 0 1 68 720 Tm
+(- provide a maintainable path toward a production-grade healthcare platform) Tj
+/F1 11 Tf
+1 0 0 1 54 694 Tm
+(Current business objectives supported by the product include:) Tj
+/F1 11 Tf
+1 0 0 1 68 666 Tm
+(- faster patient handling from registration through consultation and dispensing) Tj
+/F1 11 Tf
+1 0 0 1 68 648 Tm
+(- clearer doctor access to patient context) Tj
+/F1 11 Tf
+1 0 0 1 68 630 Tm
+(- assistant support for intake and dispense queues) Tj
+/F1 11 Tf
+1 0 0 1 68 612 Tm
+(- owner visibility into staff and operational activity) Tj
+/F1 11 Tf
+1 0 0 1 68 594 Tm
+(- better operational oversight through analytics and AI summary views) Tj
+/F2 16 Tf
+1 0 0 1 54 559 Tm
+(4. Product Scope) Tj
+/F1 11 Tf
+1 0 0 1 54 531 Tm
+(The current application covers the following internal clinic workspaces:) Tj
+/F1 11 Tf
+1 0 0 1 68 503 Tm
+(- authentication and role-based access) Tj
+/F1 11 Tf
+1 0 0 1 68 485 Tm
+(- doctor workspace) Tj
+/F1 11 Tf
+1 0 0 1 68 467 Tm
+(- assistant workspace) Tj
+/F1 11 Tf
+1 0 0 1 68 449 Tm
+(- patient directory) Tj
+/F1 11 Tf
+1 0 0 1 68 431 Tm
+(- patient profile) Tj
+/F1 11 Tf
+1 0 0 1 68 413 Tm
+(- appointments) Tj
+/F1 11 Tf
+1 0 0 1 68 395 Tm
+(- encounters) Tj
+/F1 11 Tf
+1 0 0 1 68 377 Tm
+(- prescriptions and dispensing) Tj
+/F1 11 Tf
+1 0 0 1 68 359 Tm
+(- inventory) Tj
+/F1 11 Tf
+1 0 0 1 68 341 Tm
+(- analytics) Tj
+/F1 11 Tf
+1 0 0 1 68 323 Tm
+(- AI insights) Tj
+/F1 11 Tf
+1 0 0 1 68 305 Tm
+(- owner workspace) Tj
+/F1 11 Tf
+1 0 0 1 54 279 Tm
+(Out of scope in the current implementation:) Tj
+/F1 11 Tf
+1 0 0 1 68 251 Tm
+(- patient self-service portal) Tj
+/F1 11 Tf
+1 0 0 1 68 233 Tm
+(- billing and claims workflows) Tj
+/F1 11 Tf
+1 0 0 1 68 215 Tm
+(- laboratory system integration) Tj
+/F1 11 Tf
+1 0 0 1 68 197 Tm
+(- imaging integration) Tj
+/F1 11 Tf
+1 0 0 1 68 179 Tm
+(- external pharmacy integration) Tj
+/F1 11 Tf
+1 0 0 1 68 161 Tm
+(- formal compliance certification) Tj
+/F1 11 Tf
+1 0 0 1 68 143 Tm
+(- advanced enterprise reporting) Tj
+/F2 16 Tf
+1 0 0 1 54 108 Tm
+(5. Product Overview) Tj
+/F1 11 Tf
+1 0 0 1 54 80 Tm
+(Medsys is organized around operational user roles:) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Length 2286 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- `Owner`) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- staff oversight) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- access visibility) Tj
+/F1 11 Tf
+1 0 0 1 68 718 Tm
+(- high-level operational administration) Tj
+/F1 11 Tf
+1 0 0 1 68 700 Tm
+(- `Doctor`) Tj
+/F1 11 Tf
+1 0 0 1 68 682 Tm
+(- waiting queue review) Tj
+/F1 11 Tf
+1 0 0 1 68 664 Tm
+(- patient context review) Tj
+/F1 11 Tf
+1 0 0 1 68 646 Tm
+(- encounter submission) Tj
+/F1 11 Tf
+1 0 0 1 68 628 Tm
+(- diagnosis, tests, and prescription entry) Tj
+/F1 11 Tf
+1 0 0 1 68 610 Tm
+(- `Assistant`) Tj
+/F1 11 Tf
+1 0 0 1 68 592 Tm
+(- patient intake) Tj
+/F1 11 Tf
+1 0 0 1 68 574 Tm
+(- dispense queue handling) Tj
+/F1 11 Tf
+1 0 0 1 68 556 Tm
+(- workflow coordination) Tj
+/F1 11 Tf
+1 0 0 1 54 530 Tm
+(The application uses a protected shell experience for authenticated users, with route) Tj
+/F1 11 Tf
+1 0 0 1 54 514 Tm
+(and action visibility controlled by shared authorization rules.) Tj
+/F2 16 Tf
+1 0 0 1 54 477 Tm
+(6. Technology Stack) Tj
+/F1 11 Tf
+1 0 0 1 54 449 Tm
+(Current frontend technology baseline:) Tj
+/F1 11 Tf
+1 0 0 1 68 421 Tm
+(- Next.js 16) Tj
+/F1 11 Tf
+1 0 0 1 68 403 Tm
+(- React 19) Tj
+/F1 11 Tf
+1 0 0 1 68 385 Tm
+(- TypeScript 5) Tj
+/F1 11 Tf
+1 0 0 1 68 367 Tm
+(- Tailwind CSS 4) Tj
+/F1 11 Tf
+1 0 0 1 68 349 Tm
+(- TanStack Query) Tj
+/F1 11 Tf
+1 0 0 1 68 331 Tm
+(- Vitest and Testing Library) Tj
+/F1 11 Tf
+1 0 0 1 54 305 Tm
+(Current architecture baseline:) Tj
+/F1 11 Tf
+1 0 0 1 68 277 Tm
+(- browser calls same-origin `/api/...` routes) Tj
+/F1 11 Tf
+1 0 0 1 68 259 Tm
+(- frontend BFF routes call backend `/v1/...` services server-side) Tj
+/F1 11 Tf
+1 0 0 1 68 241 Tm
+(- signed application session cookies are used for app identity) Tj
+/F1 11 Tf
+1 0 0 1 68 223 Tm
+(- backend access and refresh tokens are stored in secure `httpOnly` cookies) Tj
+/F1 11 Tf
+1 0 0 1 54 197 Tm
+(This architecture keeps backend tokens out of browser JavaScript and provides a) Tj
+/F1 11 Tf
+1 0 0 1 54 181 Tm
+(controlled integration layer between the UI and backend services.) Tj
+/F2 16 Tf
+1 0 0 1 54 144 Tm
+(7. User Roles And Permission Model) Tj
+/F1 11 Tf
+1 0 0 1 54 116 Tm
+(The current application supports three operational roles:) Tj
+/F1 11 Tf
+1 0 0 1 68 88 Tm
+(- `Owner`) Tj
+/F1 11 Tf
+1 0 0 1 68 70 Tm
+(- `Doctor`) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Length 2860 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- `Assistant`) Tj
+/F1 11 Tf
+1 0 0 1 54 746 Tm
+(Current permission behavior:) Tj
+/F1 11 Tf
+1 0 0 1 68 718 Tm
+(- route access is role-aware) Tj
+/F1 11 Tf
+1 0 0 1 68 700 Tm
+(- navigation visibility is permission-aware) Tj
+/F1 11 Tf
+1 0 0 1 68 682 Tm
+(- selected UI actions are aligned to backend policy) Tj
+/F1 11 Tf
+1 0 0 1 68 664 Tm
+(- internal API routes enforce shared permissions on the frontend BFF layer) Tj
+/F1 11 Tf
+1 0 0 1 54 638 Tm
+(Current important policy example:) Tj
+/F1 11 Tf
+1 0 0 1 68 610 Tm
+(- appointment creation is currently allowed for `Owner` and `Assistant`) Tj
+/F1 11 Tf
+1 0 0 1 68 592 Tm
+(- appointment creation is not currently allowed for `Doctor`) Tj
+/F2 16 Tf
+1 0 0 1 54 557 Tm
+(8. Core UI Flows) Tj
+/F2 16 Tf
+1 0 0 1 54 520 Tm
+(8.1 Login And Session Flow) Tj
+/F1 11 Tf
+1 0 0 1 68 492 Tm
+(1. User opens the login page.) Tj
+/F1 11 Tf
+1 0 0 1 68 474 Tm
+(2. Credentials are submitted to the frontend authentication route.) Tj
+/F1 11 Tf
+1 0 0 1 68 456 Tm
+(3. Frontend authenticates against the backend.) Tj
+/F1 11 Tf
+1 0 0 1 68 438 Tm
+(4. Signed app session and secure backend auth cookies are created.) Tj
+/F1 11 Tf
+1 0 0 1 68 420 Tm
+(5. User is redirected to the correct workspace based on role.) Tj
+/F2 16 Tf
+1 0 0 1 54 385 Tm
+(8.2 Doctor Workflow) Tj
+/F1 11 Tf
+1 0 0 1 68 357 Tm
+(1. Doctor enters the doctor workspace.) Tj
+/F1 11 Tf
+1 0 0 1 68 339 Tm
+(2. Waiting appointments are loaded, and doctor can also start a direct walk-in) Tj
+/F1 11 Tf
+1 0 0 1 68 323 Tm
+(   consultation from the same workspace.) Tj
+/F1 11 Tf
+1 0 0 1 68 305 Tm
+(3. Appointment mode selects a patient from the queue. Walk-in mode allows inline) Tj
+/F1 11 Tf
+1 0 0 1 68 289 Tm
+(   patient search and quick-create on the doctor screen.) Tj
+/F1 11 Tf
+1 0 0 1 68 271 Tm
+(4. Patient context, vitals, and allergies are loaded when available.) Tj
+/F1 11 Tf
+1 0 0 1 68 253 Tm
+(5. Doctor records notes, diagnoses, tests, prescriptions, and next-visit) Tj
+/F1 11 Tf
+1 0 0 1 68 237 Tm
+(   information.) Tj
+/F1 11 Tf
+1 0 0 1 68 219 Tm
+(6. Diagnosis search uses backend clinical terminology, medical test search uses) Tj
+/F1 11 Tf
+1 0 0 1 68 203 Tm
+(   backend clinical terminology, and diagnosis-driven recommended tests can be) Tj
+/F1 11 Tf
+1 0 0 1 68 187 Tm
+(   added quickly.) Tj
+/F1 11 Tf
+1 0 0 1 68 169 Tm
+(7. The consultation is submitted through one unified consultation-save request.) Tj
+/F1 11 Tf
+1 0 0 1 68 151 Tm
+(8. Prescription items may be saved as `clinical` or `outside`.) Tj
+/F1 11 Tf
+1 0 0 1 68 133 Tm
+(9. Only `clinical` items trigger clinic dispense workflow. `Outside` items remain) Tj
+/F1 11 Tf
+1 0 0 1 68 117 Tm
+(   part of prescription print and history only.) Tj
+/F2 16 Tf
+1 0 0 1 54 82 Tm
+(8.3 Assistant Workflow) Tj
+/F1 11 Tf
+1 0 0 1 68 54 Tm
+(1. Assistant enters the assistant workspace.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Length 2743 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 770 Tm
+(2. Pending dispense queue and supporting workflow data are loaded.) Tj
+/F1 11 Tf
+1 0 0 1 68 752 Tm
+(3. Assistant may register a new patient through intake.) Tj
+/F1 11 Tf
+1 0 0 1 68 734 Tm
+(4. Assistant selects a pending prescription.) Tj
+/F1 11 Tf
+1 0 0 1 68 716 Tm
+(5. Prescription details are displayed.) Tj
+/F1 11 Tf
+1 0 0 1 68 698 Tm
+(6. Pending queue items now include clinic-dispensable medicines only.) Tj
+/F1 11 Tf
+1 0 0 1 68 680 Tm
+(7. If a clinical item has no inventory mapping yet, assistant resolves it through) Tj
+/F1 11 Tf
+1 0 0 1 68 664 Tm
+(   inventory search before dispensing.) Tj
+/F1 11 Tf
+1 0 0 1 68 646 Tm
+(8. Assistant completes dispensing only for clinical items. Outside-pharmacy items) Tj
+/F1 11 Tf
+1 0 0 1 68 630 Tm
+(   do not enter or block the queue.) Tj
+/F2 16 Tf
+1 0 0 1 54 595 Tm
+(8.4 Patient Directory And Profile Flow) Tj
+/F1 11 Tf
+1 0 0 1 68 567 Tm
+(1. User opens the patient directory.) Tj
+/F1 11 Tf
+1 0 0 1 68 549 Tm
+(2. Patient list is loaded.) Tj
+/F1 11 Tf
+1 0 0 1 68 531 Tm
+(3. User searches or selects a patient.) Tj
+/F1 11 Tf
+1 0 0 1 68 513 Tm
+(4. Patient profile view loads summary, family, allergies, conditions, vitals, and) Tj
+/F1 11 Tf
+1 0 0 1 68 497 Tm
+(   timeline feeds.) Tj
+/F1 11 Tf
+1 0 0 1 68 479 Tm
+(5. The screen shows warnings if some detail feeds are partially unavailable.) Tj
+/F2 16 Tf
+1 0 0 1 54 444 Tm
+(8.5 Owner Workflow) Tj
+/F1 11 Tf
+1 0 0 1 68 416 Tm
+(1. Owner opens the owner workspace.) Tj
+/F1 11 Tf
+1 0 0 1 68 398 Tm
+(2. Backend-backed staff list and operational visibility data are loaded.) Tj
+/F1 11 Tf
+1 0 0 1 68 380 Tm
+(3. Owner reviews staff access information.) Tj
+/F1 11 Tf
+1 0 0 1 68 362 Tm
+(4. Owner creates staff accounts through the users API.) Tj
+/F2 16 Tf
+1 0 0 1 54 327 Tm
+(8.6 Analytics And AI Flow) Tj
+/F1 11 Tf
+1 0 0 1 68 299 Tm
+(1. Analytics workspace loads operational overview and supporting feeds.) Tj
+/F1 11 Tf
+1 0 0 1 68 281 Tm
+(2. AI workspace derives summary insights from analytics, appointments, patients,) Tj
+/F1 11 Tf
+1 0 0 1 68 265 Tm
+(   and audit activity.) Tj
+/F1 11 Tf
+1 0 0 1 68 247 Tm
+(3. Both screens provide loading, error, empty, and retry states.) Tj
+/F2 16 Tf
+1 0 0 1 54 212 Tm
+(8.7 Inventory Flow) Tj
+/F1 11 Tf
+1 0 0 1 68 184 Tm
+(1. Inventory list loads.) Tj
+/F1 11 Tf
+1 0 0 1 68 166 Tm
+(2. User selects an item.) Tj
+/F1 11 Tf
+1 0 0 1 68 148 Tm
+(3. Item details and movement history are displayed.) Tj
+/F1 11 Tf
+1 0 0 1 68 130 Tm
+(4. User creates items or inventory movements through backend-backed routes.) Tj
+/F2 16 Tf
+1 0 0 1 54 95 Tm
+(9. Functional Requirements Baseline) Tj
+/F1 11 Tf
+1 0 0 1 54 67 Tm
+(The current functional requirements baseline includes the following major) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Length 2078 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 54 772 Tm
+(capabilities.) Tj
+/F2 16 Tf
+1 0 0 1 54 735 Tm
+(9.1 Authentication And Access) Tj
+/F1 11 Tf
+1 0 0 1 68 707 Tm
+(- login) Tj
+/F1 11 Tf
+1 0 0 1 68 689 Tm
+(- logout) Tj
+/F1 11 Tf
+1 0 0 1 68 671 Tm
+(- authenticated session handling) Tj
+/F1 11 Tf
+1 0 0 1 68 653 Tm
+(- route protection) Tj
+/F1 11 Tf
+1 0 0 1 68 635 Tm
+(- role-based workspace routing) Tj
+/F1 11 Tf
+1 0 0 1 68 617 Tm
+(- backend-aware auth status checks) Tj
+/F2 16 Tf
+1 0 0 1 54 582 Tm
+(9.2 Doctor Functions) Tj
+/F1 11 Tf
+1 0 0 1 68 554 Tm
+(- waiting queue display) Tj
+/F1 11 Tf
+1 0 0 1 68 536 Tm
+(- patient context loading) Tj
+/F1 11 Tf
+1 0 0 1 68 518 Tm
+(- encounter notes) Tj
+/F1 11 Tf
+1 0 0 1 68 500 Tm
+(- diagnoses) Tj
+/F1 11 Tf
+1 0 0 1 68 482 Tm
+(- tests) Tj
+/F1 11 Tf
+1 0 0 1 68 464 Tm
+(- backend-backed diagnosis search) Tj
+/F1 11 Tf
+1 0 0 1 68 446 Tm
+(- backend-backed lab and clinical observation test search) Tj
+/F1 11 Tf
+1 0 0 1 68 428 Tm
+(- diagnosis-driven recommended tests) Tj
+/F1 11 Tf
+1 0 0 1 68 410 Tm
+(- prescription entry) Tj
+/F1 11 Tf
+1 0 0 1 68 392 Tm
+(- unified appointment and walk-in consultation save) Tj
+/F1 11 Tf
+1 0 0 1 68 374 Tm
+(- prescription printing after successful save) Tj
+/F1 11 Tf
+1 0 0 1 68 356 Tm
+(- prescription-source handling for `clinical` and `outside` items) Tj
+/F1 11 Tf
+1 0 0 1 68 338 Tm
+(- next visit entry) Tj
+/F1 11 Tf
+1 0 0 1 68 320 Tm
+(- encounter submission) Tj
+/F2 16 Tf
+1 0 0 1 54 285 Tm
+(9.3 Assistant Functions) Tj
+/F1 11 Tf
+1 0 0 1 68 257 Tm
+(- intake form) Tj
+/F1 11 Tf
+1 0 0 1 68 239 Tm
+(- patient creation) Tj
+/F1 11 Tf
+1 0 0 1 68 221 Tm
+(- pending dispense queue) Tj
+/F1 11 Tf
+1 0 0 1 68 203 Tm
+(- prescription detail display) Tj
+/F1 11 Tf
+1 0 0 1 68 185 Tm
+(- stock-item resolution for unmapped clinical dispense items) Tj
+/F1 11 Tf
+1 0 0 1 68 167 Tm
+(- dispense action completion) Tj
+/F2 16 Tf
+1 0 0 1 54 132 Tm
+(9.4 Patient Functions) Tj
+/F1 11 Tf
+1 0 0 1 68 104 Tm
+(- patient directory listing) Tj
+/F1 11 Tf
+1 0 0 1 68 86 Tm
+(- patient search) Tj
+/F1 11 Tf
+1 0 0 1 68 68 Tm
+(- patient profile launch) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Length 2120 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- patient history access) Tj
+/F2 16 Tf
+1 0 0 1 54 737 Tm
+(9.5 Owner Functions) Tj
+/F1 11 Tf
+1 0 0 1 68 709 Tm
+(- staff visibility) Tj
+/F1 11 Tf
+1 0 0 1 68 691 Tm
+(- backend-backed staff account creation) Tj
+/F1 11 Tf
+1 0 0 1 68 673 Tm
+(- permission preset presentation) Tj
+/F2 16 Tf
+1 0 0 1 54 638 Tm
+(9.6 Operations Functions) Tj
+/F1 11 Tf
+1 0 0 1 68 610 Tm
+(- appointments listing and creation) Tj
+/F1 11 Tf
+1 0 0 1 68 592 Tm
+(- encounters listing and submission) Tj
+/F1 11 Tf
+1 0 0 1 68 574 Tm
+(- inventory listing and movement creation) Tj
+/F1 11 Tf
+1 0 0 1 68 556 Tm
+(- analytics overview) Tj
+/F1 11 Tf
+1 0 0 1 68 538 Tm
+(- AI insight generation) Tj
+/F1 11 Tf
+1 0 0 1 68 520 Tm
+(- clinical diagnosis suggestion access) Tj
+/F1 11 Tf
+1 0 0 1 68 502 Tm
+(- clinical test suggestion access) Tj
+/F1 11 Tf
+1 0 0 1 68 484 Tm
+(- diagnosis-driven recommended test suggestions) Tj
+/F2 16 Tf
+1 0 0 1 54 449 Tm
+(10. Non-Functional Requirements Baseline) Tj
+/F1 11 Tf
+1 0 0 1 54 421 Tm
+(The current non-functional requirements baseline includes:) Tj
+/F2 16 Tf
+1 0 0 1 54 384 Tm
+(10.1 Security) Tj
+/F1 11 Tf
+1 0 0 1 68 356 Tm
+(- secure cookie-based session model) Tj
+/F1 11 Tf
+1 0 0 1 68 338 Tm
+(- backend tokens not exposed to browser JavaScript) Tj
+/F1 11 Tf
+1 0 0 1 68 320 Tm
+(- same-origin BFF integration model) Tj
+/F1 11 Tf
+1 0 0 1 68 302 Tm
+(- protected shell routing) Tj
+/F1 11 Tf
+1 0 0 1 68 284 Tm
+(- permission-aware frontend route handling) Tj
+/F2 16 Tf
+1 0 0 1 54 249 Tm
+(10.2 Reliability And Error Handling) Tj
+/F1 11 Tf
+1 0 0 1 68 221 Tm
+(- backend availability gating) Tj
+/F1 11 Tf
+1 0 0 1 68 203 Tm
+(- dedicated unavailable and error pages) Tj
+/F1 11 Tf
+1 0 0 1 68 185 Tm
+(- explicit loading, empty, ready, and error states) Tj
+/F1 11 Tf
+1 0 0 1 68 167 Tm
+(- retry behavior on many data screens) Tj
+/F1 11 Tf
+1 0 0 1 68 149 Tm
+(- partial-data warnings where fallback rendering is used) Tj
+/F2 16 Tf
+1 0 0 1 54 114 Tm
+(10.3 Maintainability) Tj
+/F1 11 Tf
+1 0 0 1 68 86 Tm
+(- feature-organized section structure) Tj
+/F1 11 Tf
+1 0 0 1 68 68 Tm
+(- shared API client) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Length 2611 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- shared query/server-state layer) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- shared authorization model) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- centralized BFF integration pattern) Tj
+/F2 16 Tf
+1 0 0 1 54 701 Tm
+(10.4 Quality Control) Tj
+/F1 11 Tf
+1 0 0 1 68 673 Tm
+(- linting) Tj
+/F1 11 Tf
+1 0 0 1 68 655 Tm
+(- type checking) Tj
+/F1 11 Tf
+1 0 0 1 68 637 Tm
+(- unit and component testing) Tj
+/F1 11 Tf
+1 0 0 1 68 619 Tm
+(- route and hook coverage for core frontend behavior) Tj
+/F2 16 Tf
+1 0 0 1 54 584 Tm
+(10.5 Performance And UX) Tj
+/F1 11 Tf
+1 0 0 1 68 556 Tm
+(- responsive browser UI) Tj
+/F1 11 Tf
+1 0 0 1 68 538 Tm
+(- disabled actions during in-flight operations) Tj
+/F1 11 Tf
+1 0 0 1 68 520 Tm
+(- server-state caching and refetch handling through shared query hooks) Tj
+/F2 16 Tf
+1 0 0 1 54 485 Tm
+(11. Current Implementation Status) Tj
+/F1 11 Tf
+1 0 0 1 54 457 Tm
+(Current implementation position:) Tj
+/F1 11 Tf
+1 0 0 1 68 429 Tm
+(- frontend BE-020 integration closure is complete from the frontend scope) Tj
+/F1 11 Tf
+1 0 0 1 68 411 Tm
+(- active production browser flows use backend-backed `/api/...` BFF routes) Tj
+/F1 11 Tf
+1 0 0 1 68 393 Tm
+(- prototype persistence has been removed from the active frontend tree) Tj
+/F1 11 Tf
+1 0 0 1 68 375 Tm
+(- query-based server-state infrastructure is in place across the main read-heavy) Tj
+/F1 11 Tf
+1 0 0 1 68 359 Tm
+(  sections) Tj
+/F1 11 Tf
+1 0 0 1 68 341 Tm
+(- workflow hardening for the active owner, doctor, assistant, and inventory) Tj
+/F1 11 Tf
+1 0 0 1 68 325 Tm
+(  screens is complete) Tj
+/F1 11 Tf
+1 0 0 1 68 307 Tm
+(- doctor save behavior is aligned to backend workflow status, dispense status, and) Tj
+/F1 11 Tf
+1 0 0 1 68 291 Tm
+(  prescription source counts) Tj
+/F1 11 Tf
+1 0 0 1 68 273 Tm
+(- assistant dispense flow now resolves missing inventory mappings before submit) Tj
+/F1 11 Tf
+1 0 0 1 68 257 Tm
+(  and respects backend rate-limit cooldown messaging) Tj
+/F1 11 Tf
+1 0 0 1 54 231 Tm
+(Current product maturity statement:) Tj
+/F1 11 Tf
+1 0 0 1 68 203 Tm
+(- the application is structurally strong for continued development) Tj
+/F1 11 Tf
+1 0 0 1 68 185 Tm
+(- it is not yet a completed enterprise healthcare platform) Tj
+/F1 11 Tf
+1 0 0 1 68 167 Tm
+(- additional work is still required for compliance expansion, production) Tj
+/F1 11 Tf
+1 0 0 1 68 151 Tm
+(  operations maturity, and future feature delivery) Tj
+/F2 16 Tf
+1 0 0 1 54 116 Tm
+(12. Known Limitations) Tj
+/F1 11 Tf
+1 0 0 1 54 88 Tm
+(Current known limitations include:) Tj
+/F1 11 Tf
+1 0 0 1 68 60 Tm
+(- no patient self-service or public portal) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Length 2250 >>
+stream
+BT
+1 0 0 1 0 0 Tm
+/F1 11 Tf
+1 0 0 1 68 772 Tm
+(- no billing or claims module) Tj
+/F1 11 Tf
+1 0 0 1 68 754 Tm
+(- no full compliance sign-off package) Tj
+/F1 11 Tf
+1 0 0 1 68 736 Tm
+(- no complete audit-governance program at enterprise depth) Tj
+/F1 11 Tf
+1 0 0 1 68 718 Tm
+(- some workflows still require future backend policy refinement) Tj
+/F1 11 Tf
+1 0 0 1 68 700 Tm
+(- some advanced clinical safety and interoperability capabilities are not yet) Tj
+/F1 11 Tf
+1 0 0 1 68 684 Tm
+(  implemented) Tj
+/F1 11 Tf
+1 0 0 1 68 666 Tm
+(- imaging and procedure catalog search is still separate future scope from the) Tj
+/F1 11 Tf
+1 0 0 1 68 650 Tm
+(  current lab and observation test search) Tj
+/F1 11 Tf
+1 0 0 1 68 632 Tm
+(- outside-pharmacy prescription items are intentionally excluded from clinic) Tj
+/F1 11 Tf
+1 0 0 1 68 616 Tm
+(  dispense queue processing) Tj
+/F2 16 Tf
+1 0 0 1 54 581 Tm
+(13. Version And Document Control) Tj
+/F1 11 Tf
+1 0 0 1 54 553 Tm
+(Document issue details:) Tj
+/F1 11 Tf
+1 0 0 1 68 525 Tm
+(- document version: `1.3`) Tj
+/F1 11 Tf
+1 0 0 1 68 507 Tm
+(- document date: `March 24, 2026`) Tj
+/F1 11 Tf
+1 0 0 1 68 489 Tm
+(- system version referenced: `Frontend 0.1.0`) Tj
+/F1 11 Tf
+1 0 0 1 68 471 Tm
+(- status: `client issue copy`) Tj
+/F1 11 Tf
+1 0 0 1 54 445 Tm
+(Recommended use:) Tj
+/F1 11 Tf
+1 0 0 1 68 417 Tm
+(- client presentation) Tj
+/F1 11 Tf
+1 0 0 1 68 399 Tm
+(- project onboarding) Tj
+/F1 11 Tf
+1 0 0 1 68 381 Tm
+(- scope clarification) Tj
+/F1 11 Tf
+1 0 0 1 68 363 Tm
+(- product review) Tj
+/F1 11 Tf
+1 0 0 1 68 345 Tm
+(- implementation discussion) Tj
+/F2 16 Tf
+1 0 0 1 54 310 Tm
+(14. Conclusion) Tj
+/F1 11 Tf
+1 0 0 1 54 282 Tm
+(Medsys currently provides a structured, role-based healthcare operations UI for) Tj
+/F1 11 Tf
+1 0 0 1 54 266 Tm
+(internal clinic users. It already supports the major operational flows needed to) Tj
+/F1 11 Tf
+1 0 0 1 54 250 Tm
+(manage patients, consultations, prescriptions, dispensing, inventory, analytics, and) Tj
+/F1 11 Tf
+1 0 0 1 54 234 Tm
+(staff workflows within a controlled browser application. The current baseline is) Tj
+/F1 11 Tf
+1 0 0 1 54 218 Tm
+(suitable for stakeholder review, operational rollout planning, and ongoing) Tj
+/F1 11 Tf
+1 0 0 1 54 202 Tm
+(implementation governance.) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+13 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+14 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+15 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 6 0 R >>
+endobj
+16 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+17 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 8 0 R >>
+endobj
+18 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+19 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 10 0 R >>
+endobj
+20 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 11 0 R >>
+endobj
+21 0 obj
+<< /Type /Pages /Count 9 /Kids [12 0 R 13 0 R 14 0 R 15 0 R 16 0 R 17 0 R 18 0 R 19 0 R 20 0 R] >>
+endobj
+22 0 obj
+<< /Type /Catalog /Pages 21 0 R >>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000000015 00000 n 
+0000000085 00000 n 
+0000000160 00000 n 
+0000002849 00000 n 
+0000005288 00000 n 
+0000007626 00000 n 
+0000010538 00000 n 
+0000013333 00000 n 
+0000015463 00000 n 
+0000017635 00000 n 
+0000020299 00000 n 
+0000022602 00000 n 
+0000022740 00000 n 
+0000022878 00000 n 
+0000023016 00000 n 
+0000023154 00000 n 
+0000023292 00000 n 
+0000023430 00000 n 
+0000023568 00000 n 
+0000023707 00000 n 
+0000023846 00000 n 
+0000023961 00000 n 
+trailer
+<< /Size 23 /Root 22 0 R >>
+startxref
+24012
+%%EOF
