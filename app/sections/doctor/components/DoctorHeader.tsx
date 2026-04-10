@@ -238,7 +238,7 @@ export function DoctorHeader({
   return (
     <div className="grid gap-x-2.5 gap-y-1.5 p-2 sm:gap-x-3 sm:gap-y-2 sm:p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-3 xl:gap-x-4 xl:p-4">
       <div className="min-w-0 w-full lg:col-start-1 lg:row-start-1">
-        <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-visible">
           <div className="relative min-w-0 flex-1">
             <input
               className="h-9 w-full rounded-[999px] border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:px-4 xl:text-sm"

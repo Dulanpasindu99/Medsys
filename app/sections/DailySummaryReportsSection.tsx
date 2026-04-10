@@ -62,6 +62,12 @@ type InsightItem = {
 
 type AnalyticsWorkspaceMode = 'dashboard' | 'reports';
 type DailySummaryTab = 'summary' | 'history';
+type DailySummaryReportsSectionProps = {
+  initialWorkspaceMode?: AnalyticsWorkspaceMode;
+  initialReportType?: ReportType;
+  initialDailySummaryTab?: DailySummaryTab;
+  hideViewMode?: boolean;
+};
 
 function EmptyTabState({ message }: { message: string }) {
   return (
@@ -172,10 +178,11 @@ function formatDetailLabel(key: string) {
 function flattenSummaryMetrics(
   summary: Record<string, unknown>,
   maxItems = 8
-): Array<{ label: string; value: unknown }> {
+): Array<{ key: string; label: string; value: unknown }> {
   const direct = Object.entries(summary)
     .filter(([, value]) => typeof value === 'number' || typeof value === 'string')
     .map(([key, value]) => ({
+      key,
       label: formatMetricLabel(key),
       value,
     }));
@@ -186,6 +193,7 @@ function flattenSummaryMetrics(
     return Object.entries(record)
       .filter(([, nestedValue]) => typeof nestedValue === 'number' || typeof nestedValue === 'string')
       .map(([key, nestedValue]) => ({
+        key,
         label: formatMetricLabel(key),
         value: nestedValue,
       }));
@@ -199,6 +207,90 @@ function flattenSummaryMetrics(
       return true;
     })
     .slice(0, maxItems);
+}
+
+function filterDailySummaryMetricsByMode(
+  metrics: Array<{ key: string; label: string; value: unknown }>,
+  visitMode: string | null
+) {
+  const hideAppointmentKey = /appointment|scheduled/i;
+  const hideWalkInKey = /walk_?in|walkIn/i;
+  const hideAppointmentLabel = /appointment|scheduled|walk-?in vs/i;
+  const hideWalkInLabel = /walk-?in|walk in vs/i;
+
+  if (visitMode === 'walk_in') {
+    return metrics.filter((item) => {
+      if (hideAppointmentKey.test(item.key)) return false;
+      return !hideAppointmentLabel.test(item.label);
+    });
+  }
+
+  if (visitMode === 'appointment') {
+    return metrics.filter((item) => {
+      if (hideWalkInKey.test(item.key)) return false;
+      return !hideWalkInLabel.test(item.label);
+    });
+  }
+
+  return metrics;
+}
+
+function getDailySummaryHeading(visitMode: string | null) {
+  if (visitMode === 'walk_in') {
+    return 'Walk-in Flow Today';
+  }
+  if (visitMode === 'appointment') {
+    return 'Appointment Flow Today';
+  }
+  return 'What Is Happening Today';
+}
+
+function getDailySummaryActionTitle(visitMode: string | null) {
+  if (visitMode === 'walk_in') {
+    return 'What Needs Attention In Walk-ins';
+  }
+  if (visitMode === 'appointment') {
+    return 'What Needs Attention In Appointments';
+  }
+  return 'What Needs Attention';
+}
+
+function getDailySummaryUnusualTitle(visitMode: string | null) {
+  if (visitMode === 'walk_in') {
+    return 'What Looks Unusual In Walk-ins';
+  }
+  if (visitMode === 'appointment') {
+    return 'What Looks Unusual In Appointments';
+  }
+  return 'What Looks Unusual';
+}
+
+function filterReportMetricsByVisitMode(
+  reportType: ReportType,
+  metrics: Array<{ key: string; label: string; value: unknown }>,
+  visitMode: string | null
+) {
+  if (!visitMode) {
+    return metrics;
+  }
+
+  const hideAppointment = /appointment|scheduled|slot|no-show/i;
+  const hideAppointmentKey = /appointment|scheduled/i;
+  const hideWalkIn = /walk-?in/i;
+  const hideWalkInKey = /walk_?in|walkIn/i;
+
+  if (reportType === 'clinic-overview' || reportType === 'doctor-performance' || reportType === 'assistant-performance') {
+    return metrics.filter((item) => {
+      if (visitMode === 'walk_in') {
+        if (hideAppointmentKey.test(item.key)) return false;
+        return !hideAppointment.test(item.label);
+      }
+      if (hideWalkInKey.test(item.key)) return false;
+      return !hideWalkIn.test(item.label);
+    });
+  }
+
+  return metrics;
 }
 
 function toInsightRows(value: unknown) {
@@ -741,46 +833,89 @@ function getReportOptionsForRole(role: string | null): Array<{ key: ReportType; 
   ];
 }
 
-function getReportMeta(reportType: ReportType) {
+function getReportMeta(reportType: ReportType, visitMode: string | null) {
   switch (reportType) {
     case 'clinic-overview':
       return {
         eyebrow: 'Clinic Overview',
-        title: 'Clinic Overview Report',
-        description: 'High-level appointment status and recent appointment activity across the organization.',
-        chartKey: 'appointmentStatusDistribution',
+        title:
+          visitMode === 'walk_in'
+            ? 'Walk-in Clinic Overview'
+            : visitMode === 'appointment'
+              ? 'Appointment Clinic Overview'
+              : 'Clinic Overview',
+        description:
+          visitMode === 'walk_in'
+            ? 'Walk-in flow, demand, and doctor workload across the selected range.'
+            : visitMode === 'appointment'
+              ? 'Appointment flow, schedule pressure, and doctor workload across the selected range.'
+              : 'Whole-clinic performance across patients, visit modes, demand, and doctor workload.',
+        chartKeys:
+          visitMode === 'walk_in'
+            ? ['peakHourDistribution', 'doctorWorkloadDistribution']
+            : visitMode === 'appointment'
+              ? ['appointmentStatusDistribution', 'peakHourDistribution', 'doctorWorkloadDistribution']
+              : [
+                  'visitModeBreakdown',
+                  'appointmentStatusDistribution',
+                  'peakHourDistribution',
+                  'doctorWorkloadDistribution',
+                ],
         tableKeys: ['recentAppointments'],
       };
     case 'doctor-performance':
       return {
         eyebrow: 'Doctor Performance',
-        title: 'Doctor Performance Report',
-        description: 'Doctor workload and encounter performance from the new reports service.',
-        chartKey: 'encountersByDoctor',
+        title:
+          visitMode === 'walk_in'
+            ? 'Walk-in Doctor Dashboard'
+            : visitMode === 'appointment'
+              ? 'Appointment Doctor Dashboard'
+              : 'Doctor Dashboard',
+        description:
+          visitMode === 'walk_in'
+            ? 'Doctor workload and diagnosis patterns for walk-in care.'
+            : visitMode === 'appointment'
+              ? 'Booked patient flow, consultation load, and diagnosis patterns for appointments.'
+              : 'Doctor workload, consultation performance, follow-up rate, and diagnosis distribution.',
+        chartKeys:
+          visitMode
+            ? ['diagnosisDistribution', 'encountersByDoctor']
+            : ['encountersByDoctor', 'diagnosisDistribution'],
         tableKeys: ['doctors'],
       };
     case 'assistant-performance':
       return {
         eyebrow: 'Assistant Performance',
-        title: 'Assistant Performance Report',
-        description: 'Assistant throughput and operational support performance.',
-        chartKey: 'throughputByAssistant',
+        title:
+          visitMode === 'walk_in'
+            ? 'Walk-in Operations'
+            : visitMode === 'appointment'
+              ? 'Appointment Operations'
+              : 'Assistant Dashboard',
+        description:
+          visitMode === 'walk_in'
+            ? 'Queue-heavy intake and handling performance for walk-in operations.'
+            : visitMode === 'appointment'
+              ? 'Scheduled-flow handling, throughput, and support performance.'
+              : 'Assistant throughput, queue handling, and operational support performance.',
+        chartKeys: ['throughputByAssistant'],
         tableKeys: ['assistants'],
       };
     case 'inventory-usage':
       return {
         eyebrow: 'Inventory Usage',
-        title: 'Inventory Usage Report',
+        title: 'Inventory Usage',
         description: 'Consumption, low-stock pressure, and top-used inventory items.',
-        chartKey: 'topConsumedItems',
+        chartKeys: ['topConsumedItems'],
         tableKeys: ['lowStockItems', 'topConsumedItems'],
       };
     case 'patient-followup':
       return {
         eyebrow: 'Patient Follow-up',
-        title: 'Patient Follow-up Report',
+        title: 'Patient Follow-up',
         description: 'Follow-up buckets and the patients who are overdue or due soon.',
-        chartKey: 'followupBuckets',
+        chartKeys: ['followupBuckets'],
         tableKeys: ['overdue', 'dueSoon'],
       };
   }
@@ -797,24 +932,36 @@ function ReportContent({
   isLoading: boolean;
   error: string | null;
 }) {
-  const meta = getReportMeta(reportType);
+  const filters = asRecord(data?.filters);
+  const effectiveVisitMode =
+    typeof filters?.visitMode === 'string' ? filters.visitMode : null;
+  const meta = getReportMeta(reportType, effectiveVisitMode);
   const summary = asRecord(data?.summary) ?? {};
   const charts = asRecord(data?.charts) ?? {};
   const tables = asRecord(data?.tables) ?? {};
-  const filters = asRecord(data?.filters);
-  const metricItems = Object.entries(summary).map(([key, value]) => ({
-    label: formatMetricLabel(key),
-    value: reportFieldValue(value),
-  }));
+  const metricItems = filterReportMetricsByVisitMode(
+    reportType,
+    Object.entries(summary).map(([key, value]) => ({
+      key,
+      label: formatMetricLabel(key),
+      value: reportFieldValue(value),
+    })),
+    effectiveVisitMode
+  );
   const doctorRows =
     reportType === 'doctor-performance' && Array.isArray(tables.doctors)
       ? (tables.doctors as Array<Record<string, unknown>>)
       : [];
   const primaryDoctorRow = doctorRows[0] ?? null;
   const isSingleDoctorReport = reportType === 'doctor-performance' && doctorRows.length <= 1;
-  const chartCard = isSingleDoctorReport
-    ? null
-    : renderChartByKey(toTitleCase(meta.chartKey), meta.chartKey, charts[meta.chartKey]);
+  const chartCards = (meta.chartKeys ?? [])
+    .map((chartKey) => {
+      if (isSingleDoctorReport && chartKey === 'encountersByDoctor') {
+        return null;
+      }
+      return renderChartByKey(toTitleCase(chartKey), chartKey, charts[chartKey]);
+    })
+    .filter(Boolean);
   const tableCards = meta.tableKeys
     .map((tableKey) => {
       const tableValue = tables[tableKey];
@@ -951,11 +1098,11 @@ function ReportContent({
           ) : metricItems.length ? (
             <MetricStrip title="Report Summary" metrics={metricItems} />
           ) : null}
-          <div className={getChartGridClass((chartCard ? 1 : 0) + tableCards.length)}>
-            {chartCard}
+          <div className={getChartGridClass(chartCards.length + tableCards.length)}>
+            {chartCards}
             {isSingleDoctorReport ? tableCards.slice(1) : tableCards}
           </div>
-          {!metricItems.length && !chartCard && !tableCards.length ? (
+          {!metricItems.length && !chartCards.length && !tableCards.length ? (
             <EmptyTabState message="No report data is available for the selected range yet." />
           ) : null}
         </div>
@@ -969,6 +1116,7 @@ function DailySummaryContent({
   history,
   activeTab,
   onTabChange,
+  selectedVisitMode,
   isLoading,
   error,
 }: {
@@ -976,12 +1124,19 @@ function DailySummaryContent({
   history: unknown;
   activeTab: DailySummaryTab;
   onTabChange: (tab: DailySummaryTab) => void;
+  selectedVisitMode: string;
   isLoading: boolean;
   error: string | null;
 }) {
   const summary = asRecord(data?.summary) ?? {};
   const filterContext = asRecord(data?.filterContext);
-  const metricItems = flattenSummaryMetrics(summary, 7);
+  const effectiveVisitMode =
+    selectedVisitMode ||
+    (typeof filterContext?.visitMode === 'string' ? filterContext.visitMode : '');
+  const metricItems = filterDailySummaryMetricsByMode(
+    flattenSummaryMetrics(summary, 12),
+    effectiveVisitMode
+  );
   const insightItems = [
     ...toInsightRows(data?.insights),
     ...toInsightRows(data?.alerts),
@@ -1068,12 +1223,12 @@ function DailySummaryContent({
           ) : null}
 
           {primaryMetrics.length ? (
-            <MetricStrip title="What Is Happening Today" metrics={primaryMetrics} />
+            <MetricStrip title={getDailySummaryHeading(effectiveVisitMode)} metrics={primaryMetrics} />
           ) : null}
 
           <div className="grid gap-3 xl:grid-cols-2">
-            <InsightsCard title="What Needs Attention" items={insightItems} />
-            <AnalyticsCard eyebrow="Action Focus" title="What Looks Unusual">
+            <InsightsCard title={getDailySummaryActionTitle(effectiveVisitMode)} items={insightItems} />
+            <AnalyticsCard eyebrow="Action Focus" title={getDailySummaryUnusualTitle(effectiveVisitMode)}>
               <div className="space-y-3 text-sm leading-6 text-slate-600">
                 <p>
                   This landing view is built for quick decisions: what is happening today, what looks unusual, and what needs attention next.
@@ -1300,7 +1455,12 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
   );
 }
 
-export default function AnalyticsSection() {
+export default function DailySummaryReportsSection({
+  initialWorkspaceMode = 'dashboard',
+  initialReportType,
+  initialDailySummaryTab = 'summary',
+  hideViewMode = false,
+}: DailySummaryReportsSectionProps) {
   const {
     currentUser,
     data,
@@ -1322,8 +1482,8 @@ export default function AnalyticsSection() {
     reload,
     isRefreshing,
   } = useAnalyticsDashboard();
-  const [workspaceMode, setWorkspaceMode] = useState<AnalyticsWorkspaceMode>('dashboard');
-  const [dailySummaryTab, setDailySummaryTab] = useState<DailySummaryTab>('summary');
+  const [workspaceMode, setWorkspaceMode] = useState<AnalyticsWorkspaceMode>(initialWorkspaceMode);
+  const [dailySummaryTab, setDailySummaryTab] = useState<DailySummaryTab>(initialDailySummaryTab);
   const [summaryDate, setSummaryDate] = useState(new Date().toISOString().slice(0, 10));
   const [reportVisitMode, setReportVisitMode] = useState('');
   const [reportWorkflowMode, setReportWorkflowMode] = useState('');
@@ -1332,7 +1492,7 @@ export default function AnalyticsSection() {
   const isOwner = currentUser?.role === 'owner';
   const reportOptions = useMemo(() => getReportOptionsForRole(resolvedRole), [resolvedRole]);
   const [activeReportType, setActiveReportType] = useState<ReportType>(
-    reportOptions[0]?.key ?? 'clinic-overview'
+    initialReportType ?? reportOptions[0]?.key ?? 'clinic-overview'
   );
 
   useEffect(() => {
@@ -1340,6 +1500,12 @@ export default function AnalyticsSection() {
       setActiveReportType(reportOptions[0]?.key ?? 'clinic-overview');
     }
   }, [activeReportType, reportOptions]);
+
+  useEffect(() => {
+    if (!reportVisitMode && resolvedRole === 'doctor') {
+      setReportVisitMode('walk_in');
+    }
+  }, [reportVisitMode, resolvedRole]);
 
   const generatedLabel = data ? getGeneratedLabel(data.generatedAt) : '--';
   const dailySummaryQueryInput = useMemo(() => {
@@ -1577,40 +1743,42 @@ export default function AnalyticsSection() {
             }
           />
 
-          <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70">
-            <div className="min-w-[120px]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    View Mode
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
-                    Switch between daily summary and deep reports
-                  </p>
-                </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setWorkspaceMode('dashboard')}
-                className={
-                  workspaceMode === 'dashboard'
-                    ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
-                    : 'rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700'
-                }
-              >
-                Dashboard
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceMode('reports')}
-                className={
-                  workspaceMode === 'reports'
-                    ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
-                    : 'rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700'
-                }
-              >
-                Reports
-              </button>
+          {!hideViewMode ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70">
+              <div className="min-w-[120px]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  View Mode
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  Switch between daily summary and deep reports
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceMode('dashboard')}
+                  className={
+                    workspaceMode === 'dashboard'
+                      ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
+                      : 'rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700'
+                  }
+                >
+                  Dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceMode('reports')}
+                  className={
+                    workspaceMode === 'reports'
+                      ? 'rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-semibold text-white'
+                      : 'rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700'
+                  }
+                >
+                  Reports
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
           {workspaceMode === 'dashboard' ? (
@@ -1699,6 +1867,7 @@ export default function AnalyticsSection() {
                 history={dailySummaryHistoryQuery.data}
                 activeTab={dailySummaryTab}
                 onTabChange={setDailySummaryTab}
+                selectedVisitMode={reportVisitMode}
                 isLoading={dailySummaryQuery.isPending || dailySummaryQuery.isFetching || (dailySummaryTab === 'history' && (dailySummaryHistoryQuery.isPending || dailySummaryHistoryQuery.isFetching))}
                 error={
                   dailySummaryQuery.isError

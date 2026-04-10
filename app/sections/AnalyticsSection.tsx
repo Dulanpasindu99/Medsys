@@ -1431,7 +1431,7 @@ export default function AnalyticsSection() {
             actions={
               <div className="flex items-center gap-2">
                 <Link
-                  href="/daily-summary-reports"
+                  href="/dashboard/daily-summary"
                   className="rounded-2xl border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
                 >
                   Daily Summary & Reports

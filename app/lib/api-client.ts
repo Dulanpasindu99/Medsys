@@ -18,6 +18,9 @@ export type ApiClientError = {
   debugMessage?: string;
 };
 export type DoctorWorkflowMode = "self_service" | "clinic_supported" | null;
+export type VisitMode = "walk_in" | "appointment";
+export type ReportRange = "7d" | "30d" | "custom";
+export type UserRole = "owner" | "doctor" | "assistant";
 export type WorkflowProfileMode = DoctorWorkflowMode | "standard" | null;
 export type WorkflowProfiles = {
   doctor?: { mode: DoctorWorkflowMode } | null;
@@ -47,8 +50,8 @@ export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "near_expi
 export type InventoryMovementType = "in" | "out" | "adjustment";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
 export type TaskPriority = "low" | "normal" | "high" | "critical";
-export type TaskRole = "doctor" | "assistant" | "owner";
-export type TaskVisitMode = "walk_in" | "appointment";
+export type TaskRole = UserRole;
+export type TaskVisitMode = VisitMode;
 export type TaskWorkflowMode = "self_service" | "clinic_supported";
 export type TaskItem = {
   id: number;
@@ -272,21 +275,21 @@ export type InventoryAlertsResponse = {
   recommendations: InventoryAlertItem[];
 };
 export type ReportsQuery = {
-  range?: "7d" | "30d" | "custom";
+  range?: ReportRange;
   dateFrom?: string;
   dateTo?: string;
   doctorId?: number;
   assistantId?: number;
-  visitMode?: "walk_in" | "appointment";
-  doctorWorkflowMode?: "self_service" | "clinic_supported";
+  visitMode?: VisitMode;
+  doctorWorkflowMode?: Exclude<DoctorWorkflowMode, null>;
 };
 export type DailySummaryQuery = {
   date?: string;
-  role?: "doctor" | "assistant" | "owner";
+  role?: UserRole;
   doctorId?: number;
   assistantId?: number;
-  visitMode?: "walk_in" | "appointment";
-  doctorWorkflowMode?: "self_service" | "clinic_supported";
+  visitMode?: VisitMode;
+  doctorWorkflowMode?: Exclude<DoctorWorkflowMode, null>;
 };
 export type DailySummaryHistoryQuery = DailySummaryQuery & {
   limit?: number;
@@ -297,26 +300,47 @@ export type ReportType =
   | "assistant-performance"
   | "inventory-usage"
   | "patient-followup";
-export type ReportResponse = {
+export type ReportShell<TSummary = Record<string, unknown>, TCharts = Record<string, unknown>, TTables = Record<string, unknown>> = {
   generatedAt: string;
   range: {
-    preset: "7d" | "30d" | "custom";
+    preset: ReportRange;
     dateFrom: string;
     dateTo: string;
   };
-  filters?: Record<string, unknown>;
-  summary: Record<string, unknown>;
-  charts: Record<string, unknown>;
-  tables: Record<string, unknown>;
+  filters: {
+    doctorId: number | null;
+    assistantId: number | null;
+    visitMode: VisitMode | null;
+    doctorWorkflowMode: Exclude<DoctorWorkflowMode, null> | null;
+  };
+  summary: TSummary;
+  charts: TCharts;
+  tables: TTables;
 };
-export type DailySummaryResponse = {
-  generatedAt?: string;
-  date?: string;
-  filterContext?: Record<string, unknown>;
-  summary?: Record<string, unknown>;
-  insights?: Array<Record<string, unknown>>;
-  alerts?: Array<Record<string, unknown>>;
-  history?: Array<Record<string, unknown>>;
+export type ReportResponse = ReportShell;
+export type DailySummaryResponse<TSummary = Record<string, unknown>> = {
+  snapshotId: number | null;
+  roleContext: UserRole;
+  summaryDate: string;
+  generatedAt: string;
+  filterContext: {
+    visitMode: VisitMode | null;
+    doctorWorkflowMode: Exclude<DoctorWorkflowMode, null> | null;
+  };
+  summary: TSummary;
+  insights: string[];
+};
+export type DailySummaryHistoryResponse = {
+  roleContext: UserRole;
+  items: Array<{
+    id: number;
+    roleContext: UserRole;
+    actorUserId: number | null;
+    summaryDate: string;
+    summaryType: string;
+    createdAt: string;
+    payload: DailySummaryResponse;
+  }>;
 };
 export type ConsultationSavePayload = {
   workflowType: "appointment" | "walk_in";

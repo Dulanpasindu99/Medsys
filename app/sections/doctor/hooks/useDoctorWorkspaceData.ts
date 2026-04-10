@@ -436,6 +436,58 @@ function normalizeWorkflowType(value: unknown): ConsultationWorkflowType | null 
   return null;
 }
 
+function getExistingVisitIdFromProfile(profile: AnyRecord | null) {
+  if (!profile) {
+    return null;
+  }
+
+  const directId =
+    getNumber(
+      profile.appointment_id ??
+        profile.appointmentId ??
+        profile.visit_id ??
+        profile.visitId ??
+        profile.active_appointment_id ??
+        profile.activeAppointmentId
+    );
+  if (directId !== null) {
+    return directId;
+  }
+
+  const nestedCandidates = [
+    profile.visit,
+    profile.appointment,
+    profile.active_visit,
+    profile.activeVisit,
+    profile.current_visit,
+    profile.currentVisit,
+    profile.open_visit,
+    profile.openVisit,
+    profile.ongoing_visit,
+    profile.ongoingVisit,
+    profile.latest_visit,
+    profile.latestVisit,
+  ];
+
+  for (const candidate of nestedCandidates) {
+    const record = asRecord(candidate);
+    if (!record) continue;
+    const nestedId =
+      getNumber(
+        record.id ??
+          record.appointment_id ??
+          record.appointmentId ??
+          record.visit_id ??
+          record.visitId
+      );
+    if (nestedId !== null) {
+      return nestedId;
+    }
+  }
+
+  return null;
+}
+
 function isMinorWithoutNic(dateOfBirth: string, nic: string) {
   if (!dateOfBirth || nic.trim()) return false;
   const age = toAge(dateOfBirth);
@@ -715,6 +767,32 @@ function buildVitalDrafts(vitals: PatientVital[]) {
   });
 
   return drafts;
+}
+
+function buildVitalDraftsFromResponseVital(rawVital: unknown) {
+  const vital = asRecord(rawVital);
+  if (!vital) {
+    return null;
+  }
+
+  const bpSystolic = getNumber(vital.bp_systolic ?? vital.bpSystolic);
+  const bpDiastolic = getNumber(vital.bp_diastolic ?? vital.bpDiastolic);
+  const heartRate = getNumber(vital.heart_rate ?? vital.heartRate);
+  const temperatureC = getNumber(vital.temperature_c ?? vital.temperatureC);
+  const spo2 = getNumber(vital.spo2 ?? vital.spo_2);
+
+  return {
+    bloodPressure:
+      bpSystolic !== null || bpDiastolic !== null
+        ? `${bpSystolic ?? ""}${bpDiastolic !== null || bpSystolic !== null ? "/" : ""}${bpDiastolic ?? ""}`.replace(
+            /^\/|\/$/,
+            ""
+          )
+        : "",
+    heartRate: heartRate !== null ? String(heartRate) : "",
+    temperature: temperatureC !== null ? String(temperatureC) : "",
+    spo2: spo2 !== null ? String(spo2) : "",
+  } satisfies Record<VitalDraftKey, string>;
 }
 
 function normalizeAllergies(raw: unknown): AllergyAlert[] {
@@ -1533,6 +1611,10 @@ export function useDoctorWorkspaceData(
       setGuardianDateOfBirthState("");
       setGuardianGenderState("Female");
       setGenderState(normalizeProfileGender(selectedPatientProfile.gender));
+      const existingVisitId = getExistingVisitIdFromProfile(selectedPatientProfile);
+      if (existingVisitId !== null) {
+        setSelectedAppointmentId(existingVisitId);
+      }
     });
 
     return () => {
@@ -1556,24 +1638,6 @@ export function useDoctorWorkspaceData(
       cancelled = true;
     };
   }, [patientVitals, selectedPatientId]);
-
-  useEffect(() => {
-    const query = search.trim();
-    if (!query || searchMatches.length !== 1) {
-      return;
-    }
-
-    const matchedPatient = searchMatches[0];
-    if (!matchedPatient || !canAutoSelectFromQuery(query, matchedPatient)) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      handlePatientSelect(matchedPatient);
-    }, 180);
-
-    return () => window.clearTimeout(timer);
-  }, [handlePatientSelect, search, searchMatches]);
 
   const findPatientByQuery = (query: string) => {
     const normalizedQuery = normalizeLookupValue(query);
@@ -1772,7 +1836,7 @@ export function useDoctorWorkspaceData(
       const checkedAt = new Date().toISOString();
       const payload = {
         workflowType,
-        ...(workflowType === "appointment" && selectedAppointmentId !== null
+        ...(selectedAppointmentId !== null
           ? { appointmentId: selectedAppointmentId }
           : {}),
         ...(selectedPatientId === null &&
@@ -1932,7 +1996,9 @@ export function useDoctorWorkspaceData(
         responseRecord?.workflow_type ?? responseRecord?.workflowType
       );
       const responseAppointmentId = getNumber(
-        responseRecord?.appointment_id ?? responseRecord?.appointmentId
+        responseRecord?.appointment_id ??
+          responseRecord?.appointmentId ??
+          asRecord(responseRecord?.visit)?.id
       );
       const responseWorkflowStatus = getString(
         responseRecord?.workflow_status ?? responseRecord?.workflowStatus
@@ -1953,7 +2019,7 @@ export function useDoctorWorkspaceData(
       if (responseWorkflowType) {
         setExplicitWorkflowType(responseWorkflowType);
         if (responseWorkflowType === "walk_in") {
-          setSelectedAppointmentId(null);
+          setSelectedAppointmentId(responseAppointmentId ?? selectedAppointmentId);
           setSelectedAppointmentStatus(null);
         } else if (responseAppointmentId !== null) {
           setSelectedAppointmentId(responseAppointmentId);
@@ -2018,7 +2084,7 @@ export function useDoctorWorkspaceData(
 
     if (!parsedVitals.hasAnySupportedVital) {
       setVitalsSaveState(
-        successMutationState("Vitals captured locally. They will be sent when you save the consultation.")
+        errorMutationState("Enter at least one vital value before saving.")
       );
       return;
     }
@@ -2033,9 +2099,64 @@ export function useDoctorWorkspaceData(
       return;
     }
 
-    setVitalsSaveState(
-      successMutationState("Vitals captured locally. They will be sent when you save the consultation.")
-    );
+    if (selectedPatientId === null) {
+      setVitalsSaveState(
+        errorMutationState("Save the consultation first before correcting vitals for a new patient.")
+      );
+      return;
+    }
+
+    if (selectedAppointmentId === null) {
+      setVitalsSaveState(
+        errorMutationState(
+          workflowType === "walk_in"
+            ? "This walk-in visit has not been saved yet. Save the consultation once, then update vitals."
+            : "An existing visit is required before correcting vitals from this screen."
+        )
+      );
+      return;
+    }
+
+    try {
+      setVitalsSaveState(pendingMutationState());
+
+      const response = await saveConsultation({
+        workflowType,
+        patientId: selectedPatientId,
+        appointmentId: selectedAppointmentId,
+        checkedAt: new Date().toISOString(),
+        diagnoses: [],
+        vitals: {
+          ...(parsedVitals.bpSystolic !== undefined ? { bpSystolic: parsedVitals.bpSystolic } : {}),
+          ...(parsedVitals.bpDiastolic !== undefined ? { bpDiastolic: parsedVitals.bpDiastolic } : {}),
+          ...(parsedVitals.heartRate !== undefined ? { heartRate: parsedVitals.heartRate } : {}),
+          ...(parsedVitals.temperatureC !== undefined ? { temperatureC: parsedVitals.temperatureC } : {}),
+          ...(parsedVitals.spo2 !== undefined ? { spo2: parsedVitals.spo2 } : {}),
+        },
+      });
+
+      const responseRecord = asRecord(response);
+      const responseVisitId = getNumber(
+        responseRecord?.appointment_id ??
+          responseRecord?.appointmentId ??
+          asRecord(responseRecord?.visit)?.id
+      );
+
+      if (responseVisitId !== null) {
+        setSelectedAppointmentId(responseVisitId);
+      }
+
+      await refreshSelectedPatientDetails();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory });
+
+      setVitalsSaveState(successMutationState("Vitals updated successfully."));
+    } catch (error) {
+      setVitalsSaveState(
+        errorMutationState(
+          (error as ApiClientError)?.message ?? "Failed to update patient vitals."
+        )
+      );
+    }
   };
 
   const handleAddOrUpdateAllergy = async () => {
