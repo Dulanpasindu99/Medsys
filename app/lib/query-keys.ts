@@ -28,6 +28,28 @@ export const queryKeys = {
         input?.dateTo ?? "none",
       ] as const),
   },
+  tasks: {
+    list: (input?: {
+      status?: string;
+      priority?: string;
+      visitMode?: string;
+      doctorWorkflowMode?: string;
+      sourceType?: string;
+      role?: string;
+      assignedUserId?: number | string;
+    }) =>
+      ([
+        "tasks",
+        "list",
+        input?.status ?? "all",
+        input?.priority ?? "all",
+        input?.visitMode ?? "all",
+        input?.doctorWorkflowMode ?? "all",
+        input?.sourceType ?? "all",
+        input?.role ?? "all",
+        input?.assignedUserId ?? "all",
+      ] as const),
+  },
   reports: {
     view: (
       reportType: string,

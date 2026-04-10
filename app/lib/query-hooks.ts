@@ -25,6 +25,7 @@ import {
   listEncounters,
   listInventoryAlerts,
   listInventory,
+  listTasks,
   listInventoryBatches,
   listInventoryMovements,
   listInventoryReports,
@@ -32,6 +33,7 @@ import {
   listPatients,
   type DailySummaryHistoryQuery,
   type DailySummaryQuery,
+  type TasksQuery,
   type ReportType,
   type ReportsQuery,
   type ListPatientsInput,
@@ -85,6 +87,14 @@ export function useEncountersQuery() {
   return useQuery({
     queryKey: queryKeys.encounters.list,
     queryFn: listEncounters,
+  });
+}
+
+export function useTasksQuery(input?: TasksQuery, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.tasks.list(input),
+    queryFn: () => listTasks(input),
+    enabled,
   });
 }
 

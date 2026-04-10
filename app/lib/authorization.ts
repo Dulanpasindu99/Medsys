@@ -4,6 +4,8 @@ export type KnownAppPermission =
   | "doctor.workspace.view"
   | "assistant.workspace.view"
   | "patient.directory.view"
+  | "task.read"
+  | "task.write"
   | "analytics.view"
   | "analytics.read"
   | "inventory.view"
@@ -43,6 +45,7 @@ export type AppPermission = KnownAppPermission | (string & {});
 export type AppRouteId =
   | "doctorHome"
   | "patientDirectory"
+  | "tasksBoard"
   | "analyticsOverview"
   | "inventoryBoard"
   | "aiWorkspace"
@@ -52,6 +55,7 @@ export type AppRouteId =
 export type NavigationItemId =
   | "doctor"
   | "patient"
+  | "tasks"
   | "analytics"
   | "inventory"
   | "ai"
@@ -73,6 +77,8 @@ type RoutePolicy = {
   permission: AppPermission;
 };
 
+const HIDDEN_ROUTE_IDS: ReadonlySet<AppRouteId> = new Set(["tasksBoard"]);
+
 const ROUTE_POLICIES: RoutePolicy[] = [
   {
     routeId: "doctorHome",
@@ -87,6 +93,13 @@ const ROUTE_POLICIES: RoutePolicy[] = [
     href: "/patient",
     label: "Patient Management",
     permission: "patient.directory.view",
+  },
+  {
+    routeId: "tasksBoard",
+    navId: "tasks",
+    href: "/tasks",
+    label: "Operations Tasks",
+    permission: "task.read",
   },
   {
     routeId: "analyticsOverview",
@@ -128,6 +141,7 @@ const ROUTE_POLICIES: RoutePolicy[] = [
 const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
   owner: [
     ...ROUTE_POLICIES.map((route) => route.permission),
+    "task.write",
     "inventory.write",
     "appointment.create",
     "appointment.update",
@@ -146,6 +160,8 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "doctor.workspace.view",
     "assistant.workspace.view",
     "patient.directory.view",
+    "task.read",
+    "task.write",
     "analytics.view",
     "inventory.view",
     "inventory.write",
@@ -164,6 +180,8 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
   assistant: [
     "assistant.workspace.view",
     "patient.directory.view",
+    "task.read",
+    "task.write",
     "analytics.view",
     "inventory.view",
     "inventory.write",
@@ -235,6 +253,10 @@ export function getRoutePolicy(routeId: AppRouteId) {
   return ROUTE_POLICIES.find((route) => route.routeId === routeId) ?? null;
 }
 
+function isRouteVisible(routeId: AppRouteId) {
+  return !HIDDEN_ROUTE_IDS.has(routeId);
+}
+
 export function hasPermission(subject: PermissionSubject, permission: AppPermission) {
   return getEffectivePermissions(subject).includes(permission);
 }
@@ -256,6 +278,10 @@ function canAccessAssistantWorkspace(subject: PermissionSubject) {
 }
 
 export function canAccessRoute(subject: PermissionSubject, routeId: AppRouteId) {
+  if (!isRouteVisible(routeId)) {
+    return false;
+  }
+
   if (routeId === "assistantWorkspace") {
     return canAccessAssistantWorkspace(subject);
   }
@@ -271,12 +297,12 @@ export function getDefaultRouteForRole(role: AppRole) {
 export function getDefaultRouteForSubject(subject: PermissionSubject) {
   const role = getSubjectRole(subject);
   const route = getRoutePolicy(DEFAULT_ROUTE_BY_ROLE[role]);
-  if (route && hasPermission(subject, route.permission)) {
+  if (route && isRouteVisible(route.routeId) && hasPermission(subject, route.permission)) {
     return route.href;
   }
 
   const firstAccessibleRoute = ROUTE_POLICIES.find((entry) =>
-    hasPermission(subject, entry.permission)
+    isRouteVisible(entry.routeId) && hasPermission(subject, entry.permission)
   );
   if (firstAccessibleRoute) {
     return firstAccessibleRoute.href;
@@ -291,9 +317,10 @@ export function getNavigationItemsForRole(role: AppRole) {
 
 export function getNavigationItemsForSubject(subject: PermissionSubject) {
   return ROUTE_POLICIES.filter((route) =>
-    route.routeId === "assistantWorkspace"
+    isRouteVisible(route.routeId) &&
+    (route.routeId === "assistantWorkspace"
       ? canAccessAssistantWorkspace(subject)
-      : hasPermission(subject, route.permission)
+      : hasPermission(subject, route.permission))
   ).map(({ navId, href, label, routeId }) => ({
     id: navId,
     href,
@@ -303,5 +330,7 @@ export function getNavigationItemsForSubject(subject: PermissionSubject) {
 }
 
 export function getNavigationIndexForPath(pathname: string) {
-  return ROUTE_POLICIES.findIndex((route) => isPathMatch(pathname, route.href));
+  return ROUTE_POLICIES.findIndex((route) =>
+    isRouteVisible(route.routeId) && isPathMatch(pathname, route.href)
+  );
 }

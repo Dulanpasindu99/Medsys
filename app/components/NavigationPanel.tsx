@@ -47,6 +47,17 @@ export const PatientsIcon: IconRenderer = (props) => (
   </svg>
 );
 
+export const TasksIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M9 6h11" />
+    <path d="M9 12h11" />
+    <path d="M9 18h11" />
+    <path d="M4 6.5l1.2 1.2L7.5 5.4" />
+    <circle cx="5.5" cy="12" r="1.2" />
+    <path d="M4 18.5l1.2 1.2L7.5 17.4" />
+  </svg>
+);
+
 export const StatsIcon: IconRenderer = (props) => (
   <svg {...iconProps} {...props}>
     <path d="M5 20h14" />
@@ -103,6 +114,7 @@ type NavigationItem = {
 const ICONS_BY_NAV_ID: Record<NavigationItemId, IconRenderer> = {
   doctor: DoctorIcon,
   patient: PatientsIcon,
+  tasks: TasksIcon,
   analytics: StatsIcon,
   inventory: InventoryIcon,
   ai: ChatIcon,

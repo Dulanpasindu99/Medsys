@@ -45,6 +45,56 @@ export type InventoryCategory = "medicine" | "consumable" | "equipment" | "other
 export type PrescriptionType = "clinical" | "outside" | "both";
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "near_expiry" | "expired";
 export type InventoryMovementType = "in" | "out" | "adjustment";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
+export type TaskPriority = "low" | "normal" | "high" | "critical";
+export type TaskRole = "doctor" | "assistant" | "owner";
+export type TaskVisitMode = "walk_in" | "appointment";
+export type TaskWorkflowMode = "self_service" | "clinic_supported";
+export type TaskItem = {
+  id: number;
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  priority?: TaskPriority | null;
+  dueDate?: string | null;
+  dueAt?: string | null;
+  assignedRole?: TaskRole | null;
+  assignedUserId?: number | null;
+  assignedUserName?: string | null;
+  visitMode?: TaskVisitMode | null;
+  doctorWorkflowMode?: TaskWorkflowMode | null;
+  sourceType?: string | null;
+  sourceId?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  completedAt?: string | null;
+};
+export type TasksQuery = {
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  visitMode?: TaskVisitMode;
+  doctorWorkflowMode?: TaskWorkflowMode;
+  sourceType?: string;
+  role?: TaskRole;
+  assignedUserId?: number;
+};
+export type TaskCreatePayload = {
+  title: string;
+  description?: string | null;
+  priority?: TaskPriority | null;
+  dueDate?: string | null;
+  assignedRole?: TaskRole | null;
+  assignedUserId?: number | null;
+  visitMode?: TaskVisitMode | null;
+  doctorWorkflowMode?: TaskWorkflowMode | null;
+  sourceType?: string | null;
+  sourceId?: number | null;
+};
+export type TaskUpdatePayload = Partial<
+  TaskCreatePayload & {
+    status: TaskStatus;
+  }
+>;
 export type InventoryItem = {
   id: number;
   organizationId?: string;
@@ -913,6 +963,55 @@ export async function saveConsultation(input: ConsultationSavePayload) {
 export async function listEncounters() {
   const response = await apiFetch<unknown>("/api/encounters", { method: "GET" });
   return expectApiRecordArray(response, "encounters");
+}
+
+export async function listTasks(input?: TasksQuery) {
+  const params = new URLSearchParams();
+  if (input?.status) params.set("status", input.status);
+  if (input?.priority) params.set("priority", input.priority);
+  if (input?.visitMode) params.set("visitMode", input.visitMode);
+  if (input?.doctorWorkflowMode) {
+    params.set("doctorWorkflowMode", input.doctorWorkflowMode);
+  }
+  if (input?.sourceType) params.set("sourceType", input.sourceType);
+  if (input?.role) params.set("role", input.role);
+  if (typeof input?.assignedUserId === "number") {
+    params.set("assignedUserId", String(input.assignedUserId));
+  }
+  const query = params.size ? `?${params.toString()}` : "";
+  const response = await apiFetch<unknown>(`/api/tasks${query}`, { method: "GET" });
+  if (Array.isArray(response)) {
+    return expectApiRecordArray(response, "tasks") as TaskItem[];
+  }
+  const record = expectApiRecord(response, "tasks");
+  if (Array.isArray(record.tasks)) {
+    return expectApiRecordArray(record.tasks, "tasks") as TaskItem[];
+  }
+  if (Array.isArray(record.items)) {
+    return expectApiRecordArray(record.items, "tasks") as TaskItem[];
+  }
+  throw contractMismatch("tasks response is not an array.");
+}
+
+export async function createTask(input: TaskCreatePayload) {
+  return apiFetch<TaskItem>("/api/tasks", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateTask(taskId: number | string, input: TaskUpdatePayload) {
+  return apiFetch<TaskItem>(`/api/tasks/${taskId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function completeTask(taskId: number | string, input?: { note?: string | null }) {
+  return apiFetch<TaskItem>(`/api/tasks/${taskId}/complete`, {
+    method: "POST",
+    body: JSON.stringify(input ?? {}),
+  });
 }
 
 export async function listPendingDispenseQueue() {
