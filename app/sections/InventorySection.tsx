@@ -144,7 +144,7 @@ function ItemSignals({ item }: { item: InventoryItemView }) {
   return (
     <div className="flex flex-wrap gap-2">
       <span
-        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${
+        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
           item.stockStatus === "in_stock"
             ? badgeClass("emerald")
             : item.stockStatus === "low_stock" ||
@@ -156,20 +156,20 @@ function ItemSignals({ item }: { item: InventoryItemView }) {
         {item.stockStatus.replace(/_/g, " ")}
       </span>
       <span
-        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${badgeClass(item.isActive ? "emerald" : "slate")}`}
+        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badgeClass(item.isActive ? "emerald" : "slate")}`}
       >
         {item.isActive ? "Active" : "Inactive"}
       </span>
       {item.lowStock ? (
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${badgeClass("amber")}`}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badgeClass("amber")}`}
         >
           Low stock
         </span>
       ) : null}
       {item.stockoutRisk ? (
         <span
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${badgeClass("rose")}`}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badgeClass("rose")}`}
         >
           Stockout risk
         </span>
@@ -323,7 +323,7 @@ function ActionIcon({
   if (kind === "add") {
     return (
       <svg
-        className="h-4 w-4"
+        className="h-3.5 w-3.5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -340,7 +340,7 @@ function ActionIcon({
   if (kind === "remove") {
     return (
       <svg
-        className="h-4 w-4"
+        className="h-3.5 w-3.5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -353,7 +353,7 @@ function ActionIcon({
   if (kind === "adjust") {
     return (
       <svg
-        className="h-4 w-4"
+        className="h-3.5 w-3.5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -370,7 +370,7 @@ function ActionIcon({
   if (kind === "batches") {
     return (
       <svg
-        className="h-4 w-4"
+        className="h-3.5 w-3.5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -389,7 +389,7 @@ function ActionIcon({
   if (kind === "detail") {
     return (
       <svg
-        className="h-4 w-4"
+        className="h-3.5 w-3.5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -405,7 +405,7 @@ function ActionIcon({
   }
   return (
     <svg
-      className="h-4 w-4"
+      className="h-3.5 w-3.5"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -440,10 +440,10 @@ function InventoryTable({
   onViewBatches: (item: InventoryItemView) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-[24px] border border-slate-100 bg-white">
-      <table className="min-w-[1120px] w-full text-left text-[0.82rem]">
+    <div className="w-full max-w-full overflow-x-auto rounded-[24px] border border-slate-100 bg-white">
+      <table className="w-full min-w-[980px] table-auto text-left text-[0.78rem]">
         <thead>
-          <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+          <tr className="border-b border-slate-100 bg-slate-50/80 text-[9px] uppercase tracking-[0.14em] text-slate-500">
             {[
               "SKU",
               "Name",
@@ -458,7 +458,7 @@ function InventoryTable({
               "Status",
               "Actions",
             ].map((label) => (
-              <th key={label} className="px-4 py-2.5 font-semibold">
+              <th key={label} className="whitespace-nowrap px-3 py-2 font-semibold">
                 {label}
               </th>
             ))}
@@ -474,46 +474,46 @@ function InventoryTable({
                   : "border-b border-slate-50"
               }
             >
-              <td className="px-4 py-2.5 font-semibold text-slate-700">
+              <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-700">
                 {item.sku}
               </td>
-              <td className="px-4 py-2.5">
+              <td className="px-3 py-2">
                 <p className="font-semibold text-slate-900">{item.name}</p>
                 <p className="text-[11px] text-slate-500">
                   {item.brandName === "N/A" ? "Brand not set" : item.brandName}
                 </p>
               </td>
-              <td className="px-4 py-2.5 text-slate-700">{item.category}</td>
-              <td className="px-4 py-2.5 text-slate-700">{item.unit}</td>
-              <td className="px-4 py-2.5 text-slate-700">
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">{item.category}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">{item.unit}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">
                 {item.dispenseUnit} x {item.dispenseUnitSize}
               </td>
-              <td className="px-4 py-2.5 text-slate-700">
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">
                 {item.purchaseUnit} x {item.purchaseUnitSize}
               </td>
-              <td className="px-4 py-2.5 text-slate-700">
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">
                 {item.supplierName === "N/A" ? "Not set" : item.supplierName}
               </td>
-              <td className="px-4 py-2.5 font-semibold text-slate-900">
+              <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">
                 {item.stockSummary.currentStock}
               </td>
-              <td className="px-4 py-2.5 text-slate-700">
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">
                 {item.stockSummary.minimumStock}
               </td>
-              <td className="px-4 py-2.5 text-slate-700">
+              <td className="whitespace-nowrap px-3 py-2 text-slate-700">
                 {item.leadTimeDays}d
               </td>
-              <td className="px-4 py-2.5">
+              <td className="whitespace-nowrap px-3 py-2">
                 <ItemSignals item={item} />
               </td>
-              <td className="px-4 py-2.5">
+              <td className="whitespace-nowrap px-3 py-2">
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     onClick={() => onAddStock(item)}
                     title="Add Stock"
                     aria-label={`Add stock for ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-600 text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-600 text-white"
                   >
                     <ActionIcon kind="add" />
                   </button>
@@ -522,7 +522,7 @@ function InventoryTable({
                     onClick={() => onRemoveStock(item)}
                     title="Remove Stock"
                     aria-label={`Remove stock for ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-800"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-800"
                   >
                     <ActionIcon kind="remove" />
                   </button>
@@ -531,7 +531,7 @@ function InventoryTable({
                     onClick={() => onAdjustStock(item)}
                     title="Adjust Stock"
                     aria-label={`Adjust stock for ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-violet-200 bg-violet-50 text-violet-800"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-200 bg-violet-50 text-violet-800"
                   >
                     <ActionIcon kind="adjust" />
                   </button>
@@ -540,7 +540,7 @@ function InventoryTable({
                     onClick={() => onViewBatches(item)}
                     title="View Batches"
                     aria-label={`View batches for ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
                   >
                     <ActionIcon kind="batches" />
                   </button>
@@ -549,7 +549,7 @@ function InventoryTable({
                     onClick={() => onViewDetail(item)}
                     title="View Detail"
                     aria-label={`View detail for ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-800"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-sky-200 bg-sky-50 text-sky-800"
                   >
                     <ActionIcon kind="detail" />
                   </button>
@@ -558,7 +558,7 @@ function InventoryTable({
                     onClick={() => onEdit(item)}
                     title="Edit Details"
                     aria-label={`Edit details for ${item.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white"
                   >
                     <ActionIcon kind="edit" />
                   </button>
@@ -758,7 +758,10 @@ function PaginationControls({
           <div className="min-w-[76px]">
             <AppSelectField
               value={pageSize}
-              onValueChange={(value) => onPageSizeChange(Number(value))}
+              onValueChange={(value) => {
+                const next = Number(value);
+                onPageSizeChange([5, 10, 15].includes(next) ? next : 5);
+              }}
               ariaLabel="Inventory rows per page"
               options={[5, 10, 15].map((size) => ({
                 value: size,
@@ -829,6 +832,7 @@ function InventoryItemModal({
   createState,
   duplicateItem,
   itemForm,
+  fieldErrors,
   updateItemForm,
   onClose,
   onReset,
@@ -841,6 +845,18 @@ function InventoryItemModal({
   createState: { status: string };
   duplicateItem: InventoryItemView | null;
   itemForm: ReturnType<typeof useInventoryBoard>["itemForm"];
+  fieldErrors?: Partial<
+    Record<
+      | "name"
+      | "category"
+      | "unit"
+      | "stock"
+      | "reorderLevel"
+      | "dispenseUnitSize"
+      | "purchaseUnitSize",
+      string
+    >
+  >;
   updateItemForm: ReturnType<typeof useInventoryBoard>["updateItemForm"];
   onClose: () => void;
   onReset: () => void;
@@ -948,6 +964,11 @@ function InventoryItemModal({
                     disabled={!canWriteInventory}
                     placeholder="Paracetamol 500mg"
                   />
+                  {fieldErrors?.name ? (
+                    <p className="text-[11px] font-semibold text-rose-600">
+                      {fieldErrors.name}
+                    </p>
+                  ) : null}
                 </FormField>
                 <FormField label="Category">
                   <AppSelectField
@@ -967,6 +988,11 @@ function InventoryItemModal({
                       { value: "other", label: "Other" },
                     ]}
                   />
+                  {fieldErrors?.category ? (
+                    <p className="text-[11px] font-semibold text-rose-600">
+                      {fieldErrors.category}
+                    </p>
+                  ) : null}
                 </FormField>
                 <FormField label="Strength" optional>
                   <input
@@ -988,6 +1014,11 @@ function InventoryItemModal({
                       label: option,
                     }))}
                   />
+                  {fieldErrors?.unit ? (
+                    <p className="text-[11px] font-semibold text-rose-600">
+                      {fieldErrors.unit}
+                    </p>
+                  ) : null}
                 </FormField>
               </div>
             </div>
@@ -1028,6 +1059,11 @@ function InventoryItemModal({
                       placeholder="200"
                     />
                   )}
+                  {fieldErrors?.stock ? (
+                    <p className="text-[11px] font-semibold text-rose-600">
+                      {fieldErrors.stock}
+                    </p>
+                  ) : null}
                 </FormField>
                 <FormField label="Minimum Stock Level">
                   <p className="min-h-[2.75rem] text-[0.74rem] leading-5 text-slate-500">
@@ -1046,6 +1082,11 @@ function InventoryItemModal({
                     disabled={!canWriteInventory}
                     placeholder="50"
                   />
+                  {fieldErrors?.reorderLevel ? (
+                    <p className="text-[11px] font-semibold text-rose-600">
+                      {fieldErrors.reorderLevel}
+                    </p>
+                  ) : null}
                 </FormField>
               </div>
             </div>
@@ -1234,6 +1275,11 @@ function InventoryItemModal({
                       disabled={!canWriteInventory}
                       placeholder="100"
                     />
+                    {fieldErrors?.purchaseUnitSize ? (
+                      <p className="text-[11px] font-semibold text-rose-600">
+                        {fieldErrors.purchaseUnitSize}
+                      </p>
+                    ) : null}
                   </FormField>
                   <FormField label="Dispense unit" optional>
                     <AppSelectField
@@ -1262,6 +1308,11 @@ function InventoryItemModal({
                       disabled={!canWriteInventory}
                       placeholder="10"
                     />
+                    {fieldErrors?.dispenseUnitSize ? (
+                      <p className="text-[11px] font-semibold text-rose-600">
+                        {fieldErrors.dispenseUnitSize}
+                      </p>
+                    ) : null}
                   </FormField>
                   <FormField label="Batch number" optional>
                     <input
@@ -1520,10 +1571,13 @@ export default function InventorySection() {
     doctorOptions,
     assistantOptions,
     itemForm,
+    itemFieldErrors,
     updateItemForm,
     movementForm,
+    movementFieldErrors,
     updateMovementForm,
     batchForm,
+    batchFieldErrors,
     updateBatchForm,
     movementUnitType,
     movementUnitLabel,
@@ -1563,7 +1617,7 @@ export default function InventorySection() {
   const paginatedItems = useMemo(() => {
     const start = inventoryPage * inventoryPageSize;
     return filteredItems.slice(start, start + inventoryPageSize);
-  }, [filteredItems, inventoryPage]);
+  }, [filteredItems, inventoryPage, inventoryPageSize]);
   const reportRole = currentUser?.role ?? "owner";
   const reportViewOptions = useMemo(() => {
     if (reportRole === "doctor") {
@@ -1937,7 +1991,7 @@ export default function InventorySection() {
 
           {activeTab === "inventory" ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              <ViewportPanel className="flex min-h-0 flex-col">
+              <ViewportPanel className="flex min-h-0 flex-col overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -1987,7 +2041,7 @@ export default function InventorySection() {
                     ]}
                   />
                 </div>
-                <div className="mt-4 min-h-0 flex-1">
+                <div className="mt-4 min-h-0 flex-1 overflow-hidden">
                   {loadState.status === "loading" ? (
                     <AsyncStatePanel
                       eyebrow="Loading"
@@ -2003,13 +2057,10 @@ export default function InventorySection() {
                       tone="empty"
                     />
                   ) : (
-                    <div className="space-y-4">
+                    <div className="flex h-full min-h-0 flex-col gap-4">
                       <div
-                        className={
-                          inventoryPageSize > 5
-                            ? "max-h-[380px] overflow-y-scroll pr-2 scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300"
-                            : ""
-                        }
+                        className="min-h-0 flex-1 overflow-y-scroll pr-1 scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300"
+                        style={{ maxHeight: "calc(100vh - 27rem)" }}
                       >
                         <InventoryTable
                           items={paginatedItems}
@@ -2207,22 +2258,29 @@ export default function InventorySection() {
                   </p>
                 )}
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <AppSelectField
-                    value={movementForm.type}
-                    onValueChange={(value) =>
-                      updateMovementForm(
-                        "type",
-                        value as typeof movementForm.type,
-                      )
-                    }
-                    disabled={!canPostMovement}
-                    ariaLabel="Movement type"
-                    options={[
-                      { value: "in", label: "Add Stock" },
-                      { value: "out", label: "Remove Stock" },
-                      { value: "adjustment", label: "Adjust Stock" },
-                    ]}
-                  />
+                  <div className="space-y-1">
+                    <AppSelectField
+                      value={movementForm.type}
+                      onValueChange={(value) =>
+                        updateMovementForm(
+                          "type",
+                          value as typeof movementForm.type,
+                        )
+                      }
+                      disabled={!canPostMovement}
+                      ariaLabel="Movement type"
+                      options={[
+                        { value: "in", label: "Add Stock" },
+                        { value: "out", label: "Remove Stock" },
+                        { value: "adjustment", label: "Adjust Stock" },
+                      ]}
+                    />
+                    {movementFieldErrors?.movementType ? (
+                      <p className="text-[11px] font-semibold text-rose-600">
+                        {movementFieldErrors.movementType}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="space-y-1">
                     <input
                       className={fieldClass}
@@ -2241,6 +2299,11 @@ export default function InventorySection() {
                         ? `Enter the final counted stock in ${movementUnitLabel}. The backend will create the adjustment movement automatically.`
                         : `Send the quantity in ${movementUnitLabel}. The backend converts it using ${movementUnitSize} ${selectedItem?.unit ?? "base units"} per ${movementUnitLabel}.`}
                     </p>
+                    {movementFieldErrors?.quantity ? (
+                      <p className="px-1 text-[11px] font-semibold text-rose-600">
+                        {movementFieldErrors.quantity}
+                      </p>
+                    ) : null}
                   </div>
                   <AppSelectField
                     value={movementForm.reason}
@@ -2360,27 +2423,41 @@ export default function InventorySection() {
                 </h2>
                 {selectedItem ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <input
-                      className={fieldClass}
-                      value={batchForm.batchNo}
-                      onChange={(e) =>
-                        updateBatchForm("batchNo", e.target.value)
-                      }
-                      placeholder="Batch no"
-                      disabled={!canWriteInventory}
-                    />
-                    <input
-                      className={fieldClass}
-                      value={batchForm.quantity}
-                      onChange={(e) =>
-                        updateBatchForm(
-                          "quantity",
-                          e.target.value.replace(/[^0-9]/g, ""),
-                        )
-                      }
-                      placeholder="Quantity"
-                      disabled={!canWriteInventory}
-                    />
+                    <div className="space-y-1">
+                      <input
+                        className={fieldClass}
+                        value={batchForm.batchNo}
+                        onChange={(e) =>
+                          updateBatchForm("batchNo", e.target.value)
+                        }
+                        placeholder="Batch no"
+                        disabled={!canWriteInventory}
+                      />
+                      {batchFieldErrors?.batchNo ? (
+                        <p className="text-[11px] font-semibold text-rose-600">
+                          {batchFieldErrors.batchNo}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1">
+                      <input
+                        className={fieldClass}
+                        value={batchForm.quantity}
+                        onChange={(e) =>
+                          updateBatchForm(
+                            "quantity",
+                            e.target.value.replace(/[^0-9]/g, ""),
+                          )
+                        }
+                        placeholder="Quantity"
+                        disabled={!canWriteInventory}
+                      />
+                      {batchFieldErrors?.quantity ? (
+                        <p className="text-[11px] font-semibold text-rose-600">
+                          {batchFieldErrors.quantity}
+                        </p>
+                      ) : null}
+                    </div>
                     <input
                       className={fieldClass}
                       value={batchForm.expiryDate}
@@ -2801,6 +2878,7 @@ export default function InventorySection() {
         createState={createState}
         duplicateItem={duplicateItem}
         itemForm={itemForm}
+        fieldErrors={itemFieldErrors}
         updateItemForm={updateItemForm}
         onClose={() => setIsItemModalOpen(false)}
         onReset={openCreateModal}

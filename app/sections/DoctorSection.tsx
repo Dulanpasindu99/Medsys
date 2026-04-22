@@ -64,6 +64,7 @@ export default function DoctorSection() {
     selectedPatientProfileId,
     selectedPatientLabel,
     patientVitals,
+    latestVitalsObservedAt = null,
     patientAllergies,
     consultationAllergies,
     vitalDrafts,
@@ -139,6 +140,7 @@ export default function DoctorSection() {
                   popup.openProfile(selectedPatientProfileId)
                 }
                 patientVitals={patientVitals}
+                latestVitalsObservedAt={latestVitalsObservedAt}
                 patientAllergies={patientAllergies}
                 consultationAllergies={consultationAllergies}
                 onRemoveConsultationAllergy={removeConsultationAllergy}

@@ -41,6 +41,13 @@ type ParsedApiError = {
   debugMessage?: string;
 };
 export type AppointmentStatus = "waiting" | "in_consultation" | "completed" | "cancelled";
+export type AppointmentDoctor = {
+  id: number;
+  name: string;
+  email?: string | null;
+  doctor_workflow_mode?: DoctorWorkflowMode;
+  is_active?: boolean;
+};
 export type ApiRecord = Record<string, unknown>;
 export type VisitStartPriority = "low" | "normal" | "high" | "critical";
 export type ConsultationPriority = VisitStartPriority;
@@ -405,11 +412,8 @@ export type ConsultationSavePayload = {
 };
 
 const DEFAULT_API_BASE = "/api/backend";
-const DEFAULT_ORG_ID = "11111111-1111-1111-1111-111111111111";
 const API_BASE_URL = DEFAULT_API_BASE;
-
-const ORGANIZATION_ID =
-  process.env.NEXT_PUBLIC_ORGANIZATION_ID ?? DEFAULT_ORG_ID;
+const ORGANIZATION_SLUG = process.env.NEXT_PUBLIC_ORGANIZATION_SLUG ?? undefined;
 
 export function clearStoredAuth() {
   // Legacy no-op kept for compatibility with existing callers.
@@ -646,11 +650,26 @@ export type ListPatientsInput = {
   doctorId?: number | string;
 };
 
-export async function loginUser(email: string, password: string, roleHint?: AppRole) {
+export async function loginUser(
+  email: string,
+  password: string,
+  roleHint?: AppRole,
+  organizationSlug?: string
+) {
+  const normalizedSlug = organizationSlug?.trim();
   const response = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, roleHint, organizationId: ORGANIZATION_ID }),
+    body: JSON.stringify({
+      email,
+      password,
+      roleHint,
+      ...(normalizedSlug
+        ? { organizationSlug: normalizedSlug }
+        : ORGANIZATION_SLUG
+          ? { organizationSlug: ORGANIZATION_SLUG }
+          : {}),
+    }),
   });
 
   if (!response.ok) {
@@ -758,6 +777,7 @@ export async function createUser(input: {
   email: string;
   password: string;
   role: Extract<AppRole, "doctor" | "assistant">;
+  doctorWorkflowMode?: Exclude<DoctorWorkflowMode, null>;
   extraPermissions?: AppPermission[];
 }) {
   const response = await apiFetch<{
@@ -905,6 +925,21 @@ export async function listAppointments(input?: { status?: AppointmentStatus }) {
   return expectApiRecordArray(response, "appointments");
 }
 
+export async function listAppointmentDoctors() {
+  const response = await apiFetch<{ doctors: unknown[] }>("/api/appointments/doctors", {
+    method: "GET",
+  });
+
+  if (!Array.isArray(response.doctors)) {
+    throw {
+      status: 502,
+      message: "Backend contract mismatch for appointment doctors.",
+    } satisfies ApiClientError;
+  }
+
+  return response.doctors;
+}
+
 export async function createAppointment(input: {
   patientId: number;
   doctorId: number;
@@ -989,6 +1024,11 @@ export async function listEncounters() {
   return expectApiRecordArray(response, "encounters");
 }
 
+export async function getEncounter(encounterId: number | string) {
+  const response = await apiFetch<unknown>(`/api/encounters/${encounterId}`, { method: "GET" });
+  return expectApiRecord(response, "encounter");
+}
+
 export async function listTasks(input?: TasksQuery) {
   const params = new URLSearchParams();
   if (input?.status) params.set("status", input.status);
@@ -1059,10 +1099,15 @@ export async function getAnalyticsDashboard(
   const params = new URLSearchParams();
   if (input.range) params.set("range", input.range);
   if (input.role) params.set("role", input.role);
-  if (typeof input.doctorId === "number") params.set("doctorId", String(input.doctorId));
-  if (typeof input.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (typeof input.doctorId === "number" && Number.isFinite(input.doctorId)) {
+    params.set("doctorId", String(input.doctorId));
+  }
+  if (typeof input.assistantId === "number" && Number.isFinite(input.assistantId)) {
+    params.set("assistantId", String(input.assistantId));
+  }
   if (input.dateFrom) params.set("dateFrom", input.dateFrom);
   if (input.dateTo) params.set("dateTo", input.dateTo);
+  if (input.operationMode) params.set("operationMode", input.operationMode);
   const query = params.size ? `?${params.toString()}` : "";
   const response = await apiFetch<unknown>(`/api/analytics/dashboard${query}`, { method: "GET" });
   if (!isAnalyticsDashboardResponse(response)) {
@@ -1102,8 +1147,12 @@ export async function getReport(reportType: ReportType, input?: ReportsQuery) {
   if (input?.range) params.set("range", input.range);
   if (input?.dateFrom) params.set("dateFrom", input.dateFrom);
   if (input?.dateTo) params.set("dateTo", input.dateTo);
-  if (typeof input?.doctorId === "number") params.set("doctorId", String(input.doctorId));
-  if (typeof input?.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (typeof input?.doctorId === "number" && Number.isFinite(input.doctorId)) {
+    params.set("doctorId", String(input.doctorId));
+  }
+  if (typeof input?.assistantId === "number" && Number.isFinite(input.assistantId)) {
+    params.set("assistantId", String(input.assistantId));
+  }
   if (input?.visitMode) params.set("visitMode", input.visitMode);
   if (input?.doctorWorkflowMode) params.set("doctorWorkflowMode", input.doctorWorkflowMode);
   const query = params.size ? `?${params.toString()}` : "";
@@ -1114,8 +1163,12 @@ export async function getDailySummary(input?: DailySummaryQuery) {
   const params = new URLSearchParams();
   if (input?.date) params.set("date", input.date);
   if (input?.role) params.set("role", input.role);
-  if (typeof input?.doctorId === "number") params.set("doctorId", String(input.doctorId));
-  if (typeof input?.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (typeof input?.doctorId === "number" && Number.isFinite(input.doctorId)) {
+    params.set("doctorId", String(input.doctorId));
+  }
+  if (typeof input?.assistantId === "number" && Number.isFinite(input.assistantId)) {
+    params.set("assistantId", String(input.assistantId));
+  }
   if (input?.visitMode) params.set("visitMode", input.visitMode);
   if (input?.doctorWorkflowMode) params.set("doctorWorkflowMode", input.doctorWorkflowMode);
   const query = params.size ? `?${params.toString()}` : "";
@@ -1127,8 +1180,12 @@ export async function getDailySummaryHistory(input?: DailySummaryHistoryQuery) {
   if (typeof input?.limit === "number") params.set("limit", String(input.limit));
   if (input?.date) params.set("date", input.date);
   if (input?.role) params.set("role", input.role);
-  if (typeof input?.doctorId === "number") params.set("doctorId", String(input.doctorId));
-  if (typeof input?.assistantId === "number") params.set("assistantId", String(input.assistantId));
+  if (typeof input?.doctorId === "number" && Number.isFinite(input.doctorId)) {
+    params.set("doctorId", String(input.doctorId));
+  }
+  if (typeof input?.assistantId === "number" && Number.isFinite(input.assistantId)) {
+    params.set("assistantId", String(input.assistantId));
+  }
   if (input?.visitMode) params.set("visitMode", input.visitMode);
   if (input?.doctorWorkflowMode) params.set("doctorWorkflowMode", input.doctorWorkflowMode);
   const query = params.size ? `?${params.toString()}` : "";
@@ -1172,9 +1229,20 @@ export async function createInventoryMovement(
   inventoryId: number | string,
   input: InventoryMovementPayload
 ) {
+  const payload: InventoryMovementPayload = {
+    movementType: input.movementType ?? input.type,
+    quantity: input.quantity,
+    ...(input.movementUnit?.trim() ? { movementUnit: input.movementUnit.trim() } : {}),
+    ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    ...(input.referenceType?.trim() ? { referenceType: input.referenceType.trim() } : {}),
+    ...(typeof input.referenceId === "number" && Number.isFinite(input.referenceId)
+      ? { referenceId: input.referenceId }
+      : {}),
+  };
   return apiFetch(`/api/inventory/${inventoryId}/movements`, {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify(payload),
   });
 }
 

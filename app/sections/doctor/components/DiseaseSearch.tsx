@@ -247,6 +247,13 @@ export function DiseaseSearch({
         >
           Notes
         </button>
+        <button
+          type="button"
+          onClick={onOpenNotes}
+          className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700 transition hover:bg-sky-100"
+        >
+          Next: Consultation Save
+        </button>
       </div>
     </div>
   );

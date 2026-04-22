@@ -18,6 +18,7 @@ type DoctorSidebarProps = {
   assistantRegistrationHref?: string | null;
   onOpenPatientHistory: () => void;
   patientVitals: PatientVital[];
+  latestVitalsObservedAt?: string | null;
   patientAllergies: AllergyAlert[];
   consultationAllergies: Array<{
     allergyName: string;
@@ -101,6 +102,7 @@ export function DoctorSidebar({
   assistantRegistrationHref = null,
   onOpenPatientHistory,
   patientAllergies,
+  latestVitalsObservedAt = null,
   consultationAllergies,
   onRemoveConsultationAllergy,
   vitalDrafts,
@@ -209,13 +211,18 @@ export function DoctorSidebar({
             <SidebarSection title="Patient Vitals">
               {showPatientEditors ? (
                 <div className="space-y-3">
+                  {latestVitalsObservedAt ? (
+                    <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 ring-1 ring-slate-100">
+                      Latest observations: {latestVitalsObservedAt}
+                    </p>
+                  ) : null}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {vitalFieldMeta.map(({ key, label, placeholder }) => (
                       <label
                         key={key}
-                        className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
+                        className="flex min-h-[104px] flex-col rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_10px_28px_rgba(14,165,233,0.12)] ring-1 ring-sky-50"
                       >
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-h-[28px] items-start justify-between gap-2">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                             {label}
                           </p>
@@ -245,7 +252,9 @@ export function DoctorSidebar({
                                 <MenuItem value="F">F</MenuItem>
                               </Select>
                             </FormControl>
-                          ) : null}
+                          ) : (
+                            <span className="block h-7 w-[52px] opacity-0" aria-hidden="true" />
+                          )}
                         </div>
                         <input
                           value={

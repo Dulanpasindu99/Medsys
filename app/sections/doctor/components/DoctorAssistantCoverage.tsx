@@ -78,6 +78,7 @@ export function DoctorAssistantCoverage({
             familyOptions={workflow.familyOptions}
             addAllergy={workflow.addAllergy}
             addPatient={workflow.addPatient}
+            onResetForm={workflow.resetPatientForm}
             canCreatePatients={workflow.canCreatePatientsInWorkflow}
             patientActionDisabledReason={workflow.patientActionDisabledReason}
             isSubmitting={workflow.createPatientState.status === "pending"}
@@ -103,6 +104,7 @@ export function DoctorAssistantCoverage({
             scheduleForm={workflow.scheduleForm}
             onScheduleFormChange={workflow.setScheduleForm}
             onScheduleAppointment={workflow.scheduleAppointment}
+            onResetScheduleForm={workflow.resetScheduleForm}
             canCreateAppointments={workflow.canCreateAppointmentsInWorkflow}
             appointmentActionDisabledReason={workflow.appointmentActionDisabledReason}
             isScheduling={workflow.scheduleAppointmentState.status === "pending"}

@@ -23,6 +23,7 @@ import {
   useAppointmentsQuery,
   useCurrentUserQuery,
   useFamiliesQuery,
+  useEncounterDetailQuery,
   useInventoryQuery,
   usePatientAllergiesQuery,
   usePatientProfileQuery,
@@ -488,6 +489,67 @@ function getExistingVisitIdFromProfile(profile: AnyRecord | null) {
   return null;
 }
 
+function getExistingEncounterIdFromProfile(profile: AnyRecord | null) {
+  if (!profile) {
+    return null;
+  }
+
+  const directId = getNumber(
+    profile.encounter_id ??
+      profile.encounterId ??
+      profile.active_encounter_id ??
+      profile.activeEncounterId ??
+      profile.current_encounter_id ??
+      profile.currentEncounterId
+  );
+  if (directId !== null) {
+    return directId;
+  }
+
+  const nestedCandidates = [
+    profile.encounter,
+    profile.active_encounter,
+    profile.activeEncounter,
+    profile.current_encounter,
+    profile.currentEncounter,
+    profile.open_encounter,
+    profile.openEncounter,
+    profile.ongoing_encounter,
+    profile.ongoingEncounter,
+    profile.latest_encounter,
+    profile.latestEncounter,
+    profile.visit,
+    profile.appointment,
+  ];
+
+  for (const candidate of nestedCandidates) {
+    const record = asRecord(candidate);
+    if (!record) continue;
+    const nestedId = getNumber(
+      record.encounter_id ?? record.encounterId ?? record.id
+    );
+    if (nestedId !== null) {
+      return nestedId;
+    }
+  }
+
+  return null;
+}
+
+function getResolvedEncounterId(payload: AnyRecord) {
+  const directId = getNumber(payload.encounter_id ?? payload.encounterId);
+  if (directId !== null) {
+    return directId;
+  }
+
+  const encounterRecord = asRecord(payload.encounter);
+  if (!encounterRecord) {
+    return null;
+  }
+
+  return getNumber(encounterRecord.id ?? encounterRecord.encounter_id ?? encounterRecord.encounterId);
+}
+
 function isMinorWithoutNic(dateOfBirth: string, nic: string) {
   if (!dateOfBirth || nic.trim()) return false;
   const age = toAge(dateOfBirth);
@@ -699,44 +761,76 @@ function normalizeFamilyOptions(rawFamilies: unknown): FamilyOption[] {
 }
 
 function normalizeVitals(raw: unknown): PatientVital[] {
-  return asArray(raw).flatMap((row, index) => {
-    const typedVitals: PatientVital[] = [];
-    const bpSystolic = getNumber(row.bpSystolic ?? row.bp_systolic);
-    const bpDiastolic = getNumber(row.bpDiastolic ?? row.bp_diastolic);
-    const heartRate = getNumber(row.heartRate ?? row.heart_rate);
-    const temperatureC = getNumber(row.temperatureC ?? row.temperature_c);
-    const spo2 = getNumber(row.spo2 ?? row.spo_2);
+  const rows = asArray(raw);
+  if (rows.length === 0) {
+    return [];
+  }
 
-    if (bpSystolic !== null || bpDiastolic !== null) {
-      typedVitals.push({
-        label: "Blood Pressure",
-        value:
-          bpSystolic !== null && bpDiastolic !== null
-            ? `${bpSystolic}/${bpDiastolic}`
-            : `${bpSystolic ?? "--"}/${bpDiastolic ?? "--"}`,
-      });
-    }
-    if (heartRate !== null) {
-      typedVitals.push({ label: "Heart Rate", value: String(heartRate) });
-    }
-    if (temperatureC !== null) {
-      typedVitals.push({ label: "Temperature", value: String(temperatureC) });
-    }
-    if (spo2 !== null) {
-      typedVitals.push({ label: "SpO2", value: String(spo2) });
-    }
+  const sortedRows = [...rows].sort((left, right) => {
+    const leftTime = new Date(
+      getString(left.recorded_at ?? left.recordedAt ?? left.updated_at ?? left.updatedAt ?? left.created_at ?? left.createdAt)
+    ).getTime();
+    const rightTime = new Date(
+      getString(right.recorded_at ?? right.recordedAt ?? right.updated_at ?? right.updatedAt ?? right.created_at ?? right.createdAt)
+    ).getTime();
 
-    if (typedVitals.length > 0) {
-      return typedVitals;
-    }
-
-    return [
-      {
-        label: getString(row.label ?? row.name ?? row.vitalName ?? row.type, `Vital ${index + 1}`),
-        value: getString(row.value ?? row.reading ?? row.result, "--"),
-      },
-    ];
+    if (Number.isNaN(leftTime) && Number.isNaN(rightTime)) return 0;
+    if (Number.isNaN(leftTime)) return 1;
+    if (Number.isNaN(rightTime)) return -1;
+    return rightTime - leftTime;
   });
+
+  const latestRow = sortedRows[0];
+  if (!latestRow) {
+    return [];
+  }
+
+  const typedVitals: PatientVital[] = [];
+  const bpSystolic = getNumber(latestRow.bpSystolic ?? latestRow.bp_systolic);
+  const bpDiastolic = getNumber(latestRow.bpDiastolic ?? latestRow.bp_diastolic);
+  const heartRate = getNumber(latestRow.heartRate ?? latestRow.heart_rate);
+  const temperatureC = getNumber(latestRow.temperatureC ?? latestRow.temperature_c);
+  const spo2 = getNumber(latestRow.spo2 ?? latestRow.spo_2);
+  const observedAt = getDateTimeLabel(
+    latestRow.recorded_at ??
+      latestRow.recordedAt ??
+      latestRow.updated_at ??
+      latestRow.updatedAt ??
+      latestRow.created_at ??
+      latestRow.createdAt
+  );
+
+  if (bpSystolic !== null || bpDiastolic !== null) {
+    typedVitals.push({
+      label: "Blood Pressure",
+      value:
+        bpSystolic !== null && bpDiastolic !== null
+          ? `${bpSystolic}/${bpDiastolic}`
+          : `${bpSystolic ?? "--"}/${bpDiastolic ?? "--"}`,
+      observedAt,
+    });
+  }
+  if (heartRate !== null) {
+    typedVitals.push({ label: "Heart Rate", value: String(heartRate), observedAt });
+  }
+  if (temperatureC !== null) {
+    typedVitals.push({ label: "Temperature", value: String(temperatureC), observedAt });
+  }
+  if (spo2 !== null) {
+    typedVitals.push({ label: "SpO2", value: String(spo2), observedAt });
+  }
+
+  if (typedVitals.length > 0) {
+    return typedVitals;
+  }
+
+  return [
+    {
+      label: getString(latestRow.label ?? latestRow.name ?? latestRow.vitalName ?? latestRow.type, "Vital 1"),
+      value: getString(latestRow.value ?? latestRow.reading ?? latestRow.result, "--"),
+      observedAt,
+    },
+  ];
 }
 
 function buildVitalDrafts(vitals: PatientVital[]) {
@@ -1003,6 +1097,7 @@ export function useDoctorWorkspaceData(
   const [gender, setGenderState] = useState<PatientGender>("Unspecified");
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
+  const [selectedEncounterId, setSelectedEncounterId] = useState<number | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<number | null>(null);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] =
     useState<AppointmentLifecycleStatus | null>(null);
@@ -1040,32 +1135,58 @@ export function useDoctorWorkspaceData(
     patientDetailsEnabled
   );
   const patientVitalsQuery = usePatientVitalsQuery(selectedPatientId ?? "none", patientDetailsEnabled);
+  const encounterDetailQuery = useEncounterDetailQuery(
+    selectedEncounterId ?? "none",
+    selectedEncounterId !== null
+  );
   const patientAllergiesQuery = usePatientAllergiesQuery(
     selectedPatientId ?? "none",
     patientDetailsEnabled
   );
 
-  const patients = useMemo(
-    () => dedupePatientsByIdentity(normalizePatients(rawPatients, rawWaitingAppointments)),
+  const normalizedPatients = useMemo(
+    () => normalizePatients(rawPatients, rawWaitingAppointments),
     [rawPatients, rawWaitingAppointments]
+  );
+  const patients = useMemo(
+    () => dedupePatientsByIdentity(normalizedPatients),
+    [normalizedPatients]
   );
   const familyOptions = useMemo(() => normalizeFamilyOptions(rawFamilies), [rawFamilies]);
   const inventoryItems = useMemo(() => asArray(rawInventory), [rawInventory]);
-  const waitingQueuePatients = useMemo(
-    () => patients.filter((patient) => patient.appointmentId !== undefined),
-    [patients]
+  const appointmentQueuePatients = useMemo(
+    () => normalizedPatients.filter((patient) => patient.appointmentId !== undefined),
+    [normalizedPatients]
   );
+  const appointmentDoctorScopeId = selectedDoctorId ?? currentUserId;
+  const waitingQueuePatients = useMemo(
+    () => {
+      const doctorScopedPatients =
+        appointmentDoctorScopeId !== null
+          ? appointmentQueuePatients.filter((patient) => patient.doctorId === appointmentDoctorScopeId)
+          : appointmentQueuePatients;
 
-  const searchMatches = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return [];
-    return patients.filter(
-      (patient) =>
-        `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
-          .toLowerCase()
-          .includes(query)
-    ).slice(0, 8);
-  }, [patients, search]);
+      const waitingPatients = doctorScopedPatients.filter(
+        (patient) => !patient.appointmentStatus || patient.appointmentStatus === "waiting"
+      );
+
+      return waitingPatients
+        .slice()
+        .sort((left, right) => {
+          const leftQueue = typeof left.queueOrder === "number" ? left.queueOrder : Number.MAX_SAFE_INTEGER;
+          const rightQueue = typeof right.queueOrder === "number" ? right.queueOrder : Number.MAX_SAFE_INTEGER;
+          if (leftQueue !== rightQueue) {
+            return leftQueue - rightQueue;
+          }
+          return left.name.localeCompare(right.name);
+        })
+        .map((patient, index) => ({
+          ...patient,
+          queueOrder: patient.queueOrder ?? index + 1,
+        }));
+    },
+    [appointmentDoctorScopeId, appointmentQueuePatients]
+  );
   const guardianSearchMatches = useMemo(() => {
     const query = guardianSearch.trim().toLowerCase();
     if (!query) return [];
@@ -1136,6 +1257,10 @@ export function useDoctorWorkspaceData(
     () => normalizeVitals(patientVitalsQuery.data),
     [patientVitalsQuery.data]
   );
+  const selectedEncounterDetail = useMemo(
+    () => asRecord(encounterDetailQuery.data),
+    [encounterDetailQuery.data]
+  );
   const selectedPatientProfile = useMemo(
     () => unwrapProfileRecord(patientProfileQuery.data),
     [patientProfileQuery.data]
@@ -1144,6 +1269,7 @@ export function useDoctorWorkspaceData(
     () => normalizeAllergies(patientAllergiesQuery.data),
     [patientAllergiesQuery.data]
   );
+  const latestVitalsObservedAt = patientVitals[0]?.observedAt ?? null;
   const patientDetailsState: LoadState = useMemo(() => {
     if (!selectedPatientId) {
       return emptyLoadState();
@@ -1192,10 +1318,24 @@ export function useDoctorWorkspaceData(
     selectedPatientId,
   ]);
   const isDoctorRole = currentUserQuery.data?.role === "doctor";
+  const doctorWorkflowMode = currentUserQuery.data?.doctor_workflow_mode ?? null;
+  const defaultWorkflowType: ConsultationWorkflowType =
+    doctorWorkflowMode === "clinic_supported" ? "appointment" : "walk_in";
   const derivedWorkflowType: ConsultationWorkflowType =
-    selectedAppointmentId !== null ? "appointment" : "walk_in";
+    selectedAppointmentId !== null ? "appointment" : defaultWorkflowType;
   const workflowType: ConsultationWorkflowType =
     explicitWorkflowType ?? derivedWorkflowType;
+  const searchablePatients = workflowType === "appointment" ? waitingQueuePatients : patients;
+  const searchMatches = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return [];
+    return searchablePatients.filter(
+      (patient) =>
+        `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
+          .toLowerCase()
+          .includes(query)
+    ).slice(0, 8);
+  }, [search, searchablePatients]);
   const hasDoctorWorkspaceAccess =
     !!currentUserQuery.data &&
     isDoctorRole &&
@@ -1516,6 +1656,7 @@ export function useDoctorWorkspaceData(
     setGenderState("Unspecified");
     setSelectedPatientId(null);
     setSelectedAppointmentId(null);
+    setSelectedEncounterId(null);
     setSelectedDoctorId(null);
     setSelectedAppointmentStatus(null);
     setExplicitWorkflowType(null);
@@ -1562,6 +1703,7 @@ export function useDoctorWorkspaceData(
     );
     setSelectedPatientId(patient.patientId ?? null);
     setSelectedAppointmentId(patient.appointmentId ?? null);
+    setSelectedEncounterId(null);
     setSelectedDoctorId(patient.doctorId ?? null);
     setSelectedAppointmentStatus(patient.appointmentStatus ?? null);
     setExplicitWorkflowType(patient.appointmentId ? "appointment" : "walk_in");
@@ -1615,6 +1757,10 @@ export function useDoctorWorkspaceData(
       if (existingVisitId !== null) {
         setSelectedAppointmentId(existingVisitId);
       }
+      const existingEncounterId = getExistingEncounterIdFromProfile(selectedPatientProfile);
+      if (existingEncounterId !== null) {
+        setSelectedEncounterId(existingEncounterId);
+      }
     });
 
     return () => {
@@ -1627,17 +1773,20 @@ export function useDoctorWorkspaceData(
       return;
     }
 
+    const nextVitalDrafts =
+      buildVitalDraftsFromResponseVital(selectedEncounterDetail?.vital) ?? buildVitalDrafts(patientVitals);
+
     let cancelled = false;
     queueMicrotask(() => {
       if (!cancelled) {
-        setVitalDrafts(buildVitalDrafts(patientVitals));
+        setVitalDrafts(nextVitalDrafts);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [patientVitals, selectedPatientId]);
+  }, [patientVitals, selectedEncounterDetail, selectedPatientId]);
 
   const findPatientByQuery = (query: string) => {
     const normalizedQuery = normalizeLookupValue(query);
@@ -1645,14 +1794,14 @@ export function useDoctorWorkspaceData(
       return null;
     }
 
-    const codeMatch = patients.find(
+    const codeMatch = searchablePatients.find(
       (patient) => normalizeLookupValue(patient.patientCode) === normalizedQuery
     );
     if (codeMatch) {
       return codeMatch;
     }
 
-    const nicMatch = patients.find((patient) => {
+    const nicMatch = searchablePatients.find((patient) => {
       const patientNic = normalizeLookupValue(patient.nic === "No NIC" ? "" : patient.nic);
       const guardianNic = normalizeLookupValue(patient.guardianNic ?? "");
       return patientNic === normalizedQuery || guardianNic === normalizedQuery;
@@ -1661,7 +1810,7 @@ export function useDoctorWorkspaceData(
       return nicMatch;
     }
 
-    const nameMatch = patients.find(
+    const nameMatch = searchablePatients.find(
       (patient) => normalizeLookupValue(patient.name) === normalizedQuery
     );
     if (nameMatch) {
@@ -1786,6 +1935,9 @@ export function useDoctorWorkspaceData(
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.vitals(selectedPatientId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.allergies(selectedPatientId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.patients.timeline(selectedPatientId) }),
+      ...(selectedEncounterId !== null
+        ? [queryClient.invalidateQueries({ queryKey: queryKeys.encounters.detail(selectedEncounterId) })]
+        : []),
     ]);
   };
 
@@ -1986,8 +2138,12 @@ export function useDoctorWorkspaceData(
       const response = await saveConsultation(payload);
       const resolvedPatientId = getResolvedPatientId(response);
       const resolvedPrescriptionId = getResolvedPrescriptionId(response);
+      const resolvedEncounterId = getResolvedEncounterId(response);
       if (resolvedPatientId !== null) {
         setSelectedPatientId(resolvedPatientId);
+      }
+      if (resolvedEncounterId !== null) {
+        setSelectedEncounterId(resolvedEncounterId);
       }
       setLastSavedPrescriptionId(resolvedPrescriptionId);
       setSelectedDoctorId(doctorId);
@@ -2014,8 +2170,12 @@ export function useDoctorWorkspaceData(
         0,
         getNumber(responseRecord?.outside_item_count ?? responseRecord?.outsideItemCount) ?? 0
       );
+      const nextVitalDrafts = buildVitalDraftsFromResponseVital(responseRecord?.vital);
       setLastClinicalItemCount(responseClinicalItemCount);
       setLastOutsideItemCount(responseOutsideItemCount);
+      if (nextVitalDrafts) {
+        setVitalDrafts(nextVitalDrafts);
+      }
       if (responseWorkflowType) {
         setExplicitWorkflowType(responseWorkflowType);
         if (responseWorkflowType === "walk_in") {
@@ -2059,6 +2219,9 @@ export function useDoctorWorkspaceData(
           queryClient.invalidateQueries({ queryKey: queryKeys.patients.vitals(resolvedPatientId) }),
           queryClient.invalidateQueries({ queryKey: queryKeys.patients.allergies(resolvedPatientId) }),
           queryClient.invalidateQueries({ queryKey: queryKeys.patients.timeline(resolvedPatientId) }),
+          ...(resolvedEncounterId !== null
+            ? [queryClient.invalidateQueries({ queryKey: queryKeys.encounters.detail(resolvedEncounterId) })]
+            : []),
         ]);
       } else if (selectedPatientId) {
         await refreshSelectedPatientDetails();
@@ -2141,12 +2304,29 @@ export function useDoctorWorkspaceData(
           responseRecord?.appointmentId ??
           asRecord(responseRecord?.visit)?.id
       );
+      const responseEncounterId = getResolvedEncounterId(responseRecord ?? {});
 
       if (responseVisitId !== null) {
         setSelectedAppointmentId(responseVisitId);
       }
+      if (responseEncounterId !== null) {
+        setSelectedEncounterId(responseEncounterId);
+      }
+      const nextVitalDrafts = buildVitalDraftsFromResponseVital(responseRecord?.vital);
+      if (nextVitalDrafts) {
+        setVitalDrafts(nextVitalDrafts);
+      }
 
       await refreshSelectedPatientDetails();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.patients.profile(selectedPatientId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.patients.vitals(selectedPatientId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.patients.allergies(selectedPatientId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.patients.timeline(selectedPatientId) }),
+        ...(responseEncounterId !== null
+          ? [queryClient.invalidateQueries({ queryKey: queryKeys.encounters.detail(responseEncounterId) })]
+          : []),
+      ]);
       await queryClient.invalidateQueries({ queryKey: queryKeys.patients.directory });
 
       setVitalsSaveState(successMutationState("Vitals updated successfully."));
@@ -2278,6 +2458,7 @@ export function useDoctorWorkspaceData(
     selectedPatientProfileId: selectedPatientId ? String(selectedPatientId) : null,
     selectedPatientLabel: patientName || null,
     patientVitals: selectedPatientId ? patientVitals : [],
+    latestVitalsObservedAt: selectedPatientId ? latestVitalsObservedAt : null,
     patientAllergies: selectedPatientId ? patientAllergies : [],
     consultationAllergies,
     vitalDrafts,

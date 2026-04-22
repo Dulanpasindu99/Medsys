@@ -168,8 +168,8 @@ export function BarChartCard({ title, data }: { title: string; data: unknown }) 
     <AnalyticsCard eyebrow="Bar Chart" title={title}>
       <div className="rounded-[20px] bg-slate-50/75 px-3 py-3 ring-1 ring-slate-100">
         <div className="flex h-52 items-end gap-3">
-          {items.map((item) => (
-            <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2" title={item.label}>
+          {items.map((item, index) => (
+            <div key={`${item.label}-${index}`} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2" title={item.label}>
               <span className="text-[0.75rem] font-bold text-slate-900">{item.count}</span>
               <div className="flex h-36 w-full items-end rounded-2xl bg-white/80 px-2 py-2 ring-1 ring-slate-100" title={item.label}>
                 <div
@@ -216,7 +216,7 @@ export function DonutChartCard({ title, data }: { title: string; data: unknown }
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {items.map((item, index) => (
-            <div key={item.label} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50/80 px-3 py-2.5 ring-1 ring-slate-100">
+            <div key={`${item.label}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50/80 px-3 py-2.5 ring-1 ring-slate-100">
               <div className="flex items-center gap-3">
                 <span
                   className="size-3 rounded-full"
@@ -279,7 +279,7 @@ export function LineChartCard({ title, data }: { title: string; data: unknown })
                 const x = items.length === 1 ? 150 : (index / (items.length - 1)) * 300;
                 const y = 108 - (item.count / max) * 92;
                 return (
-                  <g key={item.label}>
+                  <g key={`${item.label}-${index}`}>
                     <circle cx={x} cy={y} r="4" fill="#0284c7" />
                   </g>
                 );
@@ -314,7 +314,7 @@ export function FunnelChartCard({ title, data }: { title: string; data: unknown 
     <AnalyticsCard eyebrow="Flow" title={title}>
       <div className="space-y-3">
         {items.map((item, index) => (
-          <div key={item.label} className="rounded-[20px] bg-slate-50/70 px-3 py-3 ring-1 ring-slate-100">
+          <div key={`${item.label}-${index}`} className="rounded-[20px] bg-slate-50/70 px-3 py-3 ring-1 ring-slate-100">
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-700">{item.label}</span>
               <span className="font-bold text-slate-900">{item.count}</span>
@@ -340,11 +340,11 @@ export function StackedBarChartCard({ title, data }: { title: string; data: unkn
   return (
     <AnalyticsCard eyebrow="Stacked" title={title}>
       <div className="space-y-4">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const entries = Object.entries(item.values);
           const total = entries.reduce((sum, [, count]) => sum + count, 0) || 1;
           return (
-            <div key={item.label} className="rounded-[20px] bg-slate-50/70 px-3 py-3 ring-1 ring-slate-100">
+            <div key={`${item.label}-${index}`} className="rounded-[20px] bg-slate-50/70 px-3 py-3 ring-1 ring-slate-100">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="font-semibold text-slate-700">{item.label}</span>
                 <span className="font-bold text-slate-900">{total}</span>

@@ -5,6 +5,7 @@ import type { AnalyticsDashboardQuery } from "./analytics-types";
 import {
   getDailySummary,
   getDailySummaryHistory,
+  getEncounter,
   getInventoryItem,
   getAnalyticsDashboard,
   getAnalyticsOverview,
@@ -17,6 +18,7 @@ import {
   listFamilies,
   listUsers,
   listAppointments,
+  listAppointmentDoctors,
   listPatientAllergies,
   listPatientConditions,
   listPatientTimeline,
@@ -41,11 +43,12 @@ import {
 } from "./api-client";
 import { queryKeys } from "./query-keys";
 
-export function useCurrentUserQuery() {
+export function useCurrentUserQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.auth.currentUser,
     queryFn: getCurrentUser,
     staleTime: 60_000,
+    enabled,
   });
 }
 
@@ -87,6 +90,14 @@ export function useEncountersQuery() {
   return useQuery({
     queryKey: queryKeys.encounters.list,
     queryFn: listEncounters,
+  });
+}
+
+export function useEncounterDetailQuery(encounterId: number | string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.encounters.detail(encounterId),
+    queryFn: () => getEncounter(encounterId),
+    enabled,
   });
 }
 
@@ -258,6 +269,14 @@ export function useAppointmentsQuery(input?: { status?: AppointmentStatus }) {
   return useQuery({
     queryKey: queryKeys.appointments.list(input?.status),
     queryFn: () => listAppointments(input),
+  });
+}
+
+export function useAppointmentDoctorsQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.appointments.doctors,
+    queryFn: listAppointmentDoctors,
+    enabled,
   });
 }
 

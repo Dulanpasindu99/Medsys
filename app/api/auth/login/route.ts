@@ -11,10 +11,19 @@ import {
 import { attachSessionCookie } from "@/app/lib/session";
 import { readTokenClaims } from "@/app/lib/token-claims";
 
-function getBackendLoginUrl() {
+function getBackendOrigin() {
   const origin = process.env.BACKEND_URL ?? "http://localhost:4000";
-  return `${origin.replace(/\/+$/, "")}/v1/auth/login`;
+  return origin.replace(/\/+$/, "");
 }
+
+function getBackendLoginUrl() {
+  return `${getBackendOrigin()}/v1/auth/login`;
+}
+
+function getBackendLoginWithSlugUrl() {
+  return `${getBackendOrigin()}/v1/auth/login-with-slug`;
+}
+
 
 async function parseErrorMessage(response: Response) {
   try {
@@ -23,6 +32,42 @@ async function parseErrorMessage(response: Response) {
   } catch {
     return "Unable to sign in.";
   }
+}
+
+async function loginWithSlug(options: {
+  email: string;
+  password: string;
+  roleHint?: "owner" | "doctor" | "assistant";
+  organizationSlug: string;
+}) {
+  return fetch(getBackendLoginWithSlugUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      organizationSlug: options.organizationSlug,
+      email: options.email,
+      password: options.password,
+      roleHint: options.roleHint,
+    }),
+    cache: "no-store",
+  });
+}
+
+async function loginLegacy(options: {
+  email: string;
+  password: string;
+  organizationId: string;
+}) {
+  return fetch(getBackendLoginUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: options.email,
+      password: options.password,
+      organizationId: options.organizationId,
+    }),
+    cache: "no-store",
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -36,20 +81,37 @@ export async function POST(request: NextRequest) {
     return validationErrorResponse(validated.issues);
   }
 
-  const { email, password, roleHint, organizationId } = validated.value;
+  const {
+    email,
+    password,
+    roleHint,
+    organizationId,
+    organizationSlug: requestedOrganizationSlug,
+  } = validated.value;
+
+  const organizationSlug = requestedOrganizationSlug;
+
+  if (!organizationSlug && !organizationId) {
+    return NextResponse.json(
+      {
+        error: "organizationSlug or organizationId is required",
+      },
+      { status: 400 }
+    );
+  }
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(getBackendLoginUrl(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    if (organizationSlug) {
+      backendResponse = await loginWithSlug({
+        organizationSlug,
         email,
         password,
-        organizationId,
-      }),
-      cache: "no-store",
-    });
+        roleHint,
+      });
+    } else {
+      backendResponse = await loginLegacy({ email, password, organizationId: organizationId! });
+    }
   } catch {
     return NextResponse.json(
       { error: "Authentication service is unavailable." },
@@ -128,22 +190,26 @@ export async function POST(request: NextRequest) {
     }
   );
 
-  attachSessionCookie(response, {
-    userId: claims.userId ?? backendUser?.id ?? null,
-    role: activeRole ?? role,
-    roles,
-    activeRole: activeRole ?? role,
-    email: resolvedEmail,
-    name,
-    permissions: resolvedPermissions,
-    extraPermissions:
-      backendUser?.extra_permissions ?? backendUser?.extraPermissions ?? [],
-    doctorWorkflowMode:
-      claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
-    workflowProfiles: backendUser?.workflow_profiles ?? null,
-  }, {
-    expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,
-  });
+  attachSessionCookie(
+    response,
+    {
+      userId: claims.userId ?? backendUser?.id ?? null,
+      role: activeRole ?? role,
+      roles,
+      activeRole: activeRole ?? role,
+      email: resolvedEmail,
+      name,
+      permissions: resolvedPermissions,
+      extraPermissions:
+        backendUser?.extra_permissions ?? backendUser?.extraPermissions ?? [],
+      doctorWorkflowMode:
+        claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
+      workflowProfiles: backendUser?.workflow_profiles ?? null,
+    },
+    {
+      expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,
+    }
+  );
 
   return response;
 }

@@ -176,6 +176,7 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     searchMatches: [],
     waitingQueuePatients: [],
     patientVitals: [{ label: "BP", value: "120/80" }],
+    latestVitalsObservedAt: null,
     patientAllergies: [],
     consultationAllergies: [],
     vitalDrafts: {

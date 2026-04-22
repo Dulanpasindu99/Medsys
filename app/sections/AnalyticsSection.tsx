@@ -62,6 +62,10 @@ type InsightItem = {
 
 type AnalyticsWorkspaceMode = 'dashboard' | 'reports';
 type DailySummaryTab = 'summary' | 'history';
+type OwnerModePolicy = {
+  showAppointmentMetrics: boolean;
+  showWalkInMetrics: boolean;
+};
 
 function EmptyTabState({ message }: { message: string }) {
   return (
@@ -138,6 +142,53 @@ function asRecord(value: unknown) {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function getOwnerModePolicy(data: AnalyticsDashboardResponse): OwnerModePolicy {
+  const policy =
+    asRecord((data as Record<string, unknown>).modePolicy) ??
+    asRecord((data.roleContext as Record<string, unknown>)?.modePolicy) ??
+    null;
+
+  const showAppointmentMetrics =
+    typeof policy?.showAppointmentMetrics === 'boolean' ? policy.showAppointmentMetrics : true;
+  const showWalkInMetrics =
+    typeof policy?.showWalkInMetrics === 'boolean' ? policy.showWalkInMetrics : true;
+
+  return { showAppointmentMetrics, showWalkInMetrics };
+}
+
+const OWNER_APPOINTMENT_ONLY_SUMMARY_KEYS = new Set(['appointmentVolume', 'cancellationRate', 'appointmentsInRange', 'appointmentModeCount']);
+const OWNER_WALK_IN_ONLY_SUMMARY_KEYS = new Set(['walkInRate', 'guardianLinkageCoverageForMinors', 'walkInCount']);
+const OWNER_APPOINTMENT_ONLY_CHART_KEYS = new Set(['appointmentStatusDistribution']);
+const OWNER_APPOINTMENT_ONLY_TABLE_KEYS = new Set(['recentAppointments']);
+
+function shouldShowOwnerSummaryMetric(key: string, modePolicy: OwnerModePolicy) {
+  if (OWNER_APPOINTMENT_ONLY_SUMMARY_KEYS.has(key)) return modePolicy.showAppointmentMetrics;
+  if (OWNER_WALK_IN_ONLY_SUMMARY_KEYS.has(key)) return modePolicy.showWalkInMetrics;
+  return true;
+}
+
+function shouldShowOwnerChart(chartKey: string, modePolicy: OwnerModePolicy) {
+  if (OWNER_APPOINTMENT_ONLY_CHART_KEYS.has(chartKey)) return modePolicy.showAppointmentMetrics;
+  if (chartKey === 'visitModeBreakdown') return modePolicy.showAppointmentMetrics && modePolicy.showWalkInMetrics;
+  return true;
+}
+
+function shouldShowOwnerTable(tableKey: string, modePolicy: OwnerModePolicy) {
+  if (OWNER_APPOINTMENT_ONLY_TABLE_KEYS.has(tableKey)) return modePolicy.showAppointmentMetrics;
+  return true;
+}
+
+function shouldShowOwnerInsight(item: InsightItem, modePolicy: OwnerModePolicy) {
+  const id = item.id.toLowerCase();
+  if ((id.includes('walkin') || id.includes('guardian')) && !modePolicy.showWalkInMetrics) {
+    return false;
+  }
+  if ((id.includes('appointment') || id.includes('no-show') || id.includes('noshow')) && !modePolicy.showAppointmentMetrics) {
+    return false;
+  }
+  return true;
 }
 
 function reportFieldValue(value: unknown) {
@@ -225,11 +276,12 @@ function toInsightRows(value: unknown) {
     .filter((entry): entry is InsightItem => entry !== null);
 }
 
-function getMetricItems(section: unknown) {
+function getMetricItems(section: unknown, modePolicy?: OwnerModePolicy) {
   const record = asRecord(section);
   if (!record) return [];
 
   return Object.entries(record)
+    .filter(([key]) => (modePolicy ? shouldShowOwnerSummaryMetric(key, modePolicy) : true))
     .filter(([, value]) => value === null || typeof value === 'number' || typeof value === 'string' || Array.isArray(value))
     .map(([key, value]) => ({
       label: formatMetricLabel(key),
@@ -448,7 +500,7 @@ function renderChartByKey(title: string, chartKey: string, chartData: unknown) {
   return <BarChartCard key={chartKey} title={title} data={chartData} />;
 }
 
-function getRoleTabs(data: AnalyticsDashboardResponse): RoleDashboardTab[] {
+function getRoleTabs(data: AnalyticsDashboardResponse, ownerModePolicy: OwnerModePolicy): RoleDashboardTab[] {
   if (isDoctorAnalytics(data)) {
     return [
       {
@@ -562,7 +614,9 @@ function getRoleTabs(data: AnalyticsDashboardResponse): RoleDashboardTab[] {
         description:
           'Review completion rate, wait times, consultation duration, appointment movement, and the busiest operating windows.',
         summaryKeys: ['operationalPerformance'],
-        chartKeys: ['appointmentStatusDistribution', 'busyHours'],
+        chartKeys: ownerModePolicy.showAppointmentMetrics
+          ? ['appointmentStatusDistribution', 'busyHours']
+          : ['busyHours'],
       },
       {
         key: 'doctors',
@@ -1119,7 +1173,8 @@ function DailySummaryContent({
 }
 
 function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
-  const tabs = useMemo(() => getRoleTabs(data), [data]);
+  const ownerModePolicy = useMemo(() => getOwnerModePolicy(data), [data]);
+  const tabs = useMemo(() => getRoleTabs(data, ownerModePolicy), [data, ownerModePolicy]);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.key ?? 'overview');
 
   const summaryMap = useMemo(() => new Map(Object.entries(data.summary ?? {})), [data.summary]);
@@ -1135,11 +1190,19 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
     return null;
   }
 
-  const chartCards = (currentTab.chartKeys ?? [])
+  const isOwnerRole = isOwnerAnalytics(data);
+  const chartKeys = (currentTab.chartKeys ?? []).filter((chartKey) =>
+    isOwnerRole ? shouldShowOwnerChart(chartKey, ownerModePolicy) : true
+  );
+  const tableKeys = (currentTab.tableKeys ?? []).filter((tableKey) =>
+    isOwnerRole ? shouldShowOwnerTable(tableKey, ownerModePolicy) : true
+  );
+
+  const chartCards = chartKeys
     .map((chartKey) => renderChartByKey(toTitleCase(chartKey), chartKey, chartRecord[chartKey]))
     .filter(Boolean);
 
-  const tableCards = (currentTab.tableKeys ?? []).flatMap((tableKey) => {
+  const tableCards = tableKeys.flatMap((tableKey) => {
     const tableValue = tableMap.get(tableKey);
 
     if (Array.isArray(tableValue)) {
@@ -1163,14 +1226,27 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
   const mergedInsights = isDoctorAnalytics(data)
     ? [...doctorInsights, ...data.insights]
     : data.insights;
+  const ownerFilteredInsights = isOwnerRole
+    ? mergedInsights.filter((item) => shouldShowOwnerInsight(item, ownerModePolicy))
+    : mergedInsights;
+  const ownerFilteredAlerts = isOwnerRole
+    ? data.alerts.filter((item) =>
+        shouldShowOwnerInsight(
+          { id: item.id, message: item.message, level: item.severity },
+          ownerModePolicy
+        )
+      )
+    : data.alerts;
   const insightCards = [];
-  if (mergedInsights.length) {
-    insightCards.push(<InsightsCard key="insights" title="Insights" items={mergedInsights} />);
+  if (ownerFilteredInsights.length) {
+    insightCards.push(<InsightsCard key="insights" title="Insights" items={ownerFilteredInsights} />);
   }
-  if (data.alerts.length) {
-    insightCards.push(<InsightsCard key="alerts" title="Alerts" items={data.alerts} />);
+  if (ownerFilteredAlerts.length) {
+    insightCards.push(<InsightsCard key="alerts" title="Alerts" items={ownerFilteredAlerts} />);
   }
   const hasSideColumn = hasSummary || insightCards.length > 0;
+  const isOwnerPerformanceTab =
+    isOwnerRole && (currentTab.key === 'doctors' || currentTab.key === 'assistants');
   const isDoctorOverview = isDoctorAnalytics(data) && currentTab.key === 'overview';
   const isDoctorDiagnosis = isDoctorAnalytics(data) && currentTab.key === 'diagnoses';
   const isDoctorPrescriptions = isDoctorAnalytics(data) && currentTab.key === 'prescriptions';
@@ -1221,7 +1297,7 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
                     <MetricStrip
                       key={sectionKey}
                       title={toTitleCase(sectionKey)}
-                      metrics={getMetricItems(sectionValue)}
+                      metrics={getMetricItems(sectionValue, isOwnerRole ? ownerModePolicy : undefined)}
                     />
                   ) : null;
                 })}
@@ -1239,7 +1315,7 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
                   <MetricStrip
                     key={sectionKey}
                     title={toTitleCase(sectionKey)}
-                    metrics={getMetricItems(sectionValue)}
+                    metrics={getMetricItems(sectionValue, isOwnerRole ? ownerModePolicy : undefined)}
                   />
                 ) : null;
               })}
@@ -1257,7 +1333,7 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
                   <MetricStrip
                     key={sectionKey}
                     title={toTitleCase(sectionKey)}
-                    metrics={getMetricItems(sectionValue)}
+                    metrics={getMetricItems(sectionValue, isOwnerRole ? ownerModePolicy : undefined)}
                   />
                 ) : null;
               })}
@@ -1266,6 +1342,23 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
           ) : isDoctorRecords ? (
             <div className="space-y-3">
               <div className={getChartGridClass(tableCards.length)}>
+                {tableCards}
+              </div>
+            </div>
+          ) : isOwnerPerformanceTab ? (
+            <div className="space-y-3">
+              {(currentTab.summaryKeys ?? []).map((sectionKey) => {
+                const sectionValue = summaryMap.get(sectionKey);
+                return sectionValue ? (
+                  <MetricStrip
+                    key={sectionKey}
+                    title={toTitleCase(sectionKey)}
+                    metrics={getMetricItems(sectionValue, isOwnerRole ? ownerModePolicy : undefined)}
+                  />
+                ) : null;
+              })}
+              <div className="grid gap-3 xl:grid-cols-2">
+                {chartCards}
                 {tableCards}
               </div>
             </div>
@@ -1279,7 +1372,7 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
                     <MetricStrip
                       key={sectionKey}
                       title={toTitleCase(sectionKey)}
-                      metrics={getMetricItems(sectionValue)}
+                      metrics={getMetricItems(sectionValue, isOwnerRole ? ownerModePolicy : undefined)}
                     />
                   ) : null;
                 })}
@@ -1313,6 +1406,8 @@ export default function AnalyticsSection() {
     setCustomDateTo,
     ownerView,
     setOwnerView,
+    ownerOperationMode,
+    setOwnerOperationMode,
     selectedDoctorId,
     setSelectedDoctorId,
     selectedAssistantId,
@@ -1353,6 +1448,24 @@ export default function AnalyticsSection() {
           sx={compactSelectSx}
         />
       </ScopeField>
+
+      {isOwner ? (
+        <ScopeField label="Operation Mode">
+          <AppSelectField
+            value={ownerOperationMode}
+            onValueChange={(value) =>
+              setOwnerOperationMode(value as 'walk_in' | 'appointment' | 'hybrid')
+            }
+            ariaLabel="Owner operation mode"
+            options={[
+              { value: 'walk_in', label: 'Walk-in' },
+              { value: 'appointment', label: 'Appointment' },
+              { value: 'hybrid', label: 'Hybrid' },
+            ]}
+            sx={compactSelectSx}
+          />
+        </ScopeField>
+      ) : null}
 
       {isOwner ? (
         <ScopeField label="Role">

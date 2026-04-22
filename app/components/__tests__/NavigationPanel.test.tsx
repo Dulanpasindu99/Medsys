@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import NavigationPanel from "../NavigationPanel";
 
@@ -26,6 +27,14 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../../lib/api-client", () => ({
   logoutUser: vi.fn(),
+  getCurrentUser: vi.fn().mockResolvedValue({
+    role: "assistant",
+    active_role: "assistant",
+    permissions: [],
+    roles: ["assistant"],
+    name: "Test User",
+  }),
+  setActiveRole: vi.fn(),
 }));
 
 const mockedUsePathname = vi.mocked(usePathname);
@@ -41,6 +50,17 @@ beforeAll(() => {
 });
 
 describe("NavigationPanel", () => {
+  const renderWithQueryClient = (node: React.ReactElement) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>);
+  };
+
   beforeEach(() => {
     mockedUsePathname.mockReturnValue("/");
   });
@@ -48,7 +68,7 @@ describe("NavigationPanel", () => {
   it("shows only assistant-accessible navigation items for assistants", () => {
     mockedUsePathname.mockReturnValue("/assistant");
 
-    render(<NavigationPanel sessionRole="assistant" userName="Alex Support" />);
+    renderWithQueryClient(<NavigationPanel sessionRole="assistant" userName="Alex Support" />);
 
     expect(screen.getByLabelText("Assistant Panel")).toHaveAttribute("aria-current", "page");
     expect(screen.getByLabelText("Patient Management")).toBeInTheDocument();
@@ -58,19 +78,19 @@ describe("NavigationPanel", () => {
   });
 
   it("shows the full navigation set for owners", () => {
-    mockedUsePathname.mockReturnValue("/owner");
+    mockedUsePathname.mockReturnValue("/create-user");
 
-    render(<NavigationPanel sessionRole="owner" userName="Olivia Owner" />);
+    renderWithQueryClient(<NavigationPanel sessionRole="owner" userName="Olivia Owner" />);
 
-    expect(screen.getByLabelText("Doctor Page")).toBeInTheDocument();
-    expect(screen.getByLabelText("Assistant Panel")).toBeInTheDocument();
-    expect(screen.getByLabelText("Manage Staff Access")).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByLabelText("Doctor Page")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Assistant Panel")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Create User")).toHaveAttribute("aria-current", "page");
   });
 
   it("shows assistant navigation for doctors with explicit assistant coverage permissions", () => {
     mockedUsePathname.mockReturnValue("/assistant");
 
-    render(
+    renderWithQueryClient(
       <NavigationPanel
         sessionRole="doctor"
         sessionPermissions={["patient.write", "appointment.create", "prescription.dispense"]}

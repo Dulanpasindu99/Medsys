@@ -98,15 +98,19 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     filteredCompleted: [{ name: "Jane Doe", patientCode: "P-0007", age: 31, nic: "990011223V", time: "10:30", profileId: "7" }],
     addPatient: vi.fn(),
     addAllergy: vi.fn(),
+    resetPatientForm: vi.fn(),
     scheduleAppointment: vi.fn(),
+    resetScheduleForm: vi.fn(),
     markDoneAndNext: vi.fn(),
     canSubmitDispense: true,
     dispenseActionDisabledReason: null,
     setResolvedInventoryItem: vi.fn(),
     loadState: readyLoadState(),
     createPatientState: idleMutationState(),
+    createPatientFieldErrors: {},
     createPatientFeedback: null,
     scheduleAppointmentState: idleMutationState(),
+    scheduleFieldErrors: {},
     scheduleAppointmentFeedback: null,
     dispenseState: idleMutationState(),
     dispenseFeedback: null,
@@ -116,6 +120,7 @@ function buildWorkflowState(overrides?: Partial<ReturnType<typeof useAssistantWo
     workflowActionDisabledReason: null,
     canCreateAppointmentsInWorkflow: true,
     appointmentActionDisabledReason: null,
+    currentRole: "assistant" as const,
     reload: vi.fn(),
     isSyncing: false,
     syncError: null,
@@ -144,14 +149,11 @@ describe("AssistantSection", () => {
 
     render(<AssistantSection />);
 
-    expect(screen.getByText("Unable to sync assistant data.")).toBeInTheDocument();
     expect(screen.getByText("Assistant Panel")).toBeInTheDocument();
   });
 
   it("wires sidebar and queue actions to the feature hooks", async () => {
     const user = userEvent.setup();
-    const openProfile = vi.fn();
-    const closeProfile = vi.fn();
     const markDoneAndNext = vi.fn();
 
     mockedUseAssistantWorkflow.mockReturnValue(
@@ -159,21 +161,21 @@ describe("AssistantSection", () => {
     );
     mockedUsePatientProfilePopup.mockReturnValue({
       selectedProfileId: "7",
-      openProfile,
-      closeProfile,
+      openProfile: vi.fn(),
+      closeProfile: vi.fn(),
     });
 
     render(<AssistantSection />);
 
-    await user.click(screen.getByRole("button", { name: /jane doe/i }));
+    await user.click(screen.getByRole("button", { name: /doctor checked/i }));
     await user.click(screen.getByRole("button", { name: /done & next/i }));
 
-    expect(openProfile).toHaveBeenCalledWith("7");
     expect(markDoneAndNext).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("patient-profile-modal")).toHaveTextContent("7");
   });
 
-  it("disables assistant-only actions for read-only roles", () => {
+  it("disables assistant-only actions for read-only roles", async () => {
+    const user = userEvent.setup();
     mockedUseAssistantWorkflow.mockReturnValue(
       buildWorkflowState({
         canManageAssistantWorkflow: false,
@@ -190,19 +192,15 @@ describe("AssistantSection", () => {
 
     render(<AssistantSection />);
 
+    const addPatientButtons = screen.getAllByRole("button", { name: /add patient/i });
+    expect(addPatientButtons.at(-1)).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /doctor checked/i }));
     expect(screen.getByRole("button", { name: /done & next/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /add patient/i })).toBeDisabled();
-    expect(
-      screen.getAllByText(/only assistant and owner accounts can register patients/i).length
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(/only assistant and owner accounts can complete intake and dispense actions/i)
-        .length
-    ).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /schedule appointment/i })).not.toBeInTheDocument();
   });
 
-  it("renders duplicate placeholder NIC entries without duplicate-key warnings", () => {
+  it("renders duplicate placeholder NIC entries without duplicate-key warnings", async () => {
+    const user = userEvent.setup();
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     mockedUseAssistantWorkflow.mockReturnValue(
@@ -216,6 +214,7 @@ describe("AssistantSection", () => {
 
     render(<AssistantSection />);
 
+    await user.click(screen.getByRole("button", { name: /completed patients/i }));
     expect(screen.getAllByText("Jane Doe").length).toBeGreaterThan(0);
     expect(screen.getAllByText("John Doe").length).toBeGreaterThan(0);
     expect(

@@ -954,6 +954,9 @@ function ReportContent({
       : [];
   const primaryDoctorRow = doctorRows[0] ?? null;
   const isSingleDoctorReport = reportType === 'doctor-performance' && doctorRows.length <= 1;
+  const isWidePerformanceReport =
+    (reportType === 'doctor-performance' || reportType === 'assistant-performance') &&
+    !isSingleDoctorReport;
   const chartCards = (meta.chartKeys ?? [])
     .map((chartKey) => {
       if (isSingleDoctorReport && chartKey === 'encountersByDoctor') {
@@ -1098,7 +1101,13 @@ function ReportContent({
           ) : metricItems.length ? (
             <MetricStrip title="Report Summary" metrics={metricItems} />
           ) : null}
-          <div className={getChartGridClass(chartCards.length + tableCards.length)}>
+          <div
+            className={
+              isWidePerformanceReport && chartCards.length + tableCards.length <= 2
+                ? 'grid gap-3 xl:grid-cols-2'
+                : getChartGridClass(chartCards.length + tableCards.length)
+            }
+          >
             {chartCards}
             {isSingleDoctorReport ? tableCards.slice(1) : tableCards}
           </div>

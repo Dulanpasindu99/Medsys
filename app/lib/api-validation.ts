@@ -176,6 +176,26 @@ function normalizeRole(value: unknown, field: string) {
   return success(value as AppRole);
 }
 
+function normalizeDoctorWorkflowMode(
+  value: unknown,
+  field: string
+): ValidationResult<"self_service" | "clinic_supported" | undefined> {
+  if (value === undefined) {
+    return success(undefined);
+  }
+
+  if (value !== "self_service" && value !== "clinic_supported") {
+    return failure([
+      {
+        field,
+        message: "Must be one of self_service, clinic_supported.",
+      },
+    ]);
+  }
+
+  return success(value);
+}
+
 export async function parseJsonBody(request: Request) {
   try {
     const parsed = (await request.json()) as unknown;
@@ -737,6 +757,7 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
     "email",
     "password",
     "role",
+    "doctorWorkflowMode",
     "extraPermissions",
   ]);
 
@@ -755,6 +776,12 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
   const role = normalizeRole(payload.role, "role");
   if (!role.ok) issues.push(...role.issues);
 
+  const doctorWorkflowMode = normalizeDoctorWorkflowMode(
+    payload.doctorWorkflowMode,
+    "doctorWorkflowMode"
+  );
+  if (!doctorWorkflowMode.ok) issues.push(...doctorWorkflowMode.issues);
+
   const extraPermissions = normalizePermissionList(payload.extraPermissions, "extraPermissions");
   if (!extraPermissions.ok) issues.push(...extraPermissions.issues);
 
@@ -766,11 +793,24 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
   }
 
   if (
+    role.ok &&
+    doctorWorkflowMode.ok &&
+    role.value !== "doctor" &&
+    doctorWorkflowMode.value !== undefined
+  ) {
+    issues.push({
+      field: "doctorWorkflowMode",
+      message: "Only doctor users can set doctor workflow mode.",
+    });
+  }
+
+  if (
     issues.length > 0 ||
     !name.ok ||
     !email.ok ||
     !password.ok ||
     !role.ok ||
+    !doctorWorkflowMode.ok ||
     !extraPermissions.ok
   ) {
     return failure(issues);
@@ -781,6 +821,7 @@ export function validateUserWritePayload(payload: Record<string, unknown>) {
     email: email.value,
     password: password.value,
     role: role.value,
+    ...(doctorWorkflowMode.value ? { doctorWorkflowMode: doctorWorkflowMode.value } : {}),
     ...(extraPermissions.value?.length ? { extraPermissions: extraPermissions.value } : {}),
   });
 }
@@ -1000,6 +1041,7 @@ export function validateAuthLoginPayload(payload: Record<string, unknown>) {
     "password",
     "roleHint",
     "organizationId",
+    "organizationSlug",
   ]);
 
   const email = normalizeEmail(payload.email, "email");
@@ -1027,7 +1069,13 @@ export function validateAuthLoginPayload(payload: Record<string, unknown>) {
   });
   if (!organizationId.ok) issues.push(...organizationId.issues);
 
-  if (issues.length > 0 || !email.ok || !password.ok || !organizationId.ok) {
+  const organizationSlug = normalizeOptionalString(payload.organizationSlug, "organizationSlug", {
+    maxLength: 120,
+    allowEmpty: false,
+  });
+  if (!organizationSlug.ok) issues.push(...organizationSlug.issues);
+
+  if (issues.length > 0 || !email.ok || !password.ok || !organizationId.ok || !organizationSlug.ok) {
     return failure(issues);
   }
 
@@ -1036,6 +1084,7 @@ export function validateAuthLoginPayload(payload: Record<string, unknown>) {
     password: password.value,
     roleHint,
     organizationId: organizationId.value ?? undefined,
+    organizationSlug: organizationSlug.value ?? undefined,
   });
 }
 

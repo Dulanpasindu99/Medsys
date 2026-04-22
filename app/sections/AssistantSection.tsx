@@ -1,6 +1,7 @@
 'use client';
 
-import { ViewportBody, ViewportFrame, ViewportPage, ViewportScrollBody } from '../components/ui/ViewportLayout';
+import { useEffect, useMemo, useState } from 'react';
+import { ViewportBody, ViewportFrame, ViewportPage, ViewportTabs } from '../components/ui/ViewportLayout';
 import { PatientProfileModal } from '../components/PatientProfileModal';
 import { usePatientProfilePopup } from '../hooks/usePatientProfilePopup';
 import { AssistantHeader } from './assistant/components/AssistantHeader';
@@ -26,16 +27,20 @@ export default function AssistantSection() {
         filteredCompleted,
         addPatient,
         addAllergy,
+        resetPatientForm,
         scheduleForm,
         setScheduleForm,
         scheduleAppointment,
+        resetScheduleForm,
         markDoneAndNext,
         canSubmitDispense,
         dispenseActionDisabledReason,
         setResolvedInventoryItem,
         loadState,
         createPatientState,
+        createPatientFieldErrors,
         scheduleAppointmentState,
+        scheduleFieldErrors,
         dispenseState,
         canManageAssistantWorkflow,
         canCreatePatientsInWorkflow,
@@ -43,32 +48,55 @@ export default function AssistantSection() {
         workflowActionDisabledReason,
         canCreateAppointmentsInWorkflow,
         appointmentActionDisabledReason,
-        reload,
+        currentRole,
     } = useAssistantWorkflow();
     const popup = usePatientProfilePopup();
+    const tabOptions = useMemo(() => {
+        if (currentRole === 'doctor') {
+            return [
+                { key: 'doctor-checked', label: 'Doctor Checked' },
+                { key: 'completed', label: 'Completed Patients' },
+            ] as const;
+        }
+
+        return [
+            { key: 'add-patient', label: 'Add Patient' },
+            { key: 'schedule', label: 'Schedule' },
+            { key: 'doctor-checked', label: 'Doctor Checked' },
+            { key: 'completed', label: 'Completed Patients' },
+        ] as const;
+    }, [currentRole]);
+    const [activeTab, setActiveTab] = useState<(typeof tabOptions)[number]['key']>(
+        currentRole === 'doctor' ? 'doctor-checked' : 'add-patient'
+    );
+
+    useEffect(() => {
+        setActiveTab(currentRole === 'doctor' ? 'doctor-checked' : 'add-patient');
+    }, [currentRole]);
 
     return (
-        <ViewportPage className="relative isolate text-slate-900">
+        <ViewportPage className="relative isolate h-full min-h-0 overflow-hidden text-slate-900">
             <ViewportFrame>
-                <ViewportBody className="px-4 py-5 sm:px-6 sm:py-6 lg:px-10">
-                    <ViewportScrollBody className="pr-0">
-                        <div className="mx-auto flex w-full flex-col gap-6 pb-1">
-                            <div className="space-y-6">
-                                <div className="flex flex-col gap-3">
-                                    <AssistantHeader stats={stats} />
-                                    <div className="flex flex-wrap gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={reload}
-                                            disabled={loadState.status === 'loading'}
-                                            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
-                                        >
-                                            {loadState.status === 'loading' ? 'Refreshing...' : 'Refresh assistant data'}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1fr_1.92fr_1.16fr]">
-                                    <AssistantPanelShell>
+                <ViewportBody className="h-full min-h-0 overflow-hidden px-4 py-5 sm:px-6 sm:py-6 lg:px-10">
+                    <div className="mx-auto flex h-full min-h-0 w-full flex-col gap-4">
+                        <div className="flex flex-col gap-3">
+                            <AssistantHeader stats={stats} />
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <ViewportTabs
+                                    tabs={tabOptions.map((tab) => ({
+                                        key: tab.key,
+                                        label: tab.label,
+                                        active: activeTab === tab.key,
+                                        onClick: () => setActiveTab(tab.key),
+                                    }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="min-h-0 flex-1 overflow-hidden">
+                            <div className={`h-full pr-1 ${activeTab === 'add-patient' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+                                {activeTab === 'add-patient' ? (
+                                    <AssistantPanelShell className="h-full min-h-0">
                                         <AssistantIntakePanel
                                             formState={formState}
                                             setFormState={setFormState}
@@ -76,13 +104,17 @@ export default function AssistantSection() {
                                             familyOptions={familyOptions}
                                             addAllergy={addAllergy}
                                             addPatient={addPatient}
+                                            onResetForm={resetPatientForm}
+                                            fieldErrors={createPatientFieldErrors}
                                             canCreatePatients={canCreatePatientsInWorkflow}
                                             patientActionDisabledReason={patientActionDisabledReason}
                                             isSubmitting={createPatientState.status === 'pending'}
                                         />
                                     </AssistantPanelShell>
+                                ) : null}
 
-                                    <AssistantPanelShell>
+                                {activeTab === 'doctor-checked' ? (
+                                    <AssistantPanelShell className="h-full min-h-0">
                                         <AssistantPickupPanel
                                             activePrescription={activePrescription}
                                             activeClinicalResolutionRows={activeClinicalResolutionRows}
@@ -97,14 +129,18 @@ export default function AssistantSection() {
                                             isLoading={loadState.status === 'loading'}
                                         />
                                     </AssistantPanelShell>
+                                ) : null}
 
-                                    <AssistantPanelShell>
+                                {activeTab === 'completed' ? (
+                                    <AssistantPanelShell className="flex h-full min-h-0 flex-col">
                                         <AssistantSidebar
                                             availableDoctors={availableDoctors}
                                             patientOptions={patientOptions}
                                             scheduleForm={scheduleForm}
                                             onScheduleFormChange={setScheduleForm}
                                             onScheduleAppointment={scheduleAppointment}
+                                            onResetScheduleForm={resetScheduleForm}
+                                            scheduleFieldErrors={scheduleFieldErrors}
                                             canCreateAppointments={canCreateAppointmentsInWorkflow}
                                             appointmentActionDisabledReason={appointmentActionDisabledReason}
                                             isScheduling={scheduleAppointmentState.status === 'pending'}
@@ -115,12 +151,40 @@ export default function AssistantSection() {
                                             isLoading={loadState.status === 'loading'}
                                             showSchedulingPanel={false}
                                             showAvailableDoctors={false}
+                                            title="Completed Patient List"
+                                            fullHeight
                                         />
                                     </AssistantPanelShell>
-                                </div>
+                                ) : null}
+
+                                {activeTab === 'schedule' ? (
+                                    <AssistantPanelShell className="flex h-full min-h-0 flex-col overflow-hidden">
+                                        <AssistantSidebar
+                                            availableDoctors={availableDoctors}
+                                            patientOptions={patientOptions}
+                                            scheduleForm={scheduleForm}
+                                            onScheduleFormChange={setScheduleForm}
+                                            onScheduleAppointment={scheduleAppointment}
+                                            onResetScheduleForm={resetScheduleForm}
+                                            scheduleFieldErrors={scheduleFieldErrors}
+                                            canCreateAppointments={canCreateAppointmentsInWorkflow}
+                                            appointmentActionDisabledReason={appointmentActionDisabledReason}
+                                            isScheduling={scheduleAppointmentState.status === 'pending'}
+                                            completedSearch={completedSearch}
+                                            onCompletedSearchChange={setCompletedSearch}
+                                            filteredCompleted={filteredCompleted}
+                                            onOpenProfile={popup.openProfile}
+                                            isLoading={loadState.status === 'loading'}
+                                            showSchedulingPanel
+                                            showAvailableDoctors={false}
+                                            showCompletedList={false}
+                                            fullHeight
+                                        />
+                                    </AssistantPanelShell>
+                                ) : null}
                             </div>
                         </div>
-                    </ViewportScrollBody>
+                    </div>
                 </ViewportBody>
             </ViewportFrame>
             <PatientProfileModal profileId={popup.selectedProfileId || ''} onClose={popup.closeProfile} />

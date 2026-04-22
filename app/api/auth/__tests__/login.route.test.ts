@@ -16,6 +16,8 @@ function createJwt(payload: Record<string, unknown>) {
 describe("POST /api/auth/login", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    delete process.env.NEXT_PUBLIC_ORGANIZATION_SLUG;
+    delete process.env.AUTH_ORGANIZATION_SLUG;
   });
 
   it("rejects invalid login payloads with a validation envelope", async () => {
@@ -77,6 +79,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({
         email: "doctor@example.com",
         password: "secret-123",
+        organizationSlug: "sunrise",
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -136,6 +139,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({
         email: "doctor@example.com",
         password: "secret-123",
+        organizationSlug: "sunrise",
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -199,6 +203,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({
         email: "doctor@example.com",
         password: "secret-123",
+        organizationSlug: "sunrise",
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -266,6 +271,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({
         email: "doctor@example.com",
         password: "secret-123",
+        organizationSlug: "sunrise",
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -309,6 +315,7 @@ describe("POST /api/auth/login", () => {
       body: JSON.stringify({
         email: "doctor@example.com",
         password: "secret-123",
+        organizationSlug: "sunrise",
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -323,5 +330,106 @@ describe("POST /api/auth/login", () => {
         { field: "accessToken", message: "Is required." },
       ]),
     });
+  });
+
+  it("uses slug-based login when organizationSlug is provided in request body", async () => {
+    const accessToken = createJwt({
+      userId: 42,
+      role: "owner",
+      email: "owner@sunrise.local",
+      name: "Owner",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const refreshToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ accessToken, refreshToken, expiresIn: 900 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        organizationSlug: "sunrise",
+        email: "owner@sunrise.local",
+        password: "ownerSun@123",
+        roleHint: "owner",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/auth/login-with-slug");
+  });
+
+  it("uses legacy login when organizationId is provided without slug", async () => {
+    const accessToken = createJwt({
+      userId: 77,
+      role: "owner",
+      email: "owner@sunrise.local",
+      name: "Sunrise Owner",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const refreshToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ accessToken, refreshToken, expiresIn: 900 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        organizationId: "742a1bcf-c8fd-49b3-b729-3c6d67c19979",
+        email: "owner@example.com",
+        password: "ownerSun@123",
+        roleHint: "owner",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/auth/login");
+  });
+
+  it("returns 400 when neither organizationSlug nor organizationId can be resolved", async () => {
+    delete process.env.NEXT_PUBLIC_ORGANIZATION_SLUG;
+    delete process.env.AUTH_ORGANIZATION_SLUG;
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest("http://localhost/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "owner@example.com",
+        password: "ownerSun@123",
+        roleHint: "owner",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      error: "organizationSlug or organizationId is required",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,9 @@ import { canAccessRoute, getDefaultRouteForSubject } from "../lib/authorization"
 import { useCurrentUserQuery } from "../lib/query-hooks";
 import { validateDoctorLoginInput } from "../utils/schema-validation/doctor-section.schema";
 
+const DEFAULT_ORGANIZATION_SLUG = process.env.NEXT_PUBLIC_ORGANIZATION_SLUG ?? "";
+const ORGANIZATION_SLUG_STORAGE_KEY = "medsys.organizationSlug";
+
 const SHADOWS = {
   card: "shadow-[0_22px_52px_rgba(15,23,42,0.12)]",
   inset: "shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]",
@@ -111,6 +114,8 @@ const StaffPanelFooter = ({
 type OwnerPanelProps = {
   highlight?: boolean;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+  organizationSlug: string;
+  onOrganizationSlugChange: (value: string) => void;
   email: string;
   password: string;
   onEmailChange: (value: string) => void;
@@ -123,6 +128,8 @@ type OwnerPanelProps = {
 const OwnerPanel = ({
   highlight = false,
   onClick,
+  organizationSlug,
+  onOrganizationSlugChange,
   email,
   password,
   onEmailChange,
@@ -133,9 +140,9 @@ const OwnerPanel = ({
 }: OwnerPanelProps) => (
   <Card
     onClick={onClick}
-    className={`relative overflow-hidden p-8 transition-transform duration-300 ease-out ${
+    className={`relative overflow-hidden p-8 ${
       onClick
-        ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(15,23,42,0.18)]"
+        ? "cursor-pointer"
         : ""
     } ${highlight ? "ring-2 ring-sky-100 shadow-[0_30px_70px_rgba(15,23,42,0.2)]" : ""}`}
   >
@@ -157,7 +164,7 @@ const OwnerPanel = ({
         </p>
       </div>
       <Link
-        href="/owner"
+        href="/create-user"
         className="app-button app-button--primary app-button--pill px-5 text-[11px] uppercase tracking-[0.2em]"
       >
         Owner tools
@@ -165,6 +172,14 @@ const OwnerPanel = ({
     </div>
 
     <div className="relative mt-6 grid gap-4 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <Field
+          label="Organization Slug"
+          value={organizationSlug}
+          onChange={onOrganizationSlugChange}
+          placeholder="sunrise-clinic"
+        />
+      </div>
       <Field
         label="Email"
         value={email}
@@ -200,6 +215,8 @@ const OwnerPanel = ({
 type StaffPanelProps = {
   highlight?: boolean;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+  organizationSlug: string;
+  onOrganizationSlugChange: (value: string) => void;
   email: string;
   password: string;
   onEmailChange: (value: string) => void;
@@ -212,6 +229,8 @@ type StaffPanelProps = {
 const DoctorPanel = ({
   highlight = false,
   onClick,
+  organizationSlug,
+  onOrganizationSlugChange,
   email,
   password,
   onEmailChange,
@@ -222,9 +241,9 @@ const DoctorPanel = ({
 }: StaffPanelProps) => (
   <Card
     onClick={onClick}
-    className={`flex h-full flex-col p-5 transition-transform duration-300 ease-out ${
+    className={`flex h-full flex-col p-5 ${
       onClick
-        ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.16)]"
+        ? "cursor-pointer"
         : ""
     } ${highlight ? "ring-2 ring-sky-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]" : ""}`}
   >
@@ -233,6 +252,12 @@ const DoctorPanel = ({
       laneLabel="Primary clinical view"
     />
     <div className="mt-4 flex flex-col gap-3">
+      <Field
+        label="Organization Slug"
+        value={organizationSlug}
+        onChange={onOrganizationSlugChange}
+        placeholder="sunrise-clinic"
+      />
       <Field
         label="Email"
         value={email}
@@ -269,6 +294,8 @@ const DoctorPanel = ({
 const AssistantPanel = ({
   highlight = false,
   onClick,
+  organizationSlug,
+  onOrganizationSlugChange,
   email,
   password,
   onEmailChange,
@@ -279,14 +306,20 @@ const AssistantPanel = ({
 }: StaffPanelProps) => (
   <Card
     onClick={onClick}
-    className={`flex h-full flex-col p-5 transition-transform duration-300 ease-out ${
+    className={`flex h-full flex-col p-5 ${
       onClick
-        ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.16)]"
+        ? "cursor-pointer"
         : ""
     } ${highlight ? "ring-2 ring-emerald-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]" : ""}`}
   >
     <StaffPanelHeader roleLabel="Assistant Login" laneLabel="Support lane" />
     <div className="mt-4 flex flex-col gap-3">
+      <Field
+        label="Organization Slug"
+        value={organizationSlug}
+        onChange={onOrganizationSlugChange}
+        placeholder="sunrise-clinic"
+      />
       <Field
         label="Email"
         value={email}
@@ -322,7 +355,8 @@ const AssistantPanel = ({
 
 export default function Login() {
   const router = useRouter();
-  const currentUserQuery = useCurrentUserQuery();
+  const currentUserQuery = useCurrentUserQuery(false);
+  const [organizationSlug, setOrganizationSlug] = useState(DEFAULT_ORGANIZATION_SLUG);
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
 
@@ -355,6 +389,17 @@ export default function Login() {
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedSlug = window.localStorage.getItem(ORGANIZATION_SLUG_STORAGE_KEY)?.trim() ?? "";
+    if (storedSlug) {
+      setOrganizationSlug(storedSlug);
+    }
+  }, []);
+
+  useEffect(() => {
     const user = currentUserQuery.data;
     if (!user) {
       return;
@@ -364,12 +409,37 @@ export default function Login() {
       router.refresh();
   }, [currentUserQuery.data, router]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const normalized = organizationSlug.trim();
+    if (normalized) {
+      window.localStorage.setItem(ORGANIZATION_SLUG_STORAGE_KEY, normalized);
+      return;
+    }
+    window.localStorage.removeItem(ORGANIZATION_SLUG_STORAGE_KEY);
+  }, [organizationSlug]);
+
+  const handleOrganizationSlugChange = (value: string) => {
+    setOrganizationSlug(value);
+    setOwnerError(null);
+    setDoctorError(null);
+    setAssistantError(null);
+  };
+
   const handleSignIn = async (
     role: Exclude<ActiveModal, null>,
     email: string,
     password: string,
   ) => {
     clearRoleError(role);
+    const normalizedOrganizationSlug = organizationSlug.trim();
+    if (!normalizedOrganizationSlug) {
+      setRoleError(role, "Organization slug is required. Example: sunrise-clinic");
+      return;
+    }
+
     const parsed = validateDoctorLoginInput({ email, password });
     if (!parsed.ok) {
       setRoleError(role, parsed.error);
@@ -378,7 +448,12 @@ export default function Login() {
 
     try {
       setActiveSubmission(role);
-      const user = await loginUser(parsed.value.email, parsed.value.password, role);
+      const user = await loginUser(
+        parsed.value.email,
+        parsed.value.password,
+        role,
+        normalizedOrganizationSlug
+      );
       const requestedRoute = WORKSPACE_ROUTE_BY_PANEL[role];
       if (!canAccessRoute(user, requestedRoute)) {
         setRoleError(
@@ -389,9 +464,7 @@ export default function Login() {
       }
 
       setActiveModal(null);
-      await currentUserQuery.refetch();
-      router.push(getDefaultRouteForSubject(user));
-      router.refresh();
+      router.replace(getDefaultRouteForSubject(user));
     } catch (error) {
       const message =
         (error as ApiClientError)?.message ?? "Unable to sign in right now.";
@@ -419,6 +492,8 @@ export default function Login() {
       owner: (
         <OwnerPanel
           highlight
+          organizationSlug={organizationSlug}
+          onOrganizationSlugChange={handleOrganizationSlugChange}
           email={ownerEmail}
           password={ownerPassword}
           onEmailChange={setOwnerEmail}
@@ -431,6 +506,8 @@ export default function Login() {
       doctor: (
         <DoctorPanel
           highlight
+          organizationSlug={organizationSlug}
+          onOrganizationSlugChange={handleOrganizationSlugChange}
           email={doctorUser}
           password={doctorPassword}
           onEmailChange={setDoctorUser}
@@ -443,6 +520,8 @@ export default function Login() {
       assistant: (
         <AssistantPanel
           highlight
+          organizationSlug={organizationSlug}
+          onOrganizationSlugChange={handleOrganizationSlugChange}
           email={assistantUser}
           password={assistantPassword}
           onEmailChange={setAssistantUser}
@@ -473,16 +552,14 @@ export default function Login() {
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity"
             onClick={closeModal}
           />
-          <div className="relative z-10 w-full max-w-3xl animate-[modal-pop_0.35s_cubic-bezier(0.22,0.61,0.36,1)]">
+          <div className="relative z-10 w-full max-w-3xl">
             {renderModalContent()}
           </div>
         </div>
       )}
 
       <div
-        className={`relative w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl transition-all duration-300 ease-out ${
-          activeModal ? "scale-[0.98] blur-[1.5px] opacity-75" : ""
-        }`}
+        className="relative w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl"
         aria-hidden={!!activeModal}
       >
         <div className="flex flex-col gap-8 px-6 py-8 lg:px-12">
@@ -516,6 +593,8 @@ export default function Login() {
 
           <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
             <OwnerPanel
+              organizationSlug={organizationSlug}
+              onOrganizationSlugChange={handleOrganizationSlugChange}
               onClick={handleSectionClick("owner")}
               email={ownerEmail}
               password={ownerPassword}
@@ -547,6 +626,8 @@ export default function Login() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <DoctorPanel
+                    organizationSlug={organizationSlug}
+                    onOrganizationSlugChange={handleOrganizationSlugChange}
                     onClick={handleSectionClick("doctor")}
                     email={doctorUser}
                     password={doctorPassword}
@@ -559,6 +640,8 @@ export default function Login() {
                     errorMessage={doctorError ?? undefined}
                   />
                   <AssistantPanel
+                    organizationSlug={organizationSlug}
+                    onOrganizationSlugChange={handleOrganizationSlugChange}
                     onClick={handleSectionClick("assistant")}
                     email={assistantUser}
                     password={assistantPassword}

@@ -1,5 +1,6 @@
 export type AnalyticsRole = "doctor" | "assistant" | "owner";
 export type AnalyticsRangePreset = "1d" | "7d" | "30d" | "custom";
+export type AnalyticsOperationMode = "walk_in" | "appointment" | "hybrid";
 
 export type AnalyticsDashboardQuery = {
   range?: AnalyticsRangePreset;
@@ -8,6 +9,7 @@ export type AnalyticsDashboardQuery = {
   assistantId?: number;
   dateFrom?: string;
   dateTo?: string;
+  operationMode?: AnalyticsOperationMode;
 };
 
 export type AnalyticsWorkflowProfile = {
@@ -21,6 +23,7 @@ export type AnalyticsRoleContext = {
   roles: AnalyticsRole[];
   doctorId: number | null;
   assistantId: number | null;
+  operationMode?: AnalyticsOperationMode;
   workflowProfile: AnalyticsWorkflowProfile;
 };
 
@@ -51,6 +54,10 @@ export type AnalyticsDashboardResponse = {
   insights: AnalyticsInsight[];
   tables: Record<string, unknown>;
   alerts: AnalyticsAlert[];
+  modePolicy?: {
+    showAppointmentMetrics?: boolean;
+    showWalkInMetrics?: boolean;
+  };
 };
 
 export type ChartDatum = {

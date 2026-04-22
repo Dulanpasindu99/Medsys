@@ -1,6 +1,7 @@
 import type { AppPermission } from "@/app/lib/authorization";
 
 export type Role = "Doctor" | "Assistant";
+export type DoctorWorkflowModeOption = "self_service" | "clinic_supported";
 
 export type DoctorSupportPermission = Extract<
   AppPermission,

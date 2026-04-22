@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/app/lib/api-auth";
-import {
-  callBackendRoute,
-  toFrontendErrorResponse,
-} from "@/app/lib/backend-route-client";
+import { callBackendRoute } from "@/app/lib/backend-route-client";
 
 const ALLOWED_REPORT_TYPES = new Set([
   "clinic-overview",
@@ -13,11 +10,27 @@ const ALLOWED_REPORT_TYPES = new Set([
   "patient-followup",
 ]);
 
-function contractMismatchResponse() {
-  return NextResponse.json(
-    { error: "Backend contract mismatch for the reports route." },
-    { status: 502 }
-  );
+function buildPassthroughHeaders(source: Headers) {
+  const headers = new Headers();
+  const allowlist = [
+    "content-type",
+    "cache-control",
+    "etag",
+    "last-modified",
+  ] as const;
+
+  for (const key of allowlist) {
+    const value = source.get(key);
+    if (value) {
+      headers.set(key, value);
+    }
+  }
+
+  if (!headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+
+  return headers;
 }
 
 export async function GET(
@@ -41,21 +54,10 @@ export async function GET(
     return backend.response;
   }
 
-  if (!backend.response.ok) {
-    return toFrontendErrorResponse(
-      backend.response,
-      "Unable to load report data."
-    );
-  }
-
-  let payload: unknown;
-  try {
-    payload = await backend.response.json();
-  } catch {
-    return contractMismatchResponse();
-  }
-
-  const response = NextResponse.json(payload);
+  const response = new NextResponse(await backend.response.text(), {
+    status: backend.response.status,
+    headers: buildPassthroughHeaders(backend.response.headers),
+  });
   backend.applyTo(response);
   return response;
 }

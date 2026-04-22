@@ -14,7 +14,7 @@ import {
 
 describe("authorization policy", () => {
   it("returns the expected default route for each role", () => {
-    expect(getDefaultRouteForRole("owner")).toBe("/owner");
+    expect(getDefaultRouteForRole("owner")).toBe("/create-user");
     expect(getDefaultRouteForRole("doctor")).toBe("/");
     expect(getDefaultRouteForRole("assistant")).toBe("/assistant");
   });
@@ -25,17 +25,18 @@ describe("authorization policy", () => {
     expect(canAccessRoute("assistant", "assistantWorkspace")).toBe(true);
     expect(canAccessRoute("assistant", "doctorHome")).toBe(false);
     expect(canAccessRoute("owner", "ownerWorkspace")).toBe(true);
-    expect(canAccessRoute("owner", "doctorHome")).toBe(true);
+    expect(canAccessRoute("owner", "doctorHome")).toBe(false);
   });
 
   it("reuses the same matrix for API permissions", () => {
     expect(hasPermission("assistant", "patient.read")).toBe(true);
-    expect(hasPermission("assistant", "patient.delete")).toBe(false);
+    expect(hasPermission("assistant", "patient.delete")).toBe(true);
     expect(hasPermission("assistant", "inventory.write")).toBe(true);
     expect(hasPermission("assistant", "prescription.dispense")).toBe(true);
     expect(hasPermission("assistant", "appointment.update")).toBe(false);
     expect(hasPermission("doctor", "user.read")).toBe(false);
     expect(hasPermission("doctor", "patient.write")).toBe(true);
+    expect(hasPermission("doctor", "patient.delete")).toBe(true);
     expect(hasPermission("doctor", "inventory.write")).toBe(true);
     expect(hasPermission("doctor", "prescription.dispense")).toBe(true);
     expect(hasPermission("doctor", "appointment.create")).toBe(true);
@@ -99,19 +100,16 @@ describe("authorization policy", () => {
     ]);
 
     expect(getNavigationItemsForRole("owner").map((item) => item.id)).toEqual([
-      "doctor",
-      "patient",
       "analytics",
       "inventory",
       "ai",
-      "assistant",
       "owner",
     ]);
   });
 
   it("keeps navigation ordering stable for page transitions", () => {
     expect(getNavigationIndexForPath("/")).toBe(0);
-    expect(getNavigationIndexForPath("/inventory")).toBe(3);
-    expect(getNavigationIndexForPath("/owner")).toBe(6);
+    expect(getNavigationIndexForPath("/inventory")).toBe(4);
+    expect(getNavigationIndexForPath("/create-user")).toBe(7);
   });
 });

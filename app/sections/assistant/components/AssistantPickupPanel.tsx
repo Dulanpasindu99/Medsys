@@ -170,17 +170,17 @@ export function AssistantPickupPanel({
                         </div>
                     ) : null}
 
-                    <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="flex items-center justify-end gap-2 border-t border-slate-200/80 pt-3">
                         <button
                             type="button"
                             disabled
-                            className="app-button app-button--soft app-button--full"
+                            className="app-button app-button--soft h-10 min-w-[160px] px-6 text-xs"
                         >
                             Medical report locked
                         </button>
                         <button
                             type="button"
-                            className="app-button app-button--primary app-button--full"
+                            className="app-button app-button--primary h-10 min-w-[160px] px-6 text-xs"
                             onClick={onDoneAndNext}
                             disabled={isSubmitting || !canManageAssistantWorkflow || !canSubmitDispense}
                         >

@@ -44,6 +44,13 @@ import {
     useUsersQuery,
   } from "../../../lib/query-hooks";
 import { queryKeys } from "../../../lib/query-keys";
+import { notifyError, notifySuccess, notifyWarning } from "../../../lib/notifications";
+import {
+  inventoryBatchFormSchema,
+  inventoryItemFormSchema,
+  inventoryMovementFormSchema,
+  mapZodFieldErrors,
+} from "../../../lib/validation/forms";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -175,6 +182,17 @@ export type InventoryBatchView = {
   note: string;
 };
 
+type InventoryItemFieldErrorKey =
+  | "name"
+  | "category"
+  | "unit"
+  | "stock"
+  | "reorderLevel"
+  | "dispenseUnitSize"
+  | "purchaseUnitSize";
+type InventoryMovementFieldErrorKey = "movementType" | "quantity";
+type InventoryBatchFieldErrorKey = "batchNo" | "quantity";
+
 const EMPTY_FORM: InventoryFormState = {
   sku: "",
   name: "",
@@ -294,6 +312,7 @@ function getNullableNumber(value: unknown) {
 }
 
 function normalizeItem(row: AnyRecord): InventoryItemView {
+  const baseUnit = toString(row.unit, "unit");
   const stockSummaryRecord = asRecord(row.stockSummary ?? row.stock_summary);
   const stock =
     toNumber(
@@ -343,12 +362,12 @@ function normalizeItem(row: AnyRecord): InventoryItemView {
     description: toString(row.description, ""),
     dosageForm: toString(row.dosageForm ?? row.dosage_form, ""),
     strength: toString(row.strength, ""),
-    unit: toString(row.unit, "unit"),
+    unit: baseUnit,
     route: toString(row.route, ""),
     prescriptionType: ((row.prescriptionType ?? row.prescription_type ?? "") as PrescriptionType | "") || "",
-    dispenseUnit: toString(row.dispenseUnit ?? row.dispense_unit ?? row.packageUnit ?? row.package_unit, "unit"),
+    dispenseUnit: toString(row.dispenseUnit ?? row.dispense_unit ?? row.packageUnit ?? row.package_unit, baseUnit),
     dispenseUnitSize,
-    purchaseUnit: toString(row.purchaseUnit ?? row.purchase_unit ?? row.packageUnit ?? row.package_unit, "pack"),
+    purchaseUnit: toString(row.purchaseUnit ?? row.purchase_unit ?? row.packageUnit ?? row.package_unit, baseUnit),
     purchaseUnitSize,
     brandName: toString(row.brandName ?? row.brand_name, "N/A"),
     supplierName: toString(row.supplierName ?? row.supplier_name, "N/A"),
@@ -483,6 +502,38 @@ function sanitizeUnitSize(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 1;
 }
 
+function getAllowedMovementUnits(item: InventoryItemView | null | undefined) {
+  if (!item) return [] as string[];
+  const units = [item.unit, item.dispenseUnit, item.purchaseUnit]
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return Array.from(new Set(units));
+}
+
+function buildMovementPayload(
+  item: InventoryItemView | null | undefined,
+  input: InventoryMovementPayload
+): InventoryMovementPayload {
+  const payload: InventoryMovementPayload = {
+    movementType: input.movementType ?? input.type,
+    quantity: input.quantity,
+    ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    ...(input.referenceType?.trim() ? { referenceType: input.referenceType.trim() } : {}),
+    ...(typeof input.referenceId === "number" && Number.isFinite(input.referenceId)
+      ? { referenceId: input.referenceId }
+      : {}),
+  };
+
+  const requestedUnit = input.movementUnit?.trim();
+  const allowedUnits = getAllowedMovementUnits(item);
+  if (requestedUnit && allowedUnits.includes(requestedUnit)) {
+    payload.movementUnit = requestedUnit;
+  }
+
+  return payload;
+}
+
 function formatIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -527,6 +578,15 @@ export function useInventoryBoard(
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
   const [movementState, setMovementState] = useState<MutationState>(idleMutationState());
   const [movementNotice, setMovementNotice] = useState<string | null>(null);
+  const [itemFieldErrors, setItemFieldErrors] = useState<
+    Partial<Record<InventoryItemFieldErrorKey, string>>
+  >({});
+  const [movementFieldErrors, setMovementFieldErrors] = useState<
+    Partial<Record<InventoryMovementFieldErrorKey, string>>
+  >({});
+  const [batchFieldErrors, setBatchFieldErrors] = useState<
+    Partial<Record<InventoryBatchFieldErrorKey, string>>
+  >({});
 
   const items = useMemo(
     () => asArray(inventoryQuery.data).map(normalizeItem),
@@ -934,6 +994,7 @@ export function useInventoryBoard(
 
   const updateItemForm = <K extends keyof InventoryFormState>(field: K, value: InventoryFormState[K]) => {
     resetCreateState();
+    setItemFieldErrors({});
     setItemForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -942,6 +1003,7 @@ export function useInventoryBoard(
     value: MovementFormState[K]
   ) => {
     resetMovementState();
+    setMovementFieldErrors({});
     setMovementForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -951,6 +1013,7 @@ export function useInventoryBoard(
   const startCreateItem = () => {
     setIsEditingItem(false);
     setItemForm(EMPTY_FORM);
+    setItemFieldErrors({});
     resetCreateState();
     setActiveTab("inventory");
   };
@@ -961,6 +1024,7 @@ export function useInventoryBoard(
     setSelectedItemIdState(target.id);
     setItemForm(toFormState(target));
     setIsEditingItem(true);
+    setItemFieldErrors({});
     resetCreateState();
     setActiveTab("inventory");
   };
@@ -1035,6 +1099,9 @@ export function useInventoryBoard(
 
   const handleSaveItem = async () => {
     if (!canWriteInventory) {
+      notifyWarning(
+        writeDisabledReason ?? "Inventory write permission is required before creating items."
+      );
       setCreateState(
         errorMutationState(
           writeDisabledReason ?? "Inventory write permission is required before creating items."
@@ -1043,12 +1110,36 @@ export function useInventoryBoard(
       return;
     }
 
-      if (!itemForm.name.trim()) {
-        setCreateState(errorMutationState("Item name is required before saving inventory."));
+      const itemValidation = inventoryItemFormSchema.safeParse({
+        name: itemForm.name,
+        category: itemForm.category,
+        unit: itemForm.unit,
+        stock: itemForm.stock,
+        reorderLevel: itemForm.reorderLevel,
+        dispenseUnitSize: itemForm.dispenseUnitSize,
+        purchaseUnitSize: itemForm.purchaseUnitSize,
+      });
+      if (!itemValidation.success) {
+        const mappedErrors = mapZodFieldErrors(itemValidation.error);
+        setItemFieldErrors({
+          name: mappedErrors.name,
+          category: mappedErrors.category,
+          unit: mappedErrors.unit,
+          stock: mappedErrors.stock,
+          reorderLevel: mappedErrors.reorderLevel,
+          dispenseUnitSize: mappedErrors.dispenseUnitSize,
+          purchaseUnitSize: mappedErrors.purchaseUnitSize,
+        });
+        const firstIssue = itemValidation.error.issues[0]?.message ?? "Please fix inventory form errors.";
+        notifyError(firstIssue);
+        setCreateState(errorMutationState(firstIssue));
         return;
       }
 
       if (!isEditingItem && duplicateItem) {
+        notifyWarning(
+          "A matching inventory item already exists. Edit the existing item instead of creating a duplicate."
+        );
         setCreateState(
           errorMutationState(
             "A matching inventory item already exists. Edit the existing item instead of creating a duplicate."
@@ -1069,14 +1160,19 @@ export function useInventoryBoard(
       setCreateState(
         successMutationState(isEditingItem ? "Inventory item updated." : "Inventory item created.")
       );
+      setItemFieldErrors({});
+      notifySuccess(isEditingItem ? "Inventory item updated." : "Inventory item created.");
       if (!isEditingItem) {
         setItemForm(EMPTY_FORM);
       }
     } catch (error) {
+      const message = formatApiError(
+        error,
+        isEditingItem ? "Failed to update inventory item." : "Failed to create inventory item."
+      );
+      notifyError(message);
       setCreateState(
-        errorMutationState(
-          formatApiError(error, isEditingItem ? "Failed to update inventory item." : "Failed to create inventory item.")
-        )
+        errorMutationState(message)
       );
     }
   };
@@ -1087,6 +1183,9 @@ export function useInventoryBoard(
 
   const handleSubmitMovement = async () => {
     if (!canWriteInventory) {
+      notifyWarning(
+        writeDisabledReason ?? "Inventory write permission is required before posting movements."
+      );
       setMovementState(
         errorMutationState(
           writeDisabledReason ?? "Inventory write permission is required before posting movements."
@@ -1096,15 +1195,27 @@ export function useInventoryBoard(
     }
 
     if (!resolvedSelectedItemId) {
+      notifyWarning("Select an inventory item before posting stock movements.");
       setMovementState(errorMutationState("Select an inventory item before posting stock movements."));
       return false;
     }
 
-    const enteredQuantity = Number(movementForm.quantity) || 0;
-    if (enteredQuantity <= 0) {
-      setMovementState(errorMutationState("Movement quantity must be greater than zero."));
+    const movementValidation = inventoryMovementFormSchema.safeParse({
+      movementType: movementForm.type,
+      quantity: movementForm.quantity,
+    });
+    if (!movementValidation.success) {
+      const mappedErrors = mapZodFieldErrors(movementValidation.error);
+      setMovementFieldErrors({
+        movementType: mappedErrors.movementType,
+        quantity: mappedErrors.quantity,
+      });
+      const firstIssue = movementValidation.error.issues[0]?.message ?? "Please fix movement form errors.";
+      notifyError(firstIssue);
+      setMovementState(errorMutationState(firstIssue));
       return false;
     }
+    const enteredQuantity = Number(movementForm.quantity) || 0;
 
     try {
       setMovementNotice(null);
@@ -1116,7 +1227,7 @@ export function useInventoryBoard(
         };
         await adjustInventoryStock(resolvedSelectedItemId, payload);
       } else {
-        await createInventoryMovement(resolvedSelectedItemId, {
+        const movementPayload = buildMovementPayload(selectedItem, {
           movementType: movementForm.type,
           movementUnit: movementUnitLabel,
           quantity: enteredQuantity,
@@ -1125,15 +1236,20 @@ export function useInventoryBoard(
           referenceType: movementForm.referenceType.trim() || undefined,
           referenceId: toNullableNumber(movementForm.referenceId),
         });
+        await createInventoryMovement(resolvedSelectedItemId, movementPayload);
       }
 
       await invalidateInventoryQueries();
       await Promise.allSettled([movementQuery.refetch(), inventoryQuery.refetch(), alertsQuery.refetch()]);
       setMovementForm(EMPTY_MOVEMENT_FORM);
+      setMovementFieldErrors({});
       setMovementState(successMutationState("Stock movement posted."));
+      notifySuccess("Stock movement posted.");
       return true;
     } catch (error) {
-      setMovementState(errorMutationState(formatApiError(error, "Failed to post movement.")));
+      const message = formatApiError(error, "Failed to post movement.");
+      notifyError(message);
+      setMovementState(errorMutationState(message));
       return false;
     }
   };
@@ -1143,11 +1259,15 @@ export function useInventoryBoard(
     value: InventoryBatchFormState[K]
   ) => {
     setBatchForm((current) => ({ ...current, [field]: value }));
+    setBatchFieldErrors({});
     setCreateState(idleMutationState());
   };
 
   const handleCreateBatch = async () => {
     if (!canWriteInventory) {
+      notifyWarning(
+        writeDisabledReason ?? "Inventory write permission is required before adding batches."
+      );
       setCreateState(
         errorMutationState(
           writeDisabledReason ?? "Inventory write permission is required before adding batches."
@@ -1157,20 +1277,27 @@ export function useInventoryBoard(
     }
 
     if (!resolvedSelectedItemId) {
+      notifyWarning("Select an inventory item before adding a batch.");
       setCreateState(errorMutationState("Select an inventory item before adding a batch."));
       return;
     }
 
-    if (!batchForm.batchNo.trim()) {
-      setCreateState(errorMutationState("Batch number is required."));
+    const batchValidation = inventoryBatchFormSchema.safeParse({
+      batchNo: batchForm.batchNo,
+      quantity: batchForm.quantity,
+    });
+    if (!batchValidation.success) {
+      const mappedErrors = mapZodFieldErrors(batchValidation.error);
+      setBatchFieldErrors({
+        batchNo: mappedErrors.batchNo,
+        quantity: mappedErrors.quantity,
+      });
+      const firstIssue = batchValidation.error.issues[0]?.message ?? "Please fix batch form errors.";
+      notifyError(firstIssue);
+      setCreateState(errorMutationState(firstIssue));
       return;
     }
-
     const quantity = Number(batchForm.quantity) || 0;
-    if (quantity <= 0) {
-      setCreateState(errorMutationState("Batch quantity must be greater than zero."));
-      return;
-    }
 
     try {
       setCreateState(pendingMutationState());
@@ -1185,14 +1312,21 @@ export function useInventoryBoard(
       await createInventoryBatch(resolvedSelectedItemId, payload);
       await refreshInventoryQueries();
       setBatchForm(EMPTY_BATCH_FORM);
+      setBatchFieldErrors({});
       setCreateState(successMutationState("Inventory batch created."));
+      notifySuccess("Inventory batch created.");
     } catch (error) {
-      setCreateState(errorMutationState(formatApiError(error, "Failed to create inventory batch.")));
+      const message = formatApiError(error, "Failed to create inventory batch.");
+      notifyError(message);
+      setCreateState(errorMutationState(message));
     }
   };
 
   const handleQuickMovement = async (type: "in" | "out") => {
     if (!canWriteInventory) {
+      notifyWarning(
+        writeDisabledReason ?? "Inventory write permission is required before posting movements."
+      );
       setMovementState(
         errorMutationState(
           writeDisabledReason ?? "Inventory write permission is required before posting movements."
@@ -1202,6 +1336,7 @@ export function useInventoryBoard(
     }
 
     if (!resolvedSelectedItemId) {
+      notifyWarning("Select an inventory item before posting stock movements.");
       setMovementState(errorMutationState("Select an inventory item before posting stock movements."));
       return;
     }
@@ -1215,18 +1350,22 @@ export function useInventoryBoard(
     });
       try {
         setMovementState(pendingMutationState());
-        await createInventoryMovement(resolvedSelectedItemId, {
+        const movementPayload = buildMovementPayload(selectedItem, {
           movementType: type,
           movementUnit: type === "in" ? selectedItem?.purchaseUnit || selectedItem?.unit : selectedItem?.dispenseUnit || selectedItem?.unit,
           quantity: 1,
           reason: type === "in" ? "purchase" : "dispense",
           note: `Quick ${type} from frontend`,
         });
+        await createInventoryMovement(resolvedSelectedItemId, movementPayload);
       await invalidateInventoryQueries();
       await Promise.allSettled([movementQuery.refetch(), inventoryQuery.refetch(), alertsQuery.refetch()]);
       setMovementState(successMutationState(`Stock ${type === "in" ? "added" : "removed"} successfully.`));
+      notifySuccess(`Stock ${type === "in" ? "added" : "removed"} successfully.`);
     } catch (error) {
-      setMovementState(errorMutationState(formatApiError(error, "Failed to post movement.")));
+      const message = formatApiError(error, "Failed to post movement.");
+      notifyError(message);
+      setMovementState(errorMutationState(message));
     }
   };
 
@@ -1287,6 +1426,9 @@ export function useInventoryBoard(
     movementForm,
     updateMovementForm,
     batchForm,
+    itemFieldErrors,
+    movementFieldErrors,
+    batchFieldErrors,
     updateBatchForm,
     movementUnitType,
     movementUnitLabel,

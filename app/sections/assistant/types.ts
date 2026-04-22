@@ -91,6 +91,9 @@ export type AssistantFamilyOption = {
 export type AssistantDoctorAvailability = {
   id?: number;
   name: string;
+  email?: string;
+  doctorWorkflowMode?: "self_service" | "clinic_supported" | null;
+  isActive?: boolean;
   status: string;
 };
 

@@ -100,6 +100,7 @@ describe("useOwnerAccess", () => {
       email: "meredith.grey@medsys.local",
       password: "secret-123",
       role: "doctor",
+      doctorWorkflowMode: "self_service",
       extraPermissions: ["appointment.create"],
     });
     expect(invalidateQueriesSpy).toHaveBeenCalledWith({

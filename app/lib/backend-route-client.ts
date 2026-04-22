@@ -65,6 +65,7 @@ function buildBackendUrl(pathname: string, search = "") {
 
 function buildForwardHeaders(request: NextRequest, accessToken?: string | null) {
   const headers = new Headers();
+  const incomingAuthorization = request.headers.get("authorization");
 
   for (const key of FORWARDED_HEADER_ALLOWLIST) {
     const value = request.headers.get(key);
@@ -83,6 +84,8 @@ function buildForwardHeaders(request: NextRequest, accessToken?: string | null) 
 
   if (accessToken) {
     headers.set("authorization", `Bearer ${accessToken}`);
+  } else if (incomingAuthorization) {
+    headers.set("authorization", incomingAuthorization);
   }
 
   return headers;

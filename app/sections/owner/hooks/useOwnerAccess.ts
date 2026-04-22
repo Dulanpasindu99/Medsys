@@ -33,7 +33,15 @@ import {
   hasPermission,
   type AppPermission,
 } from "../../../lib/authorization";
-import type { DoctorSupportPermission, PermissionKey, Role, StaffUser } from '../types';
+import { notifyError, notifySuccess, notifyWarning } from "../../../lib/notifications";
+import { createStaffFormSchema, mapZodFieldErrors } from "../../../lib/validation/forms";
+import type {
+  DoctorSupportPermission,
+  DoctorWorkflowModeOption,
+  PermissionKey,
+  Role,
+  StaffUser,
+} from '../types';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -333,7 +341,15 @@ export function useOwnerAccess() {
   const [name, setNameState] = useState('');
   const [username, setUsernameState] = useState('');
   const [password, setPasswordState] = useState('');
+  const [doctorWorkflowMode, setDoctorWorkflowModeState] =
+    useState<DoctorWorkflowModeOption>("self_service");
   const [extraPermissions, setExtraPermissionsState] = useState<DoctorSupportPermission[]>([]);
+  const [createFieldErrors, setCreateFieldErrors] = useState<{
+    name?: string;
+    username?: string;
+    password?: string;
+    doctorWorkflowMode?: string;
+  }>({});
   const [createState, setCreateState] = useState<MutationState>(idleMutationState());
   const [updateStates, setUpdateStates] = useState<Record<string, MutationState>>({});
   const [editedExtraPermissions, setEditedExtraPermissions] = useState<
@@ -362,12 +378,21 @@ export function useOwnerAccess() {
 
   const clearCreateState = () => {
     setCreateState((current) => (current.status === 'idle' ? current : idleMutationState()));
+    setCreateFieldErrors({});
   };
 
   const setRole = (value: Role) => {
     clearCreateState();
     setRoleState(value);
+    if (value === "Assistant") {
+      setDoctorWorkflowModeState("self_service");
+    }
     setExtraPermissionsState(value === "Doctor" ? [] : []);
+  };
+
+  const setDoctorWorkflowMode = (value: DoctorWorkflowModeOption) => {
+    clearCreateState();
+    setDoctorWorkflowModeState(value);
   };
 
   const setName = (value: string) => {
@@ -392,6 +417,16 @@ export function useOwnerAccess() {
         ? current.filter((entry) => entry !== permission)
         : [...current, permission]
     );
+  };
+
+  const resetCreateForm = () => {
+    clearCreateState();
+    setRoleState("Doctor");
+    setDoctorWorkflowModeState("self_service");
+    setNameState("");
+    setUsernameState("");
+    setPasswordState("");
+    setExtraPermissionsState([]);
   };
 
   const liveUsers = useMemo(() => normalizeUsers(usersQuery.data ?? []), [usersQuery.data]);
@@ -489,6 +524,9 @@ export function useOwnerAccess() {
 
   const saveUserExtraPermissions = async (user: StaffUser) => {
     if (!canManageStaff) {
+      notifyWarning(
+        manageStaffDisabledReason ?? "Owner access is required before updating staff permissions."
+      );
       setUpdateStates((current) => ({
         ...current,
         [user.id]: errorMutationState(
@@ -499,6 +537,7 @@ export function useOwnerAccess() {
     }
 
     if (user.role !== "Doctor" || user.backendUserId === null) {
+      notifyWarning("Only synced doctor accounts can receive extra permissions.");
       setUpdateStates((current) => ({
         ...current,
         [user.id]: errorMutationState("Only synced doctor accounts can receive extra permissions."),
@@ -525,7 +564,12 @@ export function useOwnerAccess() {
         ...current,
         [user.id]: successMutationState("Doctor support permissions updated."),
       }));
+      notifySuccess("Doctor support permissions updated.");
     } catch (error) {
+      notifyError(
+        ((error as ApiClientError | undefined)?.message ??
+          "Unable to update doctor support permissions.")
+      );
       setUpdateStates((current) => ({
         ...current,
         [user.id]: errorMutationState(
@@ -538,6 +582,9 @@ export function useOwnerAccess() {
 
   const handleCreate = async () => {
     if (!canManageStaff) {
+      notifyWarning(
+        manageStaffDisabledReason ?? 'Owner access is required before creating staff users.'
+      );
       setCreateState(
         errorMutationState(
           manageStaffDisabledReason ?? 'Owner access is required before creating staff users.'
@@ -546,9 +593,26 @@ export function useOwnerAccess() {
       return;
     }
 
-    if (!name.trim() || !username.trim() || !password.trim()) {
+    const parsed = createStaffFormSchema.safeParse({
+      role,
+      doctorWorkflowMode: role === "Doctor" ? doctorWorkflowMode : undefined,
+      name,
+      username,
+      password,
+    });
+
+    if (!parsed.success) {
+      const mappedErrors = mapZodFieldErrors(parsed.error);
+      const nextErrors = {
+        name: mappedErrors.name,
+        username: mappedErrors.username,
+        password: mappedErrors.password,
+        doctorWorkflowMode: mappedErrors.doctorWorkflowMode,
+      };
+      setCreateFieldErrors(nextErrors);
+      notifyError("Please fix the highlighted form errors.");
       setCreateState(
-        errorMutationState('Name, username, and password are required.')
+        errorMutationState('Please fix the highlighted form errors.')
       );
       return;
     }
@@ -560,17 +624,20 @@ export function useOwnerAccess() {
         email: username.trim(),
         password: password.trim(),
         role: role === 'Doctor' ? 'doctor' : 'assistant',
+        ...(role === "Doctor" ? { doctorWorkflowMode } : {}),
         ...(role === "Doctor" && extraPermissions.length
           ? { extraPermissions }
           : {}),
       });
-      setName('');
-      setUsername('');
-      setPassword('');
-      setExtraPermissionsState([]);
+      resetCreateForm();
       await refreshStaffQueries();
       setCreateState(successMutationState('Staff user created.'));
+      notifySuccess("Staff user created successfully.");
     } catch (error) {
+      notifyError(
+        ((error as unknown as ApiClientError | undefined)?.message ??
+          'Unable to create staff user.')
+      );
       setCreateState(
         errorMutationState(
           ((error as unknown as ApiClientError | undefined)?.message ??
@@ -594,6 +661,10 @@ export function useOwnerAccess() {
     setUsername,
     password,
     setPassword,
+    doctorWorkflowMode,
+    setDoctorWorkflowMode,
+    resetCreateForm,
+    createFieldErrors,
     permissions,
     extraPermissions,
     toggleCreateExtraPermission,

@@ -132,17 +132,20 @@ const ROUTE_POLICIES: RoutePolicy[] = [
   {
     routeId: "ownerWorkspace",
     navId: "owner",
-    href: "/owner",
-    label: "Manage Staff Access",
+    href: "/create-user",
+    label: "Create User",
     permission: "owner.workspace.view",
   },
 ];
 
 const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
   owner: [
-    ...ROUTE_POLICIES.map((route) => route.permission),
-    "task.write",
+    "owner.workspace.view",
+    "analytics.view",
+    "inventory.view",
     "inventory.write",
+    "ai.workspace.view",
+    "task.write",
     "appointment.create",
     "appointment.update",
     "prescription.dispense",
@@ -168,6 +171,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "ai.workspace.view",
     "patient.read",
     "patient.write",
+    "patient.delete",
     "patient.history.read",
     "patient.history.write",
     "family.write",
@@ -190,6 +194,7 @@ const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> = {
     "prescription.dispense",
     "patient.read",
     "patient.write",
+    "patient.delete",
     "patient.history.read",
     "patient.history.write",
     "clinical.icd10.read",
@@ -274,7 +279,7 @@ export function canUpdateAppointments(subject: PermissionSubject) {
 }
 
 function canAccessAssistantWorkspace(subject: PermissionSubject) {
-  return hasAnyPermission(subject, ASSISTANT_SUPPORT_ROUTE_PERMISSIONS);
+  return getSubjectRole(subject) !== "owner" && hasAnyPermission(subject, ASSISTANT_SUPPORT_ROUTE_PERMISSIONS);
 }
 
 export function canAccessRoute(subject: PermissionSubject, routeId: AppRouteId) {

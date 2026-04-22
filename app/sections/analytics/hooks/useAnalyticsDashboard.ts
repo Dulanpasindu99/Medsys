@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AnalyticsDashboardQuery, AnalyticsRole, AnalyticsRangePreset } from "@/app/lib/analytics-types";
+import type {
+  AnalyticsDashboardQuery,
+  AnalyticsOperationMode,
+  AnalyticsRole,
+  AnalyticsRangePreset,
+} from "@/app/lib/analytics-types";
 import { emptyLoadState, errorLoadState, loadingLoadState, readyLoadState, type LoadState } from "@/app/lib/async-state";
 import { useAnalyticsDashboardQuery, useCurrentUserQuery, useUsersQuery } from "@/app/lib/query-hooks";
 
@@ -36,6 +41,7 @@ export function useAnalyticsDashboard() {
   const [customDateFrom, setCustomDateFrom] = useState(getPastIsoDate(6));
   const [customDateTo, setCustomDateTo] = useState(getTodayIsoDate());
   const [ownerView, setOwnerView] = useState<"organization" | "doctor" | "assistant">("organization");
+  const [ownerOperationMode, setOwnerOperationMode] = useState<AnalyticsOperationMode>("walk_in");
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [selectedAssistantId, setSelectedAssistantId] = useState("");
 
@@ -67,9 +73,21 @@ export function useAnalyticsDashboard() {
       next.role = "assistant";
       next.assistantId = Number(selectedAssistantId);
     }
+    if (ownerView === "organization") {
+      next.operationMode = ownerOperationMode;
+    }
 
     return next;
-  }, [customDateFrom, customDateTo, isOwner, ownerView, range, selectedAssistantId, selectedDoctorId]);
+  }, [
+    customDateFrom,
+    customDateTo,
+    isOwner,
+    ownerOperationMode,
+    ownerView,
+    range,
+    selectedAssistantId,
+    selectedDoctorId,
+  ]);
 
   const isDashboardQueryEnabled =
     !!currentUserQuery.data &&
@@ -133,6 +151,8 @@ export function useAnalyticsDashboard() {
     setCustomDateTo,
     ownerView,
     setOwnerView,
+    ownerOperationMode,
+    setOwnerOperationMode,
     selectedDoctorId,
     setSelectedDoctorId,
     selectedAssistantId,

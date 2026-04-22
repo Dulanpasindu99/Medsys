@@ -119,6 +119,8 @@ export const queryKeys = {
   },
   encounters: {
     list: ["encounters", "list"] as const,
+    detail: (encounterId: number | string) =>
+      ["encounters", "detail", String(encounterId)] as const,
   },
   inventory: {
     list: ["inventory", "list"] as const,
@@ -168,6 +170,7 @@ export const queryKeys = {
   appointments: {
     list: (status?: string) =>
       status ? (["appointments", "list", status] as const) : (["appointments", "list"] as const),
+    doctors: ["appointments", "doctors"] as const,
   },
   prescriptions: {
     pendingDispenseQueue: ["prescriptions", "pending-dispense-queue"] as const,

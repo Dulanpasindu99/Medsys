@@ -58,6 +58,7 @@ export type ClinicalTestOption = {
 export type PatientVital = {
   label: string;
   value: string;
+  observedAt?: string;
 };
 
 export type AllergyAlert = {
