@@ -1731,6 +1731,12 @@ export default function DailySummaryReportsSection({
             actions={
               <div className="flex items-center gap-2">
                 <Link
+                  href="/analytics/endpoint-health"
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Endpoint Health
+                </Link>
+                <Link
                   href="/analytics"
                   className="rounded-2xl border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
                 >

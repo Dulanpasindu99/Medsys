@@ -54,6 +54,8 @@ function buildDashboardState(overrides: Record<string, unknown> = {}) {
     setCustomDateTo: vi.fn(),
     ownerView: "organization",
     setOwnerView: vi.fn(),
+    ownerOperationMode: "walk_in",
+    setOwnerOperationMode: vi.fn(),
     selectedDoctorId: "",
     setSelectedDoctorId: vi.fn(),
     selectedAssistantId: "",
@@ -72,8 +74,8 @@ describe("AnalyticsSection", () => {
 
     render(<AnalyticsSection />);
 
-    expect(screen.getByText("Insights & Reports")).toBeInTheDocument();
-    expect(screen.getByText("Queue")).toBeInTheDocument();
+    expect(screen.getByText("Realtime Analytics")).toBeInTheDocument();
+    expect(screen.getByText("Doctor Focus")).toBeInTheDocument();
     expect(screen.getByText("Top Diagnoses")).toBeInTheDocument();
     expect(screen.getByText(/peak load between 10:00 and 11:00/i)).toBeInTheDocument();
   });
@@ -82,6 +84,9 @@ describe("AnalyticsSection", () => {
     mockedUseAnalyticsDashboard.mockReturnValue(
       buildDashboardState({
         currentUser: { role: "owner" },
+        ownerView: "doctor",
+        selectedDoctorId: "12",
+        doctorOptions: [{ id: 12, name: "Dr. Jane Doe" }],
         data: {
           ...buildDashboardState().data,
           roleContext: {
@@ -99,6 +104,7 @@ describe("AnalyticsSection", () => {
 
     render(<AnalyticsSection />);
 
-    expect(screen.getByDisplayValue("Organization")).toBeInTheDocument();
+    expect(screen.getByLabelText(/analytics role/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/doctor drill-down/i)).toBeInTheDocument();
   });
 });

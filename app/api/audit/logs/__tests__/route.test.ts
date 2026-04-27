@@ -64,4 +64,20 @@ describe("/api/audit/logs BFF route", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual([{ id: 2, action: "audit.read" }]);
   });
+
+  it("allows assistant workspace sessions to request audit logs", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([{ id: 3, action: "assistant.audit.read" }]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await GET(buildRequest("http://localhost/api/audit/logs?limit=5", "assistant"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual([{ id: 3, action: "assistant.audit.read" }]);
+  });
 });

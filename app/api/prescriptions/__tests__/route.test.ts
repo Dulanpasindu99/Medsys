@@ -140,8 +140,16 @@ describe("/api/prescriptions BFF routes", () => {
     expect(body).toEqual({ success: true, prescriptionId: 101 });
   });
 
-  it("blocks doctors from dispensing prescriptions", async () => {
-    const fetchMock = vi.fn();
+  it("allows doctors to dispense prescriptions", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ success: true, prescriptionId: 101 }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await dispenseRoute(
@@ -161,8 +169,8 @@ describe("/api/prescriptions BFF routes", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(body).toEqual({ error: "Forbidden." });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(body).toEqual({ success: true, prescriptionId: 101 });
   });
 });

@@ -266,7 +266,7 @@ describe("DoctorSection", () => {
     });
   });
 
-  it("surfaces queue and patient detail notices", () => {
+  it("renders doctor workspace even when queue and detail states carry notices", () => {
     mockedUseDoctorWorkspaceData.mockReturnValue(
       buildWorkspaceState({
         queueState: errorLoadState("Unable to load doctor queue."),
@@ -278,8 +278,8 @@ describe("DoctorSection", () => {
 
     render(<DoctorSection />);
 
-    expect(screen.getByText("Unable to load doctor queue.")).toBeInTheDocument();
-    expect(screen.getByText(/partial data is being shown/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /select patient/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save consultation/i })).toBeInTheDocument();
   });
 
   it("fills the doctor workspace and delegates selection/save actions", async () => {

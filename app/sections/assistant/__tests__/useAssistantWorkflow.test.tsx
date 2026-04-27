@@ -6,6 +6,7 @@ import {
   dispensePrescription,
   getAnalyticsOverview,
   getCurrentUser,
+  listAppointmentDoctors,
   listAppointments,
   listFamilies,
   listPatients,
@@ -21,6 +22,7 @@ vi.mock("../../../lib/api-client", () => ({
   dispensePrescription: vi.fn(),
   getAnalyticsOverview: vi.fn(),
   getCurrentUser: vi.fn(),
+  listAppointmentDoctors: vi.fn(),
   listAppointments: vi.fn(),
   listFamilies: vi.fn(),
   listPatients: vi.fn(),
@@ -33,6 +35,7 @@ const mockedCreatePatient = vi.mocked(createPatient);
 const mockedDispensePrescription = vi.mocked(dispensePrescription);
 const mockedGetAnalyticsOverview = vi.mocked(getAnalyticsOverview);
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
+const mockedListAppointmentDoctors = vi.mocked(listAppointmentDoctors);
 const mockedListAppointments = vi.mocked(listAppointments);
 const mockedListFamilies = vi.mocked(listFamilies);
 const mockedListPatients = vi.mocked(listPatients);
@@ -75,6 +78,7 @@ describe("useAssistantWorkflow", () => {
     mockedListPendingDispenseQueue.mockResolvedValue([]);
     mockedListPatients.mockResolvedValue([]);
     mockedListFamilies.mockResolvedValue([]);
+    mockedListAppointmentDoctors.mockResolvedValue([]);
     mockedGetAnalyticsOverview.mockResolvedValue({});
     mockedGetCurrentUser.mockResolvedValue({
       id: 42,
@@ -491,7 +495,7 @@ describe("useAssistantWorkflow", () => {
     });
 
     expect(mockedCreatePatient).not.toHaveBeenCalled();
-    expect(result.current.createPatientState.error).toMatch(/patient nic must be 12 digits or 9 digits followed by v\/x/i);
+    expect(result.current.createPatientState.error).toMatch(/highlighted patient form errors/i);
   });
 
   it("advances to the next queue item when dispense identifiers are unavailable", async () => {

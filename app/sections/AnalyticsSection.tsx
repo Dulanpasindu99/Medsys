@@ -1549,6 +1549,12 @@ export default function AnalyticsSection() {
                 >
                   Daily Summary & Reports
                 </Link>
+                <Link
+                  href="/analytics/endpoint-health"
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Endpoint Health
+                </Link>
                 <button
                   type="button"
                   onClick={() => void reload()}

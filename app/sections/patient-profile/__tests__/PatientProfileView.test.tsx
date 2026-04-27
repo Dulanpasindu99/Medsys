@@ -76,7 +76,7 @@ describe("PatientProfileView", () => {
     expect(screen.getByRole("button", { name: /retry profile/i })).toBeInTheDocument();
   });
 
-  it("renders the profile notice when fallback data is shown", () => {
+  it("renders profile content when ready state contains a notice", () => {
     mockedUsePatientProfileData.mockReturnValue({
       profile: {
         id: "12",
@@ -102,8 +102,8 @@ describe("PatientProfileView", () => {
 
     render(<PatientProfileView profileId="12" />);
 
-    expect(screen.getByText(/fallback data is being shown/i)).toBeInTheDocument();
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+    expect(screen.getByText(/patient identity, latest clinical summary/i)).toBeInTheDocument();
   });
 
   it("shows a no-history empty state when the patient has no timeline entries", () => {

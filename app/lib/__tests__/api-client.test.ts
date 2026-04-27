@@ -444,6 +444,41 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/audit/logs?limit=20");
   });
 
+  it("accepts wrapped audit log payloads from the BFF route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          logs: [{ id: 9, action: "staff.update" }],
+          total: 1,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listAuditLogs({ limit: 5 })).resolves.toEqual([
+      { id: 9, action: "staff.update" },
+    ]);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/audit/logs?limit=5");
+  });
+
+  it("returns an empty audit log feed when access is forbidden for the current role", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "Forbidden." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listAuditLogs({ limit: 20 })).resolves.toEqual([]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/audit/logs?limit=20");
+  });
+
   it("loads analytics overview through the dedicated BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

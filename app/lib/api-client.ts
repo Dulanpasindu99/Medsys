@@ -1290,8 +1290,38 @@ export async function listAuditLogs(input?: {
   if (input?.to) params.set("to", input.to);
   if (typeof input?.limit === "number") params.set("limit", String(input.limit));
   const query = params.size ? `?${params.toString()}` : "";
-  const response = await apiFetch<unknown>(`/api/audit/logs${query}`, { method: "GET" });
-  return expectApiRecordArray(response, "audit logs");
+  let response: unknown;
+  try {
+    response = await apiFetch<unknown>(`/api/audit/logs${query}`, { method: "GET" });
+  } catch (error) {
+    const apiError = toApiClientError(error);
+    // Audit logs are an enrichment feed. If the role is not allowed, degrade gracefully.
+    if (apiError.status === 401 || apiError.status === 403) {
+      return [];
+    }
+    throw error;
+  }
+
+  if (Array.isArray(response)) {
+    return expectApiRecordArray(response, "audit logs");
+  }
+
+  const record = expectApiRecord(response, "audit logs");
+  const candidates = [
+    record.logs,
+    record.items,
+    record.data,
+    record.rows,
+    record.auditLogs,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return expectApiRecordArray(candidate, "audit logs");
+    }
+  }
+
+  throw contractMismatch("audit logs response is not an array.");
 }
 
 export async function dispensePrescription(

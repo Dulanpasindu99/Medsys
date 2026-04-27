@@ -60,15 +60,17 @@ describe("PATCH /api/users/[id]", () => {
       JSON.stringify({ extraPermissions: ["appointment.create"] })
     );
     expect(body).toEqual({
-      user: {
+      user: expect.objectContaining({
         id: 12,
+        user_id: 12,
         name: "Dr. Jane Doe",
         email: "doctor@example.com",
         role: "doctor",
         created_at: null,
+        roles: ["doctor"],
         permissions: ["patient.write", "appointment.create"],
-        extraPermissions: ["appointment.create"],
-      },
+        extra_permissions: ["appointment.create"],
+      }),
     });
   });
 

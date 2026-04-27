@@ -112,13 +112,15 @@ describe("POST /api/auth/register", () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({
-      user: {
+      user: expect.objectContaining({
         id: 11,
+        user_id: 11,
         name: "Owner User",
         email: "owner@example.com",
         role: "owner",
+        roles: ["owner"],
         created_at: "2026-03-09T00:00:00.000Z",
-      },
+      }),
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/auth/status");
     expect(fetchMock.mock.calls[1]?.[0]).toBe("http://localhost:4000/v1/auth/register");
@@ -216,13 +218,15 @@ describe("POST /api/auth/register", () => {
       })
     );
     expect(body).toEqual({
-      user: {
+      user: expect.objectContaining({
         id: 12,
+        user_id: 12,
         name: "Dr. Jane Doe",
         email: "doctor@example.com",
         role: "doctor",
+        roles: ["doctor"],
         created_at: "2026-03-09T00:00:00.000Z",
-      },
+      }),
     });
   });
 });

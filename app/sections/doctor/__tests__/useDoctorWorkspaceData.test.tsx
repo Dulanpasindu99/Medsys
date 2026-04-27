@@ -18,12 +18,14 @@ vi.mock("../../../lib/query-hooks", () => ({
   usePatientProfileQuery: vi.fn(),
   usePatientVitalsQuery: vi.fn(),
   usePatientAllergiesQuery: vi.fn(),
+  useEncounterDetailQuery: vi.fn(),
 }));
 
 import { saveConsultation } from "../../../lib/api-client";
 import {
   useAppointmentsQuery,
   useCurrentUserQuery,
+  useEncounterDetailQuery,
   useFamiliesQuery,
   useInventoryQuery,
   usePatientAllergiesQuery,
@@ -41,6 +43,7 @@ const mockedUseInventoryQuery = vi.mocked(useInventoryQuery);
 const mockedUsePatientProfileQuery = vi.mocked(usePatientProfileQuery);
 const mockedUsePatientVitalsQuery = vi.mocked(usePatientVitalsQuery);
 const mockedUsePatientAllergiesQuery = vi.mocked(usePatientAllergiesQuery);
+const mockedUseEncounterDetailQuery = vi.mocked(useEncounterDetailQuery);
 
 function buildQueryState(overrides: Record<string, unknown> = {}) {
   return {
@@ -126,6 +129,9 @@ describe("useDoctorWorkspaceData", () => {
     mockedUsePatientVitalsQuery.mockReturnValue(
       buildQueryState({ data: [{ label: "BP", value: "120/80" }] }) as never
     );
+    mockedUseEncounterDetailQuery.mockReturnValue(
+      buildQueryState({ data: null }) as never
+    );
     mockedUsePatientProfileQuery.mockImplementation(
       (patientId: number | string) =>
         buildQueryState({
@@ -175,7 +181,9 @@ describe("useDoctorWorkspaceData", () => {
       expect(result.current.patientDetailsState.status).toBe("ready");
     });
 
-    expect(result.current.patientVitals).toEqual([{ label: "BP", value: "120/80" }]);
+    expect(result.current.patientVitals).toEqual([
+      expect.objectContaining({ label: "BP", value: "120/80" }),
+    ]);
     expect(result.current.patientAllergies[0]).toMatchObject({
       name: "Peanut",
       severity: "High",
@@ -191,6 +199,8 @@ describe("useDoctorWorkspaceData", () => {
 
     act(() => {
       result.current.setSearch("P-0007");
+    });
+    act(() => {
       result.current.handleSearchCommit();
     });
 
@@ -269,8 +279,21 @@ describe("useDoctorWorkspaceData", () => {
       await result.current.handleSaveVitals();
     });
 
-    expect(mockedSaveConsultation).not.toHaveBeenCalled();
-    expect(result.current.vitalsFeedback?.message).toMatch(/captured locally/i);
+    expect(mockedSaveConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowType: "appointment",
+        patientId: 7,
+        appointmentId: 22,
+        vitals: expect.objectContaining({
+          bpSystolic: 120,
+          bpDiastolic: 80,
+          heartRate: 72,
+          temperatureC: 36.8,
+          spo2: 99,
+        }),
+      })
+    );
+    expect(result.current.vitalsFeedback?.message).toMatch(/vitals updated successfully/i);
   });
 
   it("converts fahrenheit temperature drafts to celsius before save", async () => {

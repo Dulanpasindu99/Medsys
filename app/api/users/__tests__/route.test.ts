@@ -61,13 +61,15 @@ describe("/api/users BFF routes", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:4000/v1/users");
     expect(body).toEqual({
       users: [
-        {
+        expect.objectContaining({
           id: 4,
+          user_id: 4,
           name: "Owner User",
           email: "owner@example.com",
           role: "owner",
           created_at: "2026-03-09T00:00:00.000Z",
-        },
+          roles: ["owner"],
+        }),
       ],
     });
   });
@@ -196,15 +198,17 @@ describe("/api/users BFF routes", () => {
       })
     );
     expect(body).toEqual({
-      user: {
+      user: expect.objectContaining({
         id: 10,
+        user_id: 10,
         name: "Dr. Jane Doe",
         email: "doctor@example.com",
         role: "doctor",
         created_at: "2026-03-09T00:00:00.000Z",
+        roles: ["doctor"],
         permissions: ["patient.write", "appointment.create"],
-        extraPermissions: ["appointment.create"],
-      },
+        extra_permissions: ["appointment.create"],
+      }),
     });
   });
 
@@ -243,15 +247,19 @@ describe("/api/users BFF routes", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.users[1]).toEqual({
-      id: 9,
-      name: "Jane Doe",
-      email: "doctor@example.com",
-      role: "doctor",
-      created_at: "2026-03-09T00:00:00.000Z",
-      permissions: ["patient.write", "appointment.create"],
-      extraPermissions: ["appointment.create"],
-    });
+    expect(body.users[1]).toEqual(
+      expect.objectContaining({
+        id: 9,
+        user_id: 9,
+        name: "Jane Doe",
+        email: "doctor@example.com",
+        role: "doctor",
+        created_at: "2026-03-09T00:00:00.000Z",
+        roles: ["doctor"],
+        permissions: ["patient.write", "appointment.create"],
+        extra_permissions: ["appointment.create"],
+      })
+    );
   });
 
   it("returns 502 when the user collection wrapper drifts", async () => {

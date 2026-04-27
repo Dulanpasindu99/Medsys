@@ -10,7 +10,11 @@ function contractMismatchResponse() {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = requireAnyPermission(request, ["ai.workspace.view", "owner.workspace.view"]);
+  const auth = requireAnyPermission(request, [
+    "ai.workspace.view",
+    "owner.workspace.view",
+    "assistant.workspace.view",
+  ]);
   if (auth.error) {
     return auth.error;
   }
