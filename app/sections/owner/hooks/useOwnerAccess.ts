@@ -335,7 +335,10 @@ export function useOwnerAccess() {
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
   const usersQuery = useUsersQuery();
-  const auditLogsQuery = useAuditLogsQuery({ limit: 200 });
+  const canReadAuditLogs =
+    !!currentUserQuery.data &&
+    hasAnyPermission(currentUserQuery.data, ["owner.workspace.view", "ai.workspace.view"]);
+  const auditLogsQuery = useAuditLogsQuery({ limit: 200 }, canReadAuditLogs);
   const appointmentsQuery = useAppointmentsQuery();
   const [role, setRoleState] = useState<Role>('Doctor');
   const [name, setNameState] = useState('');
@@ -475,7 +478,7 @@ export function useOwnerAccess() {
     }
 
     const partialNotice =
-      usersQuery.isError || auditLogsQuery.isError || appointmentsQuery.isError
+      usersQuery.isError || (canReadAuditLogs && auditLogsQuery.isError) || appointmentsQuery.isError
         ? "Some staff feeds failed and partial access data is being shown."
         : null;
     return staffUsers.length ? readyLoadState(partialNotice) : emptyLoadState(partialNotice);
@@ -483,6 +486,7 @@ export function useOwnerAccess() {
     appointmentsQuery.error,
     appointmentsQuery.isError,
     appointmentsQuery.isPending,
+    canReadAuditLogs,
     auditLogsQuery.error,
     auditLogsQuery.isError,
     auditLogsQuery.isPending,

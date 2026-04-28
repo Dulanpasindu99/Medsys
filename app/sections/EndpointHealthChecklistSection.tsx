@@ -699,7 +699,7 @@ const ENDPOINTS: EndpointChecklistItem[] = [
     category: 'tasks-audit',
     method: 'GET',
     path: '/api/audit/logs',
-    guard: 'ai.workspace.view OR owner.workspace.view',
+    guard: 'assistant.workspace.view OR ai.workspace.view OR owner.workspace.view',
     purpose: 'Audit trail feed.',
     expected: { owner: '200', doctor: '200', assistant: '200', anonymous: '401' },
     primaryOwner: 'BE',

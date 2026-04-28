@@ -10,6 +10,7 @@ import {
   useAnalyticsOverviewQuery,
   useAppointmentsQuery,
   useAuditLogsQuery,
+  useCurrentUserQuery,
   usePatientsQuery,
 } from "../../../lib/query-hooks";
 
@@ -24,10 +25,20 @@ function toString(value: unknown, fallback = "") {
 }
 
 export function useAiInsightsData() {
+  const currentUserQuery = useCurrentUserQuery();
   const overviewQuery = useAnalyticsOverviewQuery();
   const patientsQuery = usePatientsQuery({ scope: "organization" });
   const appointmentsQuery = useAppointmentsQuery();
-  const auditLogsQuery = useAuditLogsQuery({ limit: 20 });
+  const explicitPermissions = Array.isArray(currentUserQuery.data?.permissions)
+    ? currentUserQuery.data.permissions
+    : [];
+  const activeRole = currentUserQuery.data?.active_role ?? currentUserQuery.data?.role ?? null;
+  const canLoadAuditLogs =
+    explicitPermissions.includes("ai.workspace.view") ||
+    explicitPermissions.includes("owner.workspace.view") ||
+    explicitPermissions.includes("assistant.workspace.view") ||
+    activeRole === "owner";
+  const auditLogsQuery = useAuditLogsQuery({ limit: 20 }, canLoadAuditLogs);
 
   const overview = overviewQuery.data ?? null;
   const patients = useMemo<ApiRecord[]>(() => patientsQuery.data ?? [], [patientsQuery.data]);
@@ -46,23 +57,24 @@ export function useAiInsightsData() {
     overviewQuery.status,
     patientsQuery.status,
     appointmentsQuery.status,
-    auditLogsQuery.status,
+    canLoadAuditLogs ? auditLogsQuery.status : "success",
   ].filter((status) => status === "error").length;
   const firstError =
     overviewQuery.error ??
     patientsQuery.error ??
     appointmentsQuery.error ??
-    auditLogsQuery.error;
+    (canLoadAuditLogs ? auditLogsQuery.error : null);
   const isFetching =
     overviewQuery.isFetching ||
     patientsQuery.isFetching ||
     appointmentsQuery.isFetching ||
-    auditLogsQuery.isFetching;
+    (canLoadAuditLogs ? auditLogsQuery.isFetching : false);
   const isPending =
+    currentUserQuery.isPending ||
     overviewQuery.isPending ||
     patientsQuery.isPending ||
     appointmentsQuery.isPending ||
-    auditLogsQuery.isPending;
+    (canLoadAuditLogs ? auditLogsQuery.isPending : false);
 
   let loadState: LoadState;
   if ((isPending || isFetching) && !hasData) {
@@ -124,10 +136,11 @@ export function useAiInsightsData() {
     loadState,
     reload: async () => {
       await Promise.all([
+        currentUserQuery.refetch(),
         overviewQuery.refetch(),
         patientsQuery.refetch(),
         appointmentsQuery.refetch(),
-        auditLogsQuery.refetch(),
+        ...(canLoadAuditLogs ? [auditLogsQuery.refetch()] : []),
       ]);
     },
   };

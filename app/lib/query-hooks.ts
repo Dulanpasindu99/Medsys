@@ -175,10 +175,11 @@ export function useInventoryMovementsQuery(inventoryId: number | string, enabled
   });
 }
 
-export function useAuditLogsQuery(input?: { limit?: number }) {
+export function useAuditLogsQuery(input?: { limit?: number }, enabled = true) {
   return useQuery({
     queryKey: queryKeys.audit.logs(input?.limit),
     queryFn: () => listAuditLogs(input),
+    enabled,
   });
 }
 
