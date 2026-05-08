@@ -85,6 +85,8 @@ export default function DoctorSection() {
     allergyFeedback,
     handleAddOrUpdateAllergy,
     removeConsultationAllergy,
+    handleClearPatientActions,
+    canClearPatientActions,
     canSaveRecord,
     saveDisabledReason,
     selectedAppointmentStatus,
@@ -139,6 +141,8 @@ export default function DoctorSection() {
                 onOpenPatientHistory={() =>
                   popup.openProfile(selectedPatientProfileId)
                 }
+                onClearPatientActions={handleClearPatientActions}
+                canClearPatientActions={canClearPatientActions}
                 patientVitals={patientVitals}
                 latestVitalsObservedAt={latestVitalsObservedAt}
                 patientAllergies={patientAllergies}

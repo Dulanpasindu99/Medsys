@@ -20,7 +20,6 @@ describe("RxEditor", () => {
           source: "Clinical",
         }}
         filteredDrugSuggestions={["Amoxicillin"]}
-        onOpenClinical={vi.fn()}
         onOpenNotes={vi.fn()}
         onDrugFormChange={onDrugFormChange}
         onAddClinicalDrug={vi.fn()}
@@ -55,7 +54,6 @@ describe("RxEditor", () => {
           source: "Outside",
         }}
         filteredDrugSuggestions={[]}
-        onOpenClinical={vi.fn()}
         onOpenNotes={vi.fn()}
         onDrugFormChange={vi.fn()}
         onAddClinicalDrug={vi.fn()}
@@ -90,7 +88,6 @@ describe("RxEditor", () => {
           source: "Clinical",
         }}
         filteredDrugSuggestions={[]}
-        onOpenClinical={vi.fn()}
         onOpenNotes={vi.fn()}
         onDrugFormChange={vi.fn()}
         onAddClinicalDrug={onAddClinicalDrug}

@@ -154,6 +154,19 @@ export function DoctorWorkspace({
   const [activeTab, setActiveTab] = useState<
     "clinical" | "prescription" | "notes"
   >("clinical");
+  const summaryDiagnoses = clinicalWorkflow.selectedDiseases
+    .map((entry) => entry.display)
+    .filter((entry) => entry.trim().length > 0);
+  const summaryTests = clinicalWorkflow.selectedTests
+    .map((entry) => entry.display)
+    .filter((entry) => entry.trim().length > 0);
+  const summaryPrescriptions = clinicalWorkflow.rxRows.map((row) => ({
+    drug: row.drug,
+    dose: row.dose,
+    terms: row.terms,
+    amount: row.amount,
+    source: row.source,
+  }));
 
   return (
     <div className="order-1 col-span-12 flex h-auto min-h-0 flex-col lg:col-span-8 lg:h-full 2xl:col-span-9">
@@ -215,7 +228,7 @@ export function DoctorWorkspace({
           {[
             { key: "clinical", label: "Clinical" },
             { key: "prescription", label: "Prescription" },
-            { key: "notes", label: "Notes" },
+            { key: "notes", label: "Complete" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -238,11 +251,11 @@ export function DoctorWorkspace({
           {activeTab === "clinical" ? (
             <DiseaseSearch
               onOpenPrescription={() => setActiveTab("prescription")}
-              onOpenNotes={() => setActiveTab("notes")}
               diseaseQuery={clinicalWorkflow.diseaseQuery}
               setDiseaseQuery={clinicalWorkflow.setDiseaseQuery}
               handleDiseaseKeyDown={clinicalWorkflow.handleDiseaseKeyDown}
               isFetchingDiseases={clinicalWorkflow.isFetchingDiseases}
+              diseaseSearchFeedback={clinicalWorkflow.diseaseSearchFeedback}
               diseaseSuggestions={clinicalWorkflow.diseaseSuggestions}
               highlightedDiseaseIndex={clinicalWorkflow.highlightedDiseaseIndex}
               addDisease={clinicalWorkflow.addDisease}
@@ -274,7 +287,6 @@ export function DoctorWorkspace({
 
           {activeTab === "prescription" ? (
             <RxEditor
-              onOpenClinical={() => setActiveTab("clinical")}
               onOpenNotes={() => setActiveTab("notes")}
               rxRows={clinicalWorkflow.rxRows}
               drugDraftFeedback={clinicalWorkflow.drugDraftFeedback}
@@ -309,8 +321,6 @@ export function DoctorWorkspace({
 
           {activeTab === "notes" ? (
             <VisitPlanner
-              onOpenClinical={() => setActiveTab("clinical")}
-              onOpenPrescription={() => setActiveTab("prescription")}
               nextVisitOption={visitPlanner.nextVisitOption}
               nextVisitDate={visitPlanner.nextVisitDate}
               notes={visitPlanner.notes}
@@ -333,6 +343,9 @@ export function DoctorWorkspace({
               saveDisabledReason={saveDisabledReason}
               saveFeedback={saveFeedback}
               isSavingRecord={saveState?.status === "pending"}
+              summaryDiagnoses={summaryDiagnoses}
+              summaryTests={summaryTests}
+              summaryPrescriptions={summaryPrescriptions}
             />
           ) : null}
         </div>

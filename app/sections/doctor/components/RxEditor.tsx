@@ -41,7 +41,6 @@ const FREQUENCY_OPTIONS: Array<{
 ];
 
 type RxEditorProps = {
-  onOpenClinical: () => void;
   onOpenNotes: () => void;
   rxRows: ClinicalDrug[];
   drugDraftFeedback?: string | null;
@@ -61,7 +60,6 @@ type RxEditorProps = {
 };
 
 export function RxEditor({
-  onOpenClinical,
   onOpenNotes,
   rxRows,
   drugDraftFeedback = null,
@@ -409,27 +407,11 @@ export function RxEditor({
       <div className="flex flex-wrap justify-end gap-2 pt-1">
         <button
           type="button"
-          onClick={onOpenClinical}
-          className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700 transition hover:bg-sky-100"
-        >
-          Clinical
-        </button>
-        <button
-          type="button"
           onClick={onOpenNotes}
-          className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:bg-amber-100"
+          className="rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-slate-800"
         >
-          Notes
+          Next
         </button>
-        {rxRows.length > 0 ? (
-          <button
-            type="button"
-            onClick={onOpenNotes}
-            className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-100"
-          >
-            Next: Consultation Save
-          </button>
-        ) : null}
       </div>
     </div>
   );

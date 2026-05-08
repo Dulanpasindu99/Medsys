@@ -158,7 +158,7 @@ function getResolvedPrescriptionId(value: unknown): number | null {
 }
 
 function buildPrescriptionPrintHtml(input: {
-  prescriptionId: number;
+  prescriptionId: number | string;
   patientName: string;
   patientCode?: string;
   nic?: string;
@@ -1362,6 +1362,40 @@ export function useDoctorWorkspaceData(
       hasPermission(currentUserQuery.data, "appointment.update") &&
       (selectedPatientId !== null || hasValidDraftPatient)
   );
+  const canClearPatientActions = Boolean(
+    search.trim() ||
+      patientName.trim() ||
+      patientFirstName.trim() ||
+      patientLastName.trim() ||
+      patientDateOfBirth.trim() ||
+      patientCode.trim() ||
+      nicNumber.trim() ||
+      phoneNumber.trim() ||
+      guardianName.trim() ||
+      guardianNic.trim() ||
+      guardianPhone.trim() ||
+      guardianRelationship.trim() ||
+      selectedPatientId !== null ||
+      consultationAllergies.length > 0 ||
+      allergyDraftName.trim() ||
+      vitalDrafts.bloodPressure.trim() ||
+      vitalDrafts.heartRate.trim() ||
+      vitalDrafts.temperature.trim() ||
+      vitalDrafts.spo2.trim() ||
+      clinicalWorkflow.selectedDiseases.length > 0 ||
+      clinicalWorkflow.selectedTests.length > 0 ||
+      clinicalWorkflow.rxRows.length > 0 ||
+      visitPlanner.notes.trim()
+  );
+  const hasPrintableContent = Boolean(
+    selectedPatientId !== null ||
+      patientName.trim().length > 0 ||
+      patientFirstName.trim().length > 0 ||
+      patientLastName.trim().length > 0 ||
+      clinicalWorkflow.selectedDiseases.length > 0 ||
+      clinicalWorkflow.selectedTests.length > 0 ||
+      clinicalWorkflow.rxRows.length > 0
+  );
   const isCreatingPatientInline = Boolean(selectedPatientId === null && hasDraftPatient);
   const canEditVitals = selectedPatientId !== null || isCreatingPatientInline;
   const canEditAllergies = selectedPatientId !== null || isCreatingPatientInline;
@@ -1674,6 +1708,61 @@ export function useDoctorWorkspaceData(
     clearAllergySaveState();
   };
 
+  const clearClinicalWorkflowDraft = () => {
+    if ("resetDraft" in clinicalWorkflow) {
+      const resetDraft = (clinicalWorkflow as unknown as { resetDraft?: () => void }).resetDraft;
+      if (typeof resetDraft === "function") {
+        resetDraft();
+        return;
+      }
+    }
+
+    if (typeof clinicalWorkflow.setRxRows === "function") {
+      clinicalWorkflow.setRxRows([]);
+    }
+    if (typeof clinicalWorkflow.updateClinicalDrugForm === "function") {
+      clinicalWorkflow.updateClinicalDrugForm({
+        name: "",
+        doseValue: "",
+        doseUnit: "mg",
+        frequencyCode: "TDS",
+        amount: "",
+        source: "Clinical",
+      });
+    }
+    if (typeof clinicalWorkflow.setDiseaseQuery === "function") {
+      clinicalWorkflow.setDiseaseQuery("");
+    }
+    if (typeof clinicalWorkflow.setTestQuery === "function") {
+      clinicalWorkflow.setTestQuery("");
+    }
+  };
+
+  const clearVisitPlannerDraft = () => {
+    if (typeof visitPlanner.setNotes === "function") {
+      visitPlanner.setNotes("");
+    }
+    if (typeof visitPlanner.setNextVisitDate === "function") {
+      visitPlanner.setNextVisitDate("");
+    }
+  };
+
+  const clearPatientActionsState = (options?: { preserveSaveFeedback?: boolean }) => {
+    clearSelectedPatientContext();
+    clearPatientLookupNotice();
+    setSearchState("");
+    setLastClinicalItemCount(0);
+    setLastOutsideItemCount(0);
+    setLastSavedPrescriptionId(null);
+    setWorkflowStatusLabel(null);
+    setDispenseStatusLabel(null);
+    if (!options?.preserveSaveFeedback) {
+      setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
+    }
+    clearClinicalWorkflowDraft();
+    clearVisitPlannerDraft();
+  };
+
   const handlePatientSelect = useCallback((patient: Patient) => {
     const identityField = resolveIdentityField(patient);
     setSaveState((current) => (current.status === "idle" ? current : idleMutationState()));
@@ -1856,16 +1945,20 @@ export function useDoctorWorkspaceData(
   };
 
   const handlePrintPrescription = async () => {
-    if (lastSavedPrescriptionId === null || typeof window === "undefined") {
-      setSaveState(errorMutationState("Save a consultation with prescription items before printing."));
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!hasPrintableContent && lastSavedPrescriptionId === null) {
+      setSaveState(
+        errorMutationState(
+          "Add patient details, diagnosis, tests, or prescription items before printing."
+        )
+      );
       return;
     }
 
     try {
-      const detail = await getPrescriptionById(lastSavedPrescriptionId);
-      const detailRecord = asRecord(detail) ?? {};
-      const detailPatient = asRecord(detailRecord.patient) ?? null;
-      const itemRows = asArray(detailRecord.items ?? detailRecord.prescriptionItems ?? detailRecord.drugs);
       const diagnosisText =
         clinicalWorkflow.selectedDiseases
           .map((entry) =>
@@ -1883,31 +1976,72 @@ export function useDoctorWorkspaceData(
         return;
       }
 
-      const html = buildPrescriptionPrintHtml({
-        prescriptionId: lastSavedPrescriptionId,
-        patientName:
-          getString(detailPatient?.name ?? detailRecord.patientName).trim() || patientName.trim() || "-",
-        patientCode:
-          getString(detailPatient?.patient_code ?? detailRecord.patientCode ?? detailRecord.patient_code).trim() ||
-          patientCode.trim(),
-        nic:
-          getString(detailPatient?.nic ?? detailRecord.nic ?? detailRecord.patientNic ?? detailRecord.patient_nic).trim() ||
-          nicNumber.trim(),
-        diagnosis: diagnosisText,
-        tests: orderedTests,
-        notes: visitPlanner.notes.trim() || undefined,
-        doctorName: currentUserQuery.data?.name ?? "Doctor",
-        issuedAt: getDateTimeLabel(
-          detailRecord.issuedAt ?? detailRecord.createdAt ?? detailRecord.updatedAt ?? new Date().toISOString()
-        ),
-        items: itemRows.map((item, index) => ({
-          name: getString(item.drugName ?? item.name, `Drug ${index + 1}`),
-          dose: getString(item.dose, "-"),
-          frequency: getString(item.frequency ?? item.terms ?? item.duration, "-"),
-          quantity: getString(item.quantity ?? item.amount, "-"),
-          source: getString(item.source ?? item.drugSource, "clinical"),
-        })),
-      });
+      let html: string;
+      if (lastSavedPrescriptionId !== null) {
+        const detail = await getPrescriptionById(lastSavedPrescriptionId);
+        const detailRecord = asRecord(detail) ?? {};
+        const detailPatient = asRecord(detailRecord.patient) ?? null;
+        const itemRows = asArray(
+          detailRecord.items ?? detailRecord.prescriptionItems ?? detailRecord.drugs
+        );
+
+        html = buildPrescriptionPrintHtml({
+          prescriptionId: lastSavedPrescriptionId,
+          patientName:
+            getString(detailPatient?.name ?? detailRecord.patientName).trim() ||
+            patientName.trim() ||
+            "-",
+          patientCode:
+            getString(
+              detailPatient?.patient_code ??
+                detailRecord.patientCode ??
+                detailRecord.patient_code
+            ).trim() || patientCode.trim(),
+          nic:
+            getString(
+              detailPatient?.nic ??
+                detailRecord.nic ??
+                detailRecord.patientNic ??
+                detailRecord.patient_nic
+            ).trim() || nicNumber.trim(),
+          diagnosis: diagnosisText,
+          tests: orderedTests,
+          notes: visitPlanner.notes.trim() || undefined,
+          doctorName: currentUserQuery.data?.name ?? "Doctor",
+          issuedAt: getDateTimeLabel(
+            detailRecord.issuedAt ??
+              detailRecord.createdAt ??
+              detailRecord.updatedAt ??
+              new Date().toISOString()
+          ),
+          items: itemRows.map((item, index) => ({
+            name: getString(item.drugName ?? item.name, `Drug ${index + 1}`),
+            dose: getString(item.dose, "-"),
+            frequency: getString(item.frequency ?? item.terms ?? item.duration, "-"),
+            quantity: getString(item.quantity ?? item.amount, "-"),
+            source: getString(item.source ?? item.drugSource, "clinical"),
+          })),
+        });
+      } else {
+        html = buildPrescriptionPrintHtml({
+          prescriptionId: "DRAFT",
+          patientName: patientName.trim() || "-",
+          patientCode: patientCode.trim(),
+          nic: nicNumber.trim(),
+          diagnosis: diagnosisText,
+          tests: orderedTests,
+          notes: visitPlanner.notes.trim() || undefined,
+          doctorName: currentUserQuery.data?.name ?? "Doctor",
+          issuedAt: getDateTimeLabel(new Date().toISOString()),
+          items: clinicalWorkflow.rxRows.map((row, index) => ({
+            name: getString(row.drug, `Drug ${index + 1}`),
+            dose: getString(row.dose, "-"),
+            frequency: getString(row.terms, "-"),
+            quantity: getString(row.amount, "-"),
+            source: getString(row.source, "clinical"),
+          })),
+        });
+      }
 
       popup.document.open();
       popup.document.write(html);
@@ -2226,6 +2360,8 @@ export function useDoctorWorkspaceData(
       } else if (selectedPatientId) {
         await refreshSelectedPatientDetails();
       }
+
+      clearPatientActionsState({ preserveSaveFeedback: true });
     } catch (error) {
       setSaveState(
         errorMutationState((error as ApiClientError)?.message ?? "Failed to save consultation.")
@@ -2378,6 +2514,10 @@ export function useDoctorWorkspaceData(
     setAllergyDraftSeverity("moderate");
   };
 
+  const handleClearPatientActions = () => {
+    clearPatientActionsState();
+  };
+
   const saveFeedback = getMutationFeedback(saveState, {
     pendingMessage: "Saving consultation...",
     errorMessage: "Failed to save consultation.",
@@ -2488,6 +2628,8 @@ export function useDoctorWorkspaceData(
           (entry) => normalizeLookupValue(entry.allergyName) !== normalizeLookupValue(allergyName)
         )
       ),
+    handleClearPatientActions,
+    canClearPatientActions,
     queueState,
     patientDetailsState,
     canSaveRecord,
@@ -2502,7 +2644,7 @@ export function useDoctorWorkspaceData(
     dispenseStatusLabel,
     lastClinicalItemCount,
     lastOutsideItemCount,
-    canPrintPrescription: lastSavedPrescriptionId !== null,
+    canPrintPrescription: hasPrintableContent,
     canDirectDispense,
     directDispenseDisabledReason,
     saveState,

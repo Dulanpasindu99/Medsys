@@ -552,7 +552,7 @@ describe("useDoctorWorkspaceData", () => {
         }),
       })
     );
-    expect(result.current.selectedPatientProfileId).toBe("55");
+    expect(result.current.selectedPatientProfileId).toBeNull();
   });
 
   it("sends the selected family id for non-minor quick-create patients", async () => {

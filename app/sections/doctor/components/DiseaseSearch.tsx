@@ -7,11 +7,11 @@ import type {
 
 type DiseaseSearchProps = {
   onOpenPrescription: () => void;
-  onOpenNotes: () => void;
   diseaseQuery: string;
   setDiseaseQuery: (value: string) => void;
   handleDiseaseKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   isFetchingDiseases: boolean;
+  diseaseSearchFeedback: string | null;
   diseaseSuggestions: ClinicalDiagnosisOption[];
   highlightedDiseaseIndex: number;
   addDisease: (disease: ClinicalDiagnosisOption) => void;
@@ -36,11 +36,11 @@ type DiseaseSearchProps = {
 
 export function DiseaseSearch({
   onOpenPrescription,
-  onOpenNotes,
   diseaseQuery,
   setDiseaseQuery,
   handleDiseaseKeyDown,
   isFetchingDiseases,
+  diseaseSearchFeedback,
   diseaseSuggestions,
   highlightedDiseaseIndex,
   addDisease,
@@ -100,6 +100,9 @@ export function DiseaseSearch({
             </div>
           )}
         </div>
+        {diseaseSearchFeedback ? (
+          <p className="ml-1 text-sm font-semibold text-amber-700">{diseaseSearchFeedback}</p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           {selectedDiseases.map((d) => {
             const isPending = chipsPendingRemoval.has(d.code);
@@ -236,23 +239,9 @@ export function DiseaseSearch({
         <button
           type="button"
           onClick={onOpenPrescription}
-          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700 transition hover:bg-emerald-100"
+          className="rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-slate-800"
         >
-          Prescription
-        </button>
-        <button
-          type="button"
-          onClick={onOpenNotes}
-          className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700 transition hover:bg-amber-100"
-        >
-          Notes
-        </button>
-        <button
-          type="button"
-          onClick={onOpenNotes}
-          className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700 transition hover:bg-sky-100"
-        >
-          Next: Consultation Save
+          Next
         </button>
       </div>
     </div>

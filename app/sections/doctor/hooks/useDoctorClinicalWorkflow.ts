@@ -76,6 +76,12 @@ function readFreshCache<T>(cache: Map<string, CacheEntry<T>>, key: string) {
   return entry.data;
 }
 
+function parseHttpStatus(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  const status = Number(message);
+  return Number.isFinite(status) ? status : null;
+}
+
 async function fetchDiagnosisSuggestionsCached(query: string, signal: AbortSignal) {
   const cacheKey = `${query}:${CLINICAL_RESULT_LIMIT}`;
   const cached = readFreshCache(diagnosisSearchCache, cacheKey);
@@ -350,8 +356,10 @@ export function useDoctorClinicalWorkflow() {
         setHighlightedTestIndex(suggestions.length ? 0 : -1);
       } catch (error) {
         if (!controller.signal.aborted) {
-          const status = error instanceof Error ? error.message : "";
-          if (status === "503") {
+          const status = parseHttpStatus(error);
+          if (status === 401 || status === 403) {
+            setTestSearchFeedback("Session expired. Sign in again to search medical tests.");
+          } else if (status === 503) {
             setTestSearchFeedback("Medical test search is temporarily unavailable. Try again shortly.");
           } else {
             console.error("Error fetching medical test suggestions", error);
@@ -452,6 +460,7 @@ export function useDoctorClinicalWorkflow() {
   const [diseaseQuery, setDiseaseQuery] = useState("");
   const [debouncedDiseaseQuery, setDebouncedDiseaseQuery] = useState("");
   const [diseaseSuggestions, setDiseaseSuggestions] = useState<ClinicalDiagnosisOption[]>([]);
+  const [diseaseSearchFeedback, setDiseaseSearchFeedback] = useState<string | null>(null);
   const [recommendedTests, setRecommendedTests] = useState<ClinicalTestOption[]>([]);
   const [highlightedDiseaseIndex, setHighlightedDiseaseIndex] = useState(-1);
   const [isFetchingDiseases, setIsFetchingDiseases] = useState(false);
@@ -470,6 +479,7 @@ export function useDoctorClinicalWorkflow() {
     const q = debouncedDiseaseQuery.trim();
     if (q.length < CLINICAL_SEARCH_MIN_CHARS) {
       setDiseaseSuggestions([]);
+      setDiseaseSearchFeedback(null);
       setHighlightedDiseaseIndex(-1);
       return;
     }
@@ -478,14 +488,20 @@ export function useDoctorClinicalWorkflow() {
     const fetchSuggestions = async () => {
       try {
         setIsFetchingDiseases(true);
+        setDiseaseSearchFeedback(null);
         const suggestions = await fetchDiagnosisSuggestionsCached(q, controller.signal);
         setDiseaseSuggestions(suggestions);
         setHighlightedDiseaseIndex(suggestions.length ? 0 : -1);
       } catch (error) {
         if (!controller.signal.aborted) {
-          const status = error instanceof Error ? error.message : "";
-          if (status !== "503") {
+          const status = parseHttpStatus(error);
+          if (status === 401 || status === 403) {
+            setDiseaseSearchFeedback("Session expired. Sign in again to search diagnoses.");
+          } else if (status === 503) {
+            setDiseaseSearchFeedback("Diagnosis search is temporarily unavailable. Try again shortly.");
+          } else {
             console.error("Error fetching disease suggestions", error);
+            setDiseaseSearchFeedback("Unable to load diagnosis suggestions right now.");
           }
           setHighlightedDiseaseIndex(-1);
         }
@@ -673,6 +689,39 @@ export function useDoctorClinicalWorkflow() {
     }
   };
 
+  const resetDraft = () => {
+    setRxRows([]);
+    setDrugDraftFeedback(null);
+    setClinicalDrugForm({
+      name: "",
+      doseValue: "",
+      doseUnit: "mg",
+      frequencyCode: "TDS",
+      amount: "",
+      source: "Clinical",
+    });
+
+    setSelectedDiseases([]);
+    setPersistedConditionDiagnoses(new Set());
+    setDiseaseQuery("");
+    setDebouncedDiseaseQuery("");
+    setDiseaseSuggestions([]);
+    setDiseaseSearchFeedback(null);
+    setRecommendedTests([]);
+    setHighlightedDiseaseIndex(-1);
+    setIsFetchingDiseases(false);
+    setChipsPendingRemoval(new Set());
+
+    setSelectedTests([]);
+    setTestQuery("");
+    setDebouncedTestQuery("");
+    setTestSuggestions([]);
+    setIsFetchingTests(false);
+    setTestSearchFeedback(null);
+    setHighlightedTestIndex(-1);
+    setTestChipsPendingRemoval(new Set());
+  };
+
   return {
     rxRows,
     setRxRows,
@@ -691,6 +740,7 @@ export function useDoctorClinicalWorkflow() {
     diseaseQuery,
     setDiseaseQuery,
     diseaseSuggestions,
+    diseaseSearchFeedback,
     highlightedDiseaseIndex,
     isFetchingDiseases,
     chipsPendingRemoval,
@@ -711,5 +761,6 @@ export function useDoctorClinicalWorkflow() {
     handleMedicalTestKeyDown,
     recommendedTests,
     addRecommendedTests,
+    resetDraft,
   };
 }

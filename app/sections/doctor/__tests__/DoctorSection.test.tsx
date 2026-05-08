@@ -206,6 +206,8 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     allergyFeedback: null,
     handleAddOrUpdateAllergy: vi.fn(),
     removeConsultationAllergy: vi.fn(),
+    handleClearPatientActions: vi.fn(),
+    canClearPatientActions: true,
     queueState: readyLoadState(),
     patientDetailsState: emptyLoadState(),
     canSaveRecord: true,
