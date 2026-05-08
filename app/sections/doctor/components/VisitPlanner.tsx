@@ -124,12 +124,9 @@ export function VisitPlanner({
   summaryTests = [],
   summaryPrescriptions = [],
 }: VisitPlannerProps) {
-  const diagnosisPreview = summaryDiagnoses.slice(0, 3);
-  const testPreview = summaryTests.slice(0, 3);
-  const prescriptionPreview = summaryPrescriptions.slice(0, 3);
-  const diagnosisOverflow = Math.max(0, summaryDiagnoses.length - diagnosisPreview.length);
-  const testOverflow = Math.max(0, summaryTests.length - testPreview.length);
-  const prescriptionOverflow = Math.max(0, summaryPrescriptions.length - prescriptionPreview.length);
+  const diagnosisPreview = summaryDiagnoses;
+  const testPreview = summaryTests;
+  const prescriptionPreview = summaryPrescriptions;
 
   return (
     <div className="flex min-h-full flex-col gap-3">
@@ -233,7 +230,9 @@ export function VisitPlanner({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div
+            className="max-h-[280px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#94a3b8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 hover:[&::-webkit-scrollbar-thumb]:bg-slate-500/80 xl:max-h-[300px]"
+          >
             <div className="rounded-xl border border-slate-200 bg-white p-2.5">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Diagnosis</p>
               {diagnosisPreview.length > 0 ? (
@@ -250,9 +249,6 @@ export function VisitPlanner({
               ) : (
                 <p className="mt-1.5 text-[11px] text-slate-500">No diagnosis selected yet.</p>
               )}
-              {diagnosisOverflow > 0 ? (
-                <p className="mt-1 text-[10px] font-semibold text-slate-500">+{diagnosisOverflow} more</p>
-              ) : null}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-2.5">
@@ -271,9 +267,6 @@ export function VisitPlanner({
               ) : (
                 <p className="mt-1.5 text-[11px] text-slate-500">No tests selected yet.</p>
               )}
-              {testOverflow > 0 ? (
-                <p className="mt-1 text-[10px] font-semibold text-slate-500">+{testOverflow} more</p>
-              ) : null}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-2.5">
@@ -292,9 +285,6 @@ export function VisitPlanner({
               ) : (
                 <p className="mt-1.5 text-[11px] text-slate-500">No medicines added yet.</p>
               )}
-              {prescriptionOverflow > 0 ? (
-                <p className="mt-1 text-[10px] font-semibold text-slate-500">+{prescriptionOverflow} more</p>
-              ) : null}
             </div>
           </div>
         </div>

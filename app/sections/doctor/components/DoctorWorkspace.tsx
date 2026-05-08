@@ -247,7 +247,11 @@ export function DoctorWorkspace({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-visible lg:overflow-y-auto lg:pr-1">
+        <div
+          className={`min-h-0 flex-1 overflow-visible ${
+            activeTab === "notes" ? "lg:overflow-visible lg:pr-0" : "lg:overflow-y-auto lg:pr-1"
+          }`}
+        >
           {activeTab === "clinical" ? (
             <DiseaseSearch
               onOpenPrescription={() => setActiveTab("prescription")}
