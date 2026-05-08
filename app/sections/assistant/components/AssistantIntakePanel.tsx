@@ -109,8 +109,30 @@ export function AssistantIntakePanel({
 }: AssistantIntakePanelProps) {
   const age = calculateAge(formState.dateOfBirth);
   const isMinor = age !== null && age < 18;
-  const selectedFamily = familyOptions.find(
-    (family) => String(family.id) === formState.guardian.familyId,
+  const selectedGuardianPatient = patientOptions.find(
+    (patient) => String(patient.id) === formState.guardian.guardianPatientId,
+  );
+  const selectedFamilyId = Number(formState.guardian.familyId);
+  const hasSelectedFamily =
+    formState.guardian.familyId.trim().length > 0 &&
+    Number.isFinite(selectedFamilyId);
+  const guardianPatientOptions = hasSelectedFamily
+    ? patientOptions.filter((patient) => patient.familyId === selectedFamilyId)
+    : [];
+  const selectedFamily =
+    familyOptions.find((family) => String(family.id) === formState.guardian.familyId) ??
+    (selectedGuardianPatient?.familyId &&
+    String(selectedGuardianPatient.familyId) === formState.guardian.familyId
+      ? {
+          id: selectedGuardianPatient.familyId,
+          name:
+            selectedGuardianPatient.familyName ??
+            `Family #${selectedGuardianPatient.familyId}`,
+          familyCode: selectedGuardianPatient.familyCode,
+        }
+      : undefined);
+  const isFamilyLockedToGuardian = Boolean(
+    formState.guardian.guardianPatientId && selectedGuardianPatient?.familyId,
   );
   const assistantFieldSx = {
     ...appMuiSelectSx,
@@ -253,17 +275,32 @@ export function AssistantIntakePanel({
                 <Select
                   value={formState.guardian.familyId}
                   displayEmpty
-                  disabled={!canCreatePatients}
+                  disabled={!canCreatePatients || isFamilyLockedToGuardian}
                   onChange={(event: SelectChangeEvent) =>
                     setFormState((prev) => ({
-                      ...prev,
-                      guardian: {
-                        ...prev.guardian,
-                        familyId: event.target.value,
-                        familyCode: event.target.value
-                          ? ""
-                          : prev.guardian.familyCode,
-                      },
+                      ...(() => {
+                        const nextFamilyId = event.target.value;
+                        const linkedGuardian = patientOptions.find(
+                          (patient) => String(patient.id) === prev.guardian.guardianPatientId,
+                        );
+                        const keepLinkedGuardian =
+                          !!nextFamilyId &&
+                          !!linkedGuardian?.familyId &&
+                          String(linkedGuardian.familyId) === nextFamilyId;
+                        return {
+                          ...prev,
+                          guardian: {
+                            ...prev.guardian,
+                            familyId: nextFamilyId,
+                            familyCode: nextFamilyId
+                              ? ""
+                              : prev.guardian.familyCode,
+                            guardianPatientId: keepLinkedGuardian
+                              ? prev.guardian.guardianPatientId
+                              : "",
+                          },
+                        };
+                      })(),
                     }))
                   }
                   renderValue={(selected) => {
@@ -426,10 +463,10 @@ export function AssistantIntakePanel({
               <Select
                 value={formState.guardian.guardianPatientId}
                 displayEmpty
-                disabled={!canCreatePatients}
+                disabled={!canCreatePatients || !hasSelectedFamily}
                 onChange={(event: SelectChangeEvent) => {
                   const selectedId = event.target.value;
-                  const selectedGuardian = patientOptions.find(
+                  const selectedGuardian = guardianPatientOptions.find(
                     (patient) => String(patient.id) === selectedId,
                   );
                   setFormState((prev) => ({
@@ -455,11 +492,13 @@ export function AssistantIntakePanel({
                   if (!selected) {
                     return (
                       <span className="text-slate-400">
-                        Link existing guardian patient (recommended)
+                        {hasSelectedFamily
+                          ? "Link guardian from selected family"
+                          : "Select family first to load guardian list"}
                       </span>
                     );
                   }
-                  const patient = patientOptions.find(
+                  const patient = guardianPatientOptions.find(
                     (entry) => String(entry.id) === selected,
                   );
                   return patient
@@ -469,9 +508,11 @@ export function AssistantIntakePanel({
                 sx={assistantFieldSx}
               >
                 <MenuItem value="">
-                  Link existing guardian patient (recommended)
+                  {hasSelectedFamily
+                    ? "Link guardian from selected family"
+                    : "Select family first to load guardian list"}
                 </MenuItem>
-                {patientOptions.map((patient) => (
+                {guardianPatientOptions.map((patient) => (
                   <MenuItem key={patient.id} value={String(patient.id)}>
                     {patient.name} |{" "}
                     {patient.patientCode ||

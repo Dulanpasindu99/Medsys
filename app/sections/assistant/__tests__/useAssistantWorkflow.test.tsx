@@ -411,6 +411,83 @@ describe("useAssistantWorkflow", () => {
     ]);
   });
 
+  it("keeps family dropdown aligned with guardian-linked patients when families feed is incomplete", async () => {
+    mockedListPatients.mockResolvedValue([
+      {
+        ...buildPatientFixture({
+          id: 21,
+          name: "Ruwan Fernando",
+          nic: "911234567V",
+          age: 34,
+          gender: "male",
+        }),
+        family_id: null,
+        family: {
+          id: 402,
+          name: "Fernando Family",
+          family_code: "FAM-0402",
+        },
+      },
+    ]);
+    mockedListFamilies.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientOptions).toHaveLength(1);
+      expect(result.current.familyOptions).toHaveLength(1);
+    });
+
+    expect(result.current.patientOptions[0]).toEqual(
+      expect.objectContaining({
+        id: 21,
+        familyId: 402,
+        familyName: "Fernando Family",
+        familyCode: "FAM-0402",
+      })
+    );
+    expect(result.current.familyOptions[0]).toEqual({
+      id: 402,
+      name: "Fernando Family",
+      familyCode: "FAM-0402",
+    });
+  });
+
+  it("filters family dropdown to guardian-linked families when guardian options exist", async () => {
+    mockedListPatients.mockResolvedValue([
+      {
+        ...buildPatientFixture({
+          id: 31,
+          name: "Kavindu Silva",
+          nic: "931234567V",
+          age: 32,
+          gender: "male",
+        }),
+        family_id: 900,
+        family_name: "Silva Family",
+        family_code: "FAM-0900",
+      },
+    ]);
+    mockedListFamilies.mockResolvedValue([
+      { id: 900, name: "Silva Family", family_code: "FAM-0900" },
+      { id: 901, name: "Unlinked Family", family_code: "FAM-0901" },
+    ]);
+
+    const { result } = renderHook(() => useAssistantWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.patientOptions).toHaveLength(1);
+    });
+
+    expect(result.current.familyOptions).toEqual([
+      { id: 900, name: "Silva Family", familyCode: "FAM-0900" },
+    ]);
+  });
+
   it("adds allergies without keeping the default sentinel or duplicates", async () => {
     const { result } = renderHook(() => useAssistantWorkflow(), {
       wrapper: createQueryWrapper(),

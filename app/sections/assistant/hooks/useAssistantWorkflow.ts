@@ -502,13 +502,39 @@ function normalizePatientOptions(rawPatients: unknown): AssistantPatientOption[]
     if (id === null) {
       return;
     }
+    const familyRecord = asRecord(row.family);
+    const familyId =
+      toNumber(
+        row.family_id ??
+          row.familyId ??
+          familyRecord?.id ??
+          familyRecord?.family_id
+      ) ?? undefined;
+    const familyName =
+      toString(
+        row.family_name ??
+          row.familyName ??
+          familyRecord?.name ??
+          familyRecord?.familyName,
+        ""
+      ) || undefined;
+    const familyCode =
+      toString(
+        row.family_code ??
+          row.familyCode ??
+          familyRecord?.family_code ??
+          familyRecord?.familyCode,
+        ""
+      ) || undefined;
 
     normalized.push({
       id,
       name: toName(row, `Patient ${index + 1}`),
       patientCode: toString(row.patient_code, ""),
       nic: toString(row.nic, "No NIC"),
-      familyId: toNumber(row.family_id) ?? undefined,
+      familyId,
+      familyName,
+      familyCode,
       guardianName: toString(row.guardian_name, "") || undefined,
       guardianNic: toString(row.guardian_nic, "") || undefined,
     });
@@ -516,21 +542,72 @@ function normalizePatientOptions(rawPatients: unknown): AssistantPatientOption[]
   return normalized;
 }
 
-function normalizeFamilyOptions(rawFamilies: unknown): AssistantFamilyOption[] {
-  const normalized: AssistantFamilyOption[] = [];
+function normalizeFamilyOptions(
+  rawFamilies: unknown,
+  patientOptions: AssistantPatientOption[]
+): AssistantFamilyOption[] {
+  const familiesById = new Map<number, AssistantFamilyOption>();
+
   asArray(rawFamilies).forEach((row, index) => {
-    const id = toNumber(row.id ?? row.family_id);
+    const familyRecord = asRecord(row.family);
+    const id = toNumber(
+      row.id ??
+        row.family_id ??
+        row.familyId ??
+        familyRecord?.id ??
+        familyRecord?.family_id
+    );
     if (id === null) {
       return;
     }
+    const familyName = toString(
+      row.name ??
+        row.familyName ??
+        row.family_name ??
+        familyRecord?.name ??
+        familyRecord?.familyName,
+      `Family ${index + 1}`
+    );
+    const familyCode =
+      toString(
+        row.family_code ??
+          row.familyCode ??
+          familyRecord?.family_code ??
+          familyRecord?.familyCode,
+        ""
+      ) || undefined;
 
-    normalized.push({
+    familiesById.set(id, {
       id,
-      name: toString(row.name ?? row.familyName, `Family ${index + 1}`),
-      familyCode: toString(row.family_code ?? row.familyCode, "") || undefined,
+      name: familyName,
+      ...(familyCode ? { familyCode } : {}),
     });
   });
-  return normalized.sort((left, right) => left.name.localeCompare(right.name));
+
+  const guardianLinkedFamilies = new Map<number, AssistantFamilyOption>();
+  patientOptions.forEach((patient, index) => {
+    if (patient.familyId === undefined || guardianLinkedFamilies.has(patient.familyId)) {
+      return;
+    }
+
+    const fromFamiliesFeed = familiesById.get(patient.familyId);
+    const fallbackName =
+      patient.familyName?.trim() || fromFamiliesFeed?.name || `Family ${index + 1}`;
+    const fallbackCode = patient.familyCode?.trim() || fromFamiliesFeed?.familyCode || undefined;
+
+    guardianLinkedFamilies.set(patient.familyId, {
+      id: patient.familyId,
+      name: fallbackName,
+      ...(fallbackCode ? { familyCode: fallbackCode } : {}),
+    });
+  });
+
+  const source =
+    guardianLinkedFamilies.size > 0
+      ? Array.from(guardianLinkedFamilies.values())
+      : Array.from(familiesById.values());
+
+  return source.sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function normalizeStats(rawAnalytics: unknown, rawPatients: unknown) {
@@ -652,8 +729,8 @@ export function useAssistantWorkflow() {
     [rawPatients]
   );
   const familyOptions = useMemo(
-    () => normalizeFamilyOptions(familiesQuery.data ?? EMPTY_ROWS),
-    [familiesQuery.data]
+    () => normalizeFamilyOptions(familiesQuery.data ?? EMPTY_ROWS, patientOptions),
+    [familiesQuery.data, patientOptions]
   );
   const stats = useMemo(
     () => normalizeStats(analyticsOverviewQuery.data ?? {}, rawPatients),

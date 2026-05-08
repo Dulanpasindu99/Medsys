@@ -78,6 +78,8 @@ export type AssistantPatientOption = {
   patientCode: string;
   nic: string;
   familyId?: number;
+  familyName?: string;
+  familyCode?: string;
   guardianName?: string;
   guardianNic?: string;
 };

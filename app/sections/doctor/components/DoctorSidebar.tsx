@@ -173,7 +173,7 @@ export function DoctorSidebar({
                   <button
                     type="button"
                     onClick={onOpenPatientHistory}
-                    className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-50"
+                    className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-slate-400 bg-slate-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_10px_20px_rgba(71,85,105,0.26)] transition hover:-translate-y-0.5 hover:bg-slate-600"
                   >
                     View Patient History
                   </button>
