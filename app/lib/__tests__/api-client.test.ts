@@ -87,6 +87,58 @@ describe("api client backend compatibility", () => {
     );
   });
 
+  it("retries GET list requests on 429 and succeeds", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "Too Many Requests" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json", "Retry-After": "0" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ patients: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listPatients()).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("dedupes concurrent GET requests for the same endpoint", async () => {
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const fetchMock = vi.fn().mockImplementation(async () => {
+      await pending;
+      return new Response(
+        JSON.stringify({
+          patients: [{ id: 7, name: "Jane Doe", nic: "990011223V", age: 31, gender: "female" }],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = listPatients();
+    const second = listPatients();
+    release?.();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      [expect.objectContaining({ id: 7, name: "Jane Doe" })],
+      [expect.objectContaining({ id: 7, name: "Jane Doe" })],
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("sends the current frontend patient payload shape to the BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -656,6 +708,14 @@ describe("api client backend compatibility", () => {
     );
   });
 
+  it("skips inventory search requests when query is shorter than 2 characters", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(searchInventory({ q: "a", limit: 10 })).resolves.toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("loads inventory alerts through the dedicated BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -883,20 +943,22 @@ describe("api client backend compatibility", () => {
   it("preserves backend service failures with request metadata", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            message: "LOINC provider unavailable",
-            code: "SERVICE_UNAVAILABLE",
-            severity: "error",
-            userMessage: "LOINC provider unavailable",
-            requestId: "req-503",
-            statusCode: 503,
-          }),
-          {
-            status: 503,
-            headers: { "Content-Type": "application/json", "Retry-After": "30" },
-          }
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              message: "LOINC provider unavailable",
+              code: "SERVICE_UNAVAILABLE",
+              severity: "error",
+              userMessage: "LOINC provider unavailable",
+              requestId: "req-503",
+              statusCode: 503,
+            }),
+            {
+              status: 503,
+              headers: { "Content-Type": "application/json", "Retry-After": "30" },
+            }
+          )
         )
       )
     );

@@ -539,10 +539,80 @@ function expectApiRecordArray(value: unknown, label: string): ApiRecord[] {
   });
 }
 
+const RETRYABLE_GET_STATUSES = new Set([429, 502, 503, 504]);
+const MAX_GET_RETRIES = 2;
+const BASE_BACKOFF_MS = 250;
+const MAX_BACKOFF_MS = 1500;
+const INFLIGHT_GET_REQUESTS = new Map<string, Promise<unknown>>();
+
+function isRetryableGet(method: string, status: number) {
+  return (method === "GET" || method === "HEAD") && RETRYABLE_GET_STATUSES.has(status);
+}
+
+function computeRetryDelayMs(
+  retryAfterSeconds: number | undefined,
+  attempt: number
+) {
+  if (typeof retryAfterSeconds === "number" && Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Math.min(Math.ceil(retryAfterSeconds * 1000), MAX_BACKOFF_MS);
+  }
+
+  const exponential = BASE_BACKOFF_MS * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * 120);
+  return Math.min(exponential + jitter, MAX_BACKOFF_MS);
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function executeFetchWithRetry<T>(
+  url: string,
+  init: RequestInit,
+  method: string
+): Promise<T> {
+  let attempt = 0;
+  let lastError: unknown;
+
+  while (attempt <= MAX_GET_RETRIES) {
+    try {
+      const response = await fetch(url, init);
+
+      if (response.ok) {
+        if (response.status === 204) {
+          return null as T;
+        }
+        return (await response.json()) as T;
+      }
+
+      const parsed = (await parseApiError(response)) satisfies ApiClientError;
+      if (attempt < MAX_GET_RETRIES && isRetryableGet(method, parsed.status)) {
+        const waitMs = computeRetryDelayMs(parsed.retryAfterSeconds, attempt);
+        await delay(waitMs);
+        attempt += 1;
+        continue;
+      }
+      throw parsed;
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_GET_RETRIES && (method === "GET" || method === "HEAD")) {
+        const waitMs = computeRetryDelayMs(undefined, attempt);
+        await delay(waitMs);
+        attempt += 1;
+        continue;
+      }
+      throw toApiClientError(error);
+    }
+  }
+
+  throw toApiClientError(lastError);
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
   const url = /^https?:\/\//i.test(path)
     ? path
     : path.startsWith("/api/")
@@ -557,21 +627,29 @@ export async function apiFetch<T>(
     headers.set("x-request-id", crypto.randomUUID());
   }
 
-  const response = await fetch(url, {
+  const requestInit: RequestInit = {
     ...init,
+    method,
     headers,
     credentials: "same-origin",
-  });
+  };
 
-  if (!response.ok) {
-    throw (await parseApiError(response)) satisfies ApiClientError;
+  if (method === "GET" || method === "HEAD") {
+    const dedupeKey = `${method}:${url}`;
+    const inflight = INFLIGHT_GET_REQUESTS.get(dedupeKey) as Promise<T> | undefined;
+    if (inflight) {
+      return inflight;
+    }
+
+    const requestPromise = executeFetchWithRetry<T>(url, requestInit, method)
+      .finally(() => {
+        INFLIGHT_GET_REQUESTS.delete(dedupeKey);
+      });
+    INFLIGHT_GET_REQUESTS.set(dedupeKey, requestPromise as Promise<unknown>);
+    return requestPromise;
   }
 
-  if (response.status === 204) {
-    return null as T;
-  }
-
-  return (await response.json()) as T;
+  return executeFetchWithRetry<T>(url, requestInit, method);
 }
 
 export type LoginResponse = {
@@ -1198,8 +1276,15 @@ export async function searchInventory(input: {
   category?: InventoryCategory;
   activeOnly?: boolean;
 }) {
+  const queryText = input.q.trim();
+  if (queryText.length < 2) {
+    // Backend validation requires at least 2 characters for inventory search.
+    // Return an empty set instead of throwing a 400 for single-character probes.
+    return [];
+  }
+
   const params = new URLSearchParams();
-  params.set("q", input.q);
+  params.set("q", queryText);
   if (typeof input.limit === "number") params.set("limit", String(input.limit));
   if (input.category) params.set("category", input.category);
   if (typeof input.activeOnly === "boolean") params.set("activeOnly", String(input.activeOnly));

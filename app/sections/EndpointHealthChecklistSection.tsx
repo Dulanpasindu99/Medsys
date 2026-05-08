@@ -891,7 +891,7 @@ function resolveProbePath(endpoint: EndpointChecklistItem, context: ProbeContext
     case 'inventory-reports':
       return '/api/inventory/reports?days=30';
     case 'inventory-search':
-      return '/api/inventory/search?q=a&limit=5';
+      return '/api/inventory/search?q=ab&limit=5';
     case 'inventory-movements-list':
       return `/api/inventory/${context.inventoryId ?? 1}/movements`;
     case 'inventory-batches-list':
