@@ -162,7 +162,7 @@ export default function NavigationPanel({
     href: item.href,
     icon: ICONS_BY_NAV_ID[item.id],
   }));
-  const displayName = (currentUser?.name ?? userName).trim() || 'Medsys User';
+  const displayName = (currentUser?.name ?? userName).trim() || 'Medlink User';
 
   // Determine active ID based on pathname
   const activeId = navigationItems.find(item => {

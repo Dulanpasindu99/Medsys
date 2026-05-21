@@ -15,7 +15,7 @@ import {
 describe("authorization policy", () => {
   it("returns the expected default route for each role", () => {
     expect(getDefaultRouteForRole("owner")).toBe("/create-user");
-    expect(getDefaultRouteForRole("doctor")).toBe("/");
+    expect(getDefaultRouteForRole("doctor")).toBe("/doctor");
     expect(getDefaultRouteForRole("assistant")).toBe("/assistant");
   });
 
@@ -66,7 +66,7 @@ describe("authorization policy", () => {
     expect(getNavigationItemsForSubject(doctorWithAssistantCoverage).map((item) => item.id)).toContain(
       "assistant"
     );
-    expect(getDefaultRouteForSubject(doctorWithAssistantCoverage)).toBe("/");
+    expect(getDefaultRouteForSubject(doctorWithAssistantCoverage)).toBe("/doctor");
   });
 
   it("matches appointment creation to the live backend policy", () => {
@@ -108,7 +108,8 @@ describe("authorization policy", () => {
   });
 
   it("keeps navigation ordering stable for page transitions", () => {
-    expect(getNavigationIndexForPath("/")).toBe(0);
+    expect(getNavigationIndexForPath("/doctor")).toBe(0);
+    expect(getNavigationIndexForPath("/")).toBe(-1);
     expect(getNavigationIndexForPath("/inventory")).toBe(4);
     expect(getNavigationIndexForPath("/create-user")).toBe(7);
   });

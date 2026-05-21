@@ -9,12 +9,12 @@
   --button-primary-to: #38bdf8;
   --button-secondary-bg: rgba(255, 255, 255, 0.92);
   --button-secondary-border: rgba(203, 213, 225, 0.9);
-  --gender-male: #35A8D3;
-  --gender-male-soft: #EAF7FC;
-  --gender-male-border: #B9E3F2;
-  --gender-female: #C1357D;
-  --gender-female-soft: #FCEAF2;
-  --gender-female-border: #F1C1D7;
+  --gender-male: #35a8d3;
+  --gender-male-soft: #eaf7fc;
+  --gender-male-border: #b9e3f2;
+  --gender-female: #c1357d;
+  --gender-female-soft: #fceaf2;
+  --gender-female-border: #f1c1d7;
   --priority-normal: #16a34a;
   --priority-normal-soft: #ecfdf3;
   --priority-normal-border: #bbf7d0;
@@ -27,16 +27,19 @@
   --frost: rgba(255, 255, 255, 0.72);
   --frost-strong: rgba(255, 255, 255, 0.9);
   --frost-outline: rgba(255, 255, 255, 0.32);
-  --frost-shadow: 0 18px 46px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(255, 255, 255, 0.45);
+  --frost-shadow:
+    0 18px 46px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(255, 255, 255, 0.45);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue",
-    Helvetica, Arial, sans-serif;
-  --font-mono: "SFMono-Regular", ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:
+    "SFMono-Regular", ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
 html,
@@ -103,11 +106,15 @@ body {
 
 .ios-glass::before,
 .ios-surface::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0)
+  );
   pointer-events: none;
 }
 
@@ -173,7 +180,11 @@ body {
 
 .app-button--primary {
   color: white;
-  background: linear-gradient(90deg, var(--button-primary-from), var(--button-primary-to));
+  background: linear-gradient(
+    90deg,
+    var(--button-primary-from),
+    var(--button-primary-to)
+  );
   box-shadow: 0 18px 34px rgba(10, 132, 255, 0.34);
 }
 
@@ -246,7 +257,7 @@ body {
 }
 
 .app-segment--male {
-  color: #2F8FB8;
+  color: #2f8fb8;
   background: white;
   border: 1px solid var(--gender-male-border);
 }
@@ -259,7 +270,7 @@ body {
 }
 
 .app-segment--female {
-  color: #A92D6C;
+  color: #a92d6c;
   background: white;
   border: 1px solid var(--gender-female-border);
 }
@@ -333,7 +344,9 @@ body {
 
 .page-transition__content {
   will-change: transform, filter, opacity;
-  transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 240ms ease;
+  transition:
+    transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 240ms ease;
   transform-origin: 50% 50%;
 }
 
@@ -376,7 +389,9 @@ body {
   background: #4b5563;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.28);
   transform: translate3d(-50%, var(--nav-indicator-offset), 0);
-  transition: transform 320ms ease-out, box-shadow 320ms ease-out;
+  transition:
+    transform 320ms ease-out,
+    box-shadow 320ms ease-out;
   will-change: transform;
   z-index: 0;
 }
@@ -452,7 +467,10 @@ body {
 .ios-nav-button {
   position: relative;
   overflow: hidden;
-  transition: transform 180ms ease, box-shadow 220ms ease, filter 220ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease;
   z-index: 1;
 }
 
@@ -466,12 +484,20 @@ body {
 }
 
 .ios-nav-button::before {
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35), transparent 55%);
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.35),
+    transparent 55%
+  );
   opacity: 0;
 }
 
 .ios-nav-button::after {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.05));
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0.05)
+  );
   opacity: 0.75;
   mix-blend-mode: screen;
 }
@@ -503,7 +529,9 @@ body {
 }
 
 .ios-nav-button__icon {
-  transition: transform 320ms cubic-bezier(0.2, 0.85, 0.25, 1), filter 320ms ease;
+  transition:
+    transform 320ms cubic-bezier(0.2, 0.85, 0.25, 1),
+    filter 320ms ease;
 }
 
 .ios-nav-button--active .ios-nav-button__icon {
@@ -538,5 +566,486 @@ body {
 
   .mobile-visible-x-scroll::-webkit-scrollbar {
     height: 0;
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, -12px, 0) scale(1.03);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    filter: saturate(1);
+  }
+
+  50% {
+    opacity: 0.9;
+    filter: saturate(1.12);
+  }
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-130%);
+  }
+
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes cross-loader-pulse {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: translate(-50%, -50%) scale(0.52) rotate(-7deg);
+    filter: drop-shadow(0 0 0 rgba(8, 145, 178, 0.18));
+  }
+
+  35% {
+    opacity: 0.44;
+    transform: translate(-50%, -50%) scale(0.9) rotate(0deg);
+    filter: drop-shadow(0 6px 10px rgba(8, 145, 178, 0.28));
+  }
+
+  68% {
+    opacity: 0.28;
+    transform: translate(-50%, -50%) scale(0.7) rotate(5deg);
+    filter: drop-shadow(0 3px 8px rgba(8, 145, 178, 0.2));
+  }
+}
+
+@keyframes medlink-wordmark-fade {
+  0%,
+  100% {
+    opacity: 0.95;
+    filter: drop-shadow(0 10px 18px rgba(8, 145, 178, 0.22));
+  }
+
+  48% {
+    opacity: 0.18;
+    filter: drop-shadow(0 2px 4px rgba(8, 145, 178, 0.08));
+  }
+
+  64% {
+    opacity: 0.82;
+    filter: drop-shadow(0 8px 14px rgba(8, 145, 178, 0.16));
+  }
+}
+
+@keyframes medlink-loader-scan {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 0.72;
+  }
+
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+@keyframes medical-pill-float {
+  0%,
+  100% {
+    transform: translateY(2px) scale(0.92);
+    opacity: 0.35;
+  }
+
+  45% {
+    transform: translateY(-12px) scale(1);
+    opacity: 0.95;
+  }
+
+  70% {
+    transform: translateY(-6px) scale(0.97);
+    opacity: 0.62;
+  }
+}
+
+@keyframes medical-orb-drift {
+  0%,
+  100% {
+    transform: translate(-50%, 6px) scale(0.66);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: translate(-50%, -8px) scale(1.04);
+    opacity: 0.8;
+  }
+}
+
+@keyframes medical-ecg-trace {
+  0% {
+    stroke-dashoffset: 420;
+    opacity: 0.25;
+  }
+
+  40% {
+    stroke-dashoffset: 170;
+    opacity: 0.95;
+  }
+
+  72% {
+    stroke-dashoffset: 0;
+    opacity: 0.65;
+  }
+
+  100% {
+    stroke-dashoffset: -420;
+    opacity: 0.2;
+  }
+}
+
+@keyframes medical-ecg-beam-sweep {
+  0% {
+    transform: translateX(-130%);
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 0.78;
+  }
+
+  100% {
+    transform: translateX(320%);
+    opacity: 0;
+  }
+}
+
+@keyframes medlink-name-gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes medlink-name-glimmer {
+  0%,
+  100% {
+    filter: saturate(0.95) brightness(0.95);
+  }
+
+  50% {
+    filter: saturate(1.14) brightness(1.06);
+  }
+}
+
+.animate-float-slow {
+  animation: float-soft 8s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-soft 6.5s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-soft 5.5s ease-in-out infinite;
+}
+
+.animate-rise-in {
+  animation: rise-in 520ms ease-out both;
+}
+
+.animate-rise-in-delayed {
+  animation: rise-in 520ms ease-out 120ms both;
+}
+
+.animate-rise-in-card {
+  animation: rise-in 520ms ease-out both;
+}
+
+.animate-card-delay-1 {
+  animation-delay: 80ms;
+}
+
+.animate-card-delay-2 {
+  animation-delay: 160ms;
+}
+
+.animate-card-delay-3 {
+  animation-delay: 240ms;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3.2s ease-in-out infinite;
+}
+
+.animate-shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer-sweep::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  width: 40%;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-130%);
+  animation: shimmer-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cross-loader-icon {
+  position: absolute;
+  display: block;
+  transform: translate(-50%, -50%) scale(0.56);
+  opacity: 0.14;
+  animation-name: cross-loader-pulse;
+  animation-timing-function: cubic-bezier(0.24, 0.8, 0.27, 1);
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+
+.cross-loader-icon::before,
+.cross-loader-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #67e8f9 0%, #22d3ee 40%, #0891b2 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.42);
+}
+
+.cross-loader-icon::before {
+  width: 34%;
+  height: 100%;
+  transform: translate(-50%, -50%);
+}
+
+.cross-loader-icon::after {
+  width: 100%;
+  height: 34%;
+  transform: translate(-50%, -50%);
+}
+
+.medical-pill-shell {
+  position: absolute;
+  display: block;
+  z-index: 0;
+}
+
+.medical-pill {
+  position: relative;
+  display: block;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(8, 145, 178, 0.3);
+  background: linear-gradient(
+    90deg,
+    rgba(2, 132, 199, 0.94) 0 49%,
+    rgba(224, 242, 254, 0.96) 51% 100%
+  );
+  box-shadow:
+    0 8px 16px rgba(14, 116, 144, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.65);
+  animation-name: medical-pill-float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.medical-pill::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(14, 116, 144, 0.32);
+  border-radius: 999px;
+}
+
+.medical-vital-orb {
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 28% 28%,
+    rgba(236, 254, 255, 1) 0%,
+    rgba(103, 232, 249, 0.95) 42%,
+    rgba(14, 165, 233, 0.95) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 6px 14px rgba(14, 116, 144, 0.2);
+  animation-name: medical-orb-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.medical-ecg {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 2.5rem;
+  height: 3.75rem;
+  opacity: 0.78;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.medical-ecg__svg {
+  width: 100%;
+  height: 100%;
+}
+
+.medical-ecg__line {
+  fill: none;
+  stroke: #0284c7;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 420;
+  stroke-dashoffset: 420;
+  animation: medical-ecg-trace 4.6s linear infinite;
+}
+
+.medical-ecg__beam {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(56, 189, 248, 0.44) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  transform: translateX(-130%);
+  animation: medical-ecg-beam-sweep 3.4s ease-in-out infinite;
+}
+
+.medlink-identity {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 30rem);
+  animation: medlink-wordmark-fade 4.8s ease-in-out infinite;
+  z-index: 2;
+}
+
+.medlink-identity::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    102deg,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  transform: translateX(-120%);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  pointer-events: none;
+  animation: medlink-loader-scan 3.4s ease-in-out infinite;
+}
+
+.medlink-identity__name {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.08em;
+  font-size: clamp(2.1rem, 5.2vw, 3.6rem);
+  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  background: linear-gradient(
+    92deg,
+    #0f172a 4%,
+    #0369a1 35%,
+    #0891b2 62%,
+    #0f172a 96%
+  );
+  background-size: 180% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation:
+    medlink-name-gradient 5.6s ease-in-out infinite,
+    medlink-name-glimmer 3.2s ease-in-out infinite;
+}
+
+.medlink-identity__name span:first-child {
+  font-weight: 900;
+}
+
+.medlink-identity__name span:last-child {
+  font-weight: 100;
+}
+
+.medlink-identity__name::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: rgba(14, 116, 144, 0.16);
+  filter: blur(7px);
+  transform: translateY(8px) scale(1.02);
+  z-index: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-medium,
+  .animate-float-fast,
+  .animate-rise-in,
+  .animate-rise-in-delayed,
+  .animate-rise-in-card,
+  .animate-pulse-glow,
+  .animate-shimmer-sweep::after,
+  .cross-loader-icon,
+  .medical-pill,
+  .medical-vital-orb,
+  .medical-ecg__line,
+  .medical-ecg__beam,
+  .medlink-identity,
+  .medlink-identity::after,
+  .medlink-identity__name {
+    animation: none !important;
   }
 }

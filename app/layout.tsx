@@ -4,8 +4,17 @@ import { AppQueryProvider } from "./components/AppQueryProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Medsys UI",
-  description: "Doctor dashboard",
+  title: {
+    default: "Medlink",
+    template: "%s | Medlink",
+  },
+  applicationName: "Medlink",
+  description: "Medlink clinical workspace",
+  icons: {
+    icon: "/assets/medlink-cross.png",
+    apple: "/assets/medlink-cross.png",
+    shortcut: "/assets/medlink-cross.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

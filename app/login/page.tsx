@@ -1,22 +1,36 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginUser, type ApiClientError } from "../lib/api-client";
+import {
+  loginUser,
+  type ApiClientError,
+  type LoginResponse,
+} from "../lib/api-client";
 import { canAccessRoute, getDefaultRouteForSubject } from "../lib/authorization";
 import { useCurrentUserQuery } from "../lib/query-hooks";
 import { validateDoctorLoginInput } from "../utils/schema-validation/doctor-section.schema";
 
+type LoginRole = "owner" | "doctor" | "assistant";
+
+type RoleDetails = {
+  title: string;
+  lane: string;
+  description: string;
+  status: string;
+  statusColor: string;
+  submitLabel: string;
+};
+
+type RoleCredentials = {
+  email: string;
+  password: string;
+};
+
 const DEFAULT_ORGANIZATION_SLUG = process.env.NEXT_PUBLIC_ORGANIZATION_SLUG ?? "";
 const ORGANIZATION_SLUG_STORAGE_KEY = "medsys.organizationSlug";
-
-const SHADOWS = {
-  card: "shadow-[0_22px_52px_rgba(15,23,42,0.12)]",
-  inset: "shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]",
-  glow: "shadow-[0_18px_44px_rgba(10,132,255,0.28)]",
-  tooltip: "shadow-[0_12px_24px_rgba(15,23,42,0.18)]",
-} as const;
 
 const WORKSPACE_ROUTE_BY_PANEL = {
   owner: "ownerWorkspace",
@@ -24,369 +38,61 @@ const WORKSPACE_ROUTE_BY_PANEL = {
   assistant: "assistantWorkspace",
 } as const;
 
-type CardProps = React.HTMLAttributes<HTMLDivElement> & {
-  children: React.ReactNode;
-  className?: string;
+const ROLE_DETAILS: Record<LoginRole, RoleDetails> = {
+  owner: {
+    title: "Owner Login",
+    lane: "Administrative control lane",
+    description:
+      "Manage staff access, clinic operations, and account-level controls.",
+    status: "Secure area",
+    statusColor: "bg-emerald-500",
+    submitLabel: "Sign in as owner",
+  },
+  doctor: {
+    title: "Doctor Login",
+    lane: "Primary clinical workspace",
+    description:
+      "Access consultation workflow, queue visibility, and treatment tools.",
+    status: "Clinical queue",
+    statusColor: "bg-sky-500",
+    submitLabel: "Continue as doctor",
+  },
+  assistant: {
+    title: "Assistant Login",
+    lane: "Patient support lane",
+    description:
+      "Handle patient flow, intake support, and clinic coordination tasks.",
+    status: "Task board",
+    statusColor: "bg-amber-500",
+    submitLabel: "Continue as assistant",
+  },
 };
 
-const Card = ({ children, className = "", ...props }: CardProps) => (
-  <div className={`ios-surface ${SHADOWS.card} ${className}`} {...props}>
-    {children}
-  </div>
-);
+function toPermissionSubject(
+  user: Pick<LoginResponse, "role" | "active_role" | "permissions">
+) {
+  return {
+    role: user.active_role ?? user.role,
+    permissions: user.permissions,
+  };
+}
 
-const Chip = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700 ring-1 ring-white/70 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
-    <span className="h-2 w-2 rounded-full bg-sky-500" />
-    {children}
-  </span>
-);
-
-const Field = ({
-  label,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-}: {
-  label: string;
-  type?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-}) => (
-  <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-    <span className="text-xs uppercase tracking-[0.18em] text-slate-500">
-      {label}
-    </span>
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={`rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100 ${SHADOWS.inset}`}
-    />
-  </label>
-);
-
-const RolePill = ({ label }: { label: string }) => (
-  <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 ring-1 ring-white/70">
-    <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-    {label}
-  </span>
-);
-
-const StaffPanelHeader = ({
-  roleLabel,
-  laneLabel,
-}: {
-  roleLabel: string;
-  laneLabel: string;
-}) => (
-  <div className="flex min-h-[48px] flex-col items-start gap-1.5">
-    <RolePill label={roleLabel} />
-    <span className="pl-6 text-[10px] leading-[1.25] font-semibold uppercase tracking-[0.14em] text-slate-500">
-      {laneLabel}
-    </span>
-  </div>
-);
-
-const StaffPanelFooter = ({
-  dotClassName,
-  statusLabel,
-  badgeLabel,
-}: {
-  dotClassName: string;
-  statusLabel: string;
-  badgeLabel: string;
-}) => (
-  <div className="mt-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-    <span className="flex items-center gap-1">
-      <span className={`h-1.5 w-1.5 rounded-full ${dotClassName}`} />
-      {statusLabel}
-    </span>
-    <span className="rounded-full bg-slate-900/5 px-2 py-1 text-[10px] font-bold text-slate-700">
-      {badgeLabel}
-    </span>
-  </div>
-);
-
-type OwnerPanelProps = {
-  highlight?: boolean;
-  onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
-  organizationSlug: string;
-  onOrganizationSlugChange: (value: string) => void;
-  email: string;
-  password: string;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSubmit: () => void;
-  isSubmitting?: boolean;
-  errorMessage?: string;
-};
-
-const OwnerPanel = ({
-  highlight = false,
-  onClick,
-  organizationSlug,
-  onOrganizationSlugChange,
-  email,
-  password,
-  onEmailChange,
-  onPasswordChange,
-  onSubmit,
-  isSubmitting = false,
-  errorMessage,
-}: OwnerPanelProps) => (
-  <Card
-    onClick={onClick}
-    className={`relative overflow-hidden p-8 ${
-      onClick
-        ? "cursor-pointer"
-        : ""
-    } ${highlight ? "ring-2 ring-sky-100 shadow-[0_30px_70px_rgba(15,23,42,0.2)]" : ""}`}
-  >
-    <div className="pointer-events-none absolute -left-10 -top-10 h-48 w-48 rounded-full bg-sky-200/40" />
-    <div className="pointer-events-none absolute -right-6 top-1/3 h-40 w-40 rounded-full bg-indigo-200/40" />
-
-    <div className="relative flex items-start justify-between gap-4">
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <RolePill label="Medical Center Owner" />
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-100">
-            Secure area
-          </span>
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900">Owner login</h2>
-        <p className="text-sm text-slate-600">
-          Manage staff access, billing, and clinic controls from a focused owner
-          hub. The pre-filled demo lets you explore without typing.
-        </p>
-      </div>
-      <Link
-        href="/create-user"
-        className="app-button app-button--primary app-button--pill px-5 text-[11px] uppercase tracking-[0.2em]"
-      >
-        Owner tools
-      </Link>
-    </div>
-
-    <div className="relative mt-6 grid gap-4 md:grid-cols-2">
-      <div className="md:col-span-2">
-        <Field
-          label="Organization Slug"
-          value={organizationSlug}
-          onChange={onOrganizationSlugChange}
-          placeholder="sunrise-clinic"
-        />
-      </div>
-      <Field
-        label="Email"
-        value={email}
-        onChange={onEmailChange}
-        placeholder="owner@email.com"
-      />
-      <Field
-        label="Password"
-        type="password"
-        value={password}
-        onChange={onPasswordChange}
-        placeholder="••••••••"
-      />
-    </div>
-
-    <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <Chip>Owner only area</Chip>
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={isSubmitting}
-        className="app-button app-button--primary app-button--pill px-6"
-      >
-        {isSubmitting ? "Signing in..." : "Sign in as owner"}
-      </button>
-    </div>
-    {errorMessage ? (
-      <p className="mt-3 text-sm font-semibold text-rose-600">{errorMessage}</p>
-    ) : null}
-  </Card>
-);
-
-type StaffPanelProps = {
-  highlight?: boolean;
-  onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
-  organizationSlug: string;
-  onOrganizationSlugChange: (value: string) => void;
-  email: string;
-  password: string;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSubmit: () => void;
-  isSubmitting?: boolean;
-  errorMessage?: string;
-};
-
-const DoctorPanel = ({
-  highlight = false,
-  onClick,
-  organizationSlug,
-  onOrganizationSlugChange,
-  email,
-  password,
-  onEmailChange,
-  onPasswordChange,
-  onSubmit,
-  isSubmitting = false,
-  errorMessage,
-}: StaffPanelProps) => (
-  <Card
-    onClick={onClick}
-    className={`flex h-full flex-col p-5 ${
-      onClick
-        ? "cursor-pointer"
-        : ""
-    } ${highlight ? "ring-2 ring-sky-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]" : ""}`}
-  >
-    <StaffPanelHeader
-      roleLabel="Doctor Login"
-      laneLabel="Primary clinical view"
-    />
-    <div className="mt-4 flex flex-col gap-3">
-      <Field
-        label="Organization Slug"
-        value={organizationSlug}
-        onChange={onOrganizationSlugChange}
-        placeholder="sunrise-clinic"
-      />
-      <Field
-        label="Email"
-        value={email}
-        onChange={onEmailChange}
-        placeholder="doctor@email.com"
-      />
-      <Field
-        label="Password"
-        type="password"
-        value={password}
-        onChange={onPasswordChange}
-        placeholder="•••••••"
-      />
-    </div>
-    <button
-      type="button"
-      onClick={onSubmit}
-      disabled={isSubmitting}
-      className="app-button app-button--primary app-button--full mt-4"
-    >
-      {isSubmitting ? "Signing in..." : "Continue as doctor"}
-    </button>
-    {errorMessage ? (
-      <p className="mt-2 text-sm font-semibold text-rose-600">{errorMessage}</p>
-    ) : null}
-    <StaffPanelFooter
-      dotClassName="bg-sky-500"
-      statusLabel="Live queue"
-      badgeLabel="Clinic view"
-    />
-  </Card>
-);
-
-const AssistantPanel = ({
-  highlight = false,
-  onClick,
-  organizationSlug,
-  onOrganizationSlugChange,
-  email,
-  password,
-  onEmailChange,
-  onPasswordChange,
-  onSubmit,
-  isSubmitting = false,
-  errorMessage,
-}: StaffPanelProps) => (
-  <Card
-    onClick={onClick}
-    className={`flex h-full flex-col p-5 ${
-      onClick
-        ? "cursor-pointer"
-        : ""
-    } ${highlight ? "ring-2 ring-emerald-100 shadow-[0_28px_60px_rgba(15,23,42,0.18)]" : ""}`}
-  >
-    <StaffPanelHeader roleLabel="Assistant Login" laneLabel="Support lane" />
-    <div className="mt-4 flex flex-col gap-3">
-      <Field
-        label="Organization Slug"
-        value={organizationSlug}
-        onChange={onOrganizationSlugChange}
-        placeholder="sunrise-clinic"
-      />
-      <Field
-        label="Email"
-        value={email}
-        onChange={onEmailChange}
-        placeholder="assistant@email.com"
-      />
-      <Field
-        label="Password"
-        type="password"
-        value={password}
-        onChange={onPasswordChange}
-        placeholder="••••••••"
-      />
-    </div>
-    <button
-      type="button"
-      onClick={onSubmit}
-      disabled={isSubmitting}
-      className="app-button app-button--primary app-button--full mt-4"
-    >
-      {isSubmitting ? "Signing in..." : "Continue as assistant"}
-    </button>
-    {errorMessage ? (
-      <p className="mt-2 text-sm font-semibold text-rose-600">{errorMessage}</p>
-    ) : null}
-    <StaffPanelFooter
-      dotClassName="bg-emerald-500"
-      statusLabel="Patient flow"
-      badgeLabel="Task board"
-    />
-  </Card>
-);
-
-export default function Login() {
+export default function LoginPage() {
   const router = useRouter();
   const currentUserQuery = useCurrentUserQuery(false);
+  const [activeRole, setActiveRole] = useState<LoginRole>("doctor");
   const [organizationSlug, setOrganizationSlug] = useState(DEFAULT_ORGANIZATION_SLUG);
-  const [ownerEmail, setOwnerEmail] = useState("");
-  const [ownerPassword, setOwnerPassword] = useState("");
-
-  const [doctorUser, setDoctorUser] = useState("");
-  const [doctorPassword, setDoctorPassword] = useState("");
-
-  const [assistantUser, setAssistantUser] = useState("");
-  const [assistantPassword, setAssistantPassword] = useState("");
-
-  const [ownerError, setOwnerError] = useState<string | null>(null);
-  const [doctorError, setDoctorError] = useState<string | null>(null);
-  const [assistantError, setAssistantError] = useState<string | null>(null);
-  const [activeSubmission, setActiveSubmission] = useState<
-    "owner" | "doctor" | "assistant" | null
-  >(null);
-
-  type ActiveModal = "owner" | "doctor" | "assistant" | null;
-  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-
-  const clearRoleError = (role: Exclude<ActiveModal, null>) => {
-    if (role === "owner") setOwnerError(null);
-    if (role === "doctor") setDoctorError(null);
-    if (role === "assistant") setAssistantError(null);
-  };
-
-  const setRoleError = (role: Exclude<ActiveModal, null>, message: string) => {
-    if (role === "owner") setOwnerError(message);
-    if (role === "doctor") setDoctorError(message);
-    if (role === "assistant") setAssistantError(message);
-  };
+  const [credentials, setCredentials] = useState<Record<LoginRole, RoleCredentials>>({
+    owner: { email: "", password: "" },
+    doctor: { email: "", password: "" },
+    assistant: { email: "", password: "" },
+  });
+  const [errors, setErrors] = useState<Record<LoginRole, string | null>>({
+    owner: null,
+    doctor: null,
+    assistant: null,
+  });
+  const [activeSubmission, setActiveSubmission] = useState<LoginRole | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -404,45 +110,63 @@ export default function Login() {
     if (!user) {
       return;
     }
-    
-      router.replace(getDefaultRouteForSubject(user));
-      router.refresh();
+
+    router.replace(getDefaultRouteForSubject(toPermissionSubject(user)));
+    router.refresh();
   }, [currentUserQuery.data, router]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+
     const normalized = organizationSlug.trim();
     if (normalized) {
       window.localStorage.setItem(ORGANIZATION_SLUG_STORAGE_KEY, normalized);
       return;
     }
+
     window.localStorage.removeItem(ORGANIZATION_SLUG_STORAGE_KEY);
   }, [organizationSlug]);
 
-  const handleOrganizationSlugChange = (value: string) => {
-    setOrganizationSlug(value);
-    setOwnerError(null);
-    setDoctorError(null);
-    setAssistantError(null);
+  const updateCredential = (
+    role: LoginRole,
+    field: keyof RoleCredentials,
+    value: string
+  ) => {
+    setCredentials((current) => ({
+      ...current,
+      [role]: {
+        ...current[role],
+        [field]: value,
+      },
+    }));
+    setErrors((current) => ({ ...current, [role]: null }));
   };
 
-  const handleSignIn = async (
-    role: Exclude<ActiveModal, null>,
-    email: string,
-    password: string,
-  ) => {
-    clearRoleError(role);
+  const handleOrganizationSlugChange = (value: string) => {
+    setOrganizationSlug(value);
+    setErrors({ owner: null, doctor: null, assistant: null });
+  };
+
+  const handleSignIn = async (role: LoginRole) => {
     const normalizedOrganizationSlug = organizationSlug.trim();
     if (!normalizedOrganizationSlug) {
-      setRoleError(role, "Organization slug is required. Example: sunrise-clinic");
+      setErrors((current) => ({
+        ...current,
+        [role]: "Organization slug is required. Example: sunrise-clinic",
+      }));
       return;
     }
 
-    const parsed = validateDoctorLoginInput({ email, password });
+    const roleCredentials = credentials[role];
+    const parsed = validateDoctorLoginInput({
+      email: roleCredentials.email,
+      password: roleCredentials.password,
+    });
+
     if (!parsed.ok) {
-      setRoleError(role, parsed.error);
+      setErrors((current) => ({ ...current, [role]: parsed.error }));
       return;
     }
 
@@ -454,223 +178,214 @@ export default function Login() {
         role,
         normalizedOrganizationSlug
       );
+      const permissionSubject = toPermissionSubject(user);
       const requestedRoute = WORKSPACE_ROUTE_BY_PANEL[role];
-      if (!canAccessRoute(user, requestedRoute)) {
-        setRoleError(
-          role,
-          `This account does not have access to the ${role} workspace.`,
-        );
+
+      if (!canAccessRoute(permissionSubject, requestedRoute)) {
+        setErrors((current) => ({
+          ...current,
+          [role]: `This account does not have access to the ${role} workspace.`,
+        }));
         return;
       }
 
-      setActiveModal(null);
-      router.replace(getDefaultRouteForSubject(user));
+      router.replace(getDefaultRouteForSubject(permissionSubject));
+      router.refresh();
     } catch (error) {
       const message =
         (error as ApiClientError)?.message ?? "Unable to sign in right now.";
-      setRoleError(role, message);
+      setErrors((current) => ({ ...current, [role]: message }));
     } finally {
       setActiveSubmission(null);
     }
   };
 
-  const handleSectionClick =
-    (role: Exclude<ActiveModal, null>) =>
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const target = event.target as HTMLElement;
-      if (target.closest("a, button, input")) return;
-      clearRoleError(role);
-      setActiveModal(role);
-    };
-
-  const closeModal = () => setActiveModal(null);
-
-  const renderModalContent = () => {
-    if (!activeModal) return null;
-
-    const panelMap = {
-      owner: (
-        <OwnerPanel
-          highlight
-          organizationSlug={organizationSlug}
-          onOrganizationSlugChange={handleOrganizationSlugChange}
-          email={ownerEmail}
-          password={ownerPassword}
-          onEmailChange={setOwnerEmail}
-          onPasswordChange={setOwnerPassword}
-          onSubmit={() => handleSignIn("owner", ownerEmail, ownerPassword)}
-          isSubmitting={activeSubmission === "owner"}
-          errorMessage={ownerError ?? undefined}
-        />
-      ),
-      doctor: (
-        <DoctorPanel
-          highlight
-          organizationSlug={organizationSlug}
-          onOrganizationSlugChange={handleOrganizationSlugChange}
-          email={doctorUser}
-          password={doctorPassword}
-          onEmailChange={setDoctorUser}
-          onPasswordChange={setDoctorPassword}
-          onSubmit={() => handleSignIn("doctor", doctorUser, doctorPassword)}
-          isSubmitting={activeSubmission === "doctor"}
-          errorMessage={doctorError ?? undefined}
-        />
-      ),
-      assistant: (
-        <AssistantPanel
-          highlight
-          organizationSlug={organizationSlug}
-          onOrganizationSlugChange={handleOrganizationSlugChange}
-          email={assistantUser}
-          password={assistantPassword}
-          onEmailChange={setAssistantUser}
-          onPasswordChange={setAssistantPassword}
-          onSubmit={() =>
-            handleSignIn("assistant", assistantUser, assistantPassword)
-          }
-          isSubmitting={activeSubmission === "assistant"}
-          errorMessage={assistantError ?? undefined}
-        />
-      ),
-    };
-
-    return panelMap[activeModal];
-  };
+  const detail = ROLE_DETAILS[activeRole];
+  const roleCredentials = credentials[activeRole];
+  const roleError = errors[activeRole];
 
   return (
-    <main className="relative isolate flex min-h-screen items-start justify-center overflow-hidden px-4 py-8 text-slate-900">
-      <div className="pointer-events-none absolute inset-0 blur-3xl">
-        <div className="absolute left-10 top-10 h-64 w-64 rounded-full bg-sky-200/40" />
-        <div className="absolute right-12 top-16 h-52 w-52 rounded-full bg-emerald-200/40" />
-        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-indigo-200/30" />
+    <main className="relative isolate h-dvh overflow-hidden px-3 py-3 text-slate-900 sm:px-5 sm:py-5">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[6%] top-[10%] h-56 w-56 rounded-full bg-sky-200/35 blur-3xl animate-float-slow" />
+        <div className="absolute right-[8%] top-[18%] h-52 w-52 rounded-full bg-emerald-200/35 blur-3xl animate-float-medium" />
+        <div className="absolute bottom-[10%] left-[38%] h-64 w-64 rounded-full bg-indigo-200/30 blur-3xl animate-float-fast" />
       </div>
 
-      {activeModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity"
-            onClick={closeModal}
-          />
-          <div className="relative z-10 w-full max-w-3xl">
-            {renderModalContent()}
+      <section className="relative mx-auto flex h-full w-full max-w-6xl min-h-0 flex-col overflow-hidden rounded-[30px] border border-white/70 bg-white/80 p-4 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl sm:p-5 lg:p-6">
+        <header className="flex shrink-0 items-center border-b border-white/70 pb-3 sm:pb-4">
+          <div className="min-w-0">
+            <Image
+              src="/assets/medlink-logo-optimized.png"
+              alt="Medlink logo"
+              width={320}
+              height={71}
+              className="h-9 w-auto object-contain sm:h-10"
+              priority
+            />
+            <h1 className="mt-1 truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Role-based login
+            </h1>
           </div>
-        </div>
-      )}
+        </header>
 
-      <div
-        className="relative w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/80 shadow-[0_26px_60px_rgba(15,23,42,0.14)] ring-1 ring-slate-100/80 backdrop-blur-2xl"
-        aria-hidden={!!activeModal}
-      >
-        <div className="flex flex-col gap-8 px-6 py-8 lg:px-12">
-          <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <Chip>Medsys Access</Chip>
-                <RolePill label="Owner + Staff" />
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
-                  Team login
-                </h1>
-                <span className="rounded-full bg-gradient-to-r from-sky-100 to-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-700 ring-1 ring-white/70 shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
-                  Smooth iOS lineup
-                </span>
-              </div>
-              <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
-                Securely access the right workspace with role-based
-                authentication. Each panel mirrors the crisp, layered iOS look
-                so owners, doctors, and assistants can land exactly where they
-                need without friction.
+        <div className="mt-4 grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <aside className="hidden min-h-0 flex-col rounded-[24px] border border-white/70 bg-gradient-to-br from-sky-50/90 via-white/85 to-emerald-50/90 p-5 shadow-[0_14px_32px_rgba(15,23,42,0.08)] lg:flex">
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Team Entry
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+                One portal for owner, doctor, and assistant workflows.
+              </h2>
+              <p className="text-sm leading-relaxed text-slate-600">
+                Select a role tab and sign in directly to the correct workspace
+                without extra navigation steps.
               </p>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 ring-1 ring-white/70 shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              All systems healthy
+            <div className="relative mt-4 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/80 shadow-[0_10px_24px_rgba(15,23,42,0.1)]">
+              <Image
+                src="/assets/login-side-medical.jpg"
+                alt="Medical supplies background"
+                fill
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/20 via-transparent to-cyan-900/10" />
             </div>
-          </header>
 
-          <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
-            <OwnerPanel
-              organizationSlug={organizationSlug}
-              onOrganizationSlugChange={handleOrganizationSlugChange}
-              onClick={handleSectionClick("owner")}
-              email={ownerEmail}
-              password={ownerPassword}
-              onEmailChange={setOwnerEmail}
-              onPasswordChange={setOwnerPassword}
-              onSubmit={() => handleSignIn("owner", ownerEmail, ownerPassword)}
-              isSubmitting={activeSubmission === "owner"}
-              errorMessage={ownerError ?? undefined}
-            />
+            <div className="mt-4 grid gap-3">
+              {(["owner", "doctor", "assistant"] as const).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setActiveRole(role)}
+                  className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                    activeRole === role
+                      ? "border-sky-200 bg-white text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.1)]"
+                      : "border-white/80 bg-white/65 text-slate-600 hover:border-sky-100"
+                  }`}
+                >
+                  <span className="text-sm font-semibold">{ROLE_DETAILS[role].title}</span>
+                  <span className={`h-2.5 w-2.5 rounded-full ${ROLE_DETAILS[role].statusColor}`} />
+                </button>
+              ))}
+            </div>
 
-            <Card className="p-8 transition-transform duration-300 ease-out">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="space-y-2">
-                    <RolePill label="Staff Login" />
-                    <h2 className="text-2xl font-bold text-slate-900">
-                      Doctor & Assistant access
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      Separate, simplified paths for clinical and support tasks.
-                      Toggle ready credentials and jump straight into each
-                      panel.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100">
-                    Dual panels
-                  </span>
-                </div>
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-white/80 px-3 py-2 ring-1 ring-slate-100">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Built by
+              </span>
+              <Image
+                src="/assets/aldtan-logo-optimized.png"
+                alt="ALDTAN company logo"
+                width={170}
+                height={37}
+                className="h-5 w-auto object-contain"
+              />
+            </div>
+          </aside>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <DoctorPanel
-                    organizationSlug={organizationSlug}
-                    onOrganizationSlugChange={handleOrganizationSlugChange}
-                    onClick={handleSectionClick("doctor")}
-                    email={doctorUser}
-                    password={doctorPassword}
-                    onEmailChange={setDoctorUser}
-                    onPasswordChange={setDoctorPassword}
-                    onSubmit={() =>
-                      handleSignIn("doctor", doctorUser, doctorPassword)
-                    }
-                    isSubmitting={activeSubmission === "doctor"}
-                    errorMessage={doctorError ?? undefined}
-                  />
-                  <AssistantPanel
-                    organizationSlug={organizationSlug}
-                    onOrganizationSlugChange={handleOrganizationSlugChange}
-                    onClick={handleSectionClick("assistant")}
-                    email={assistantUser}
-                    password={assistantPassword}
-                    onEmailChange={setAssistantUser}
-                    onPasswordChange={setAssistantPassword}
-                    onSubmit={() =>
-                      handleSignIn(
-                        "assistant",
-                        assistantUser,
-                        assistantPassword,
-                      )
-                    }
-                    isSubmitting={activeSubmission === "assistant"}
-                    errorMessage={assistantError ?? undefined}
-                  />
-                </div>
+          <div className="ios-surface flex min-h-0 flex-col rounded-[24px] p-4 shadow-[0_16px_36px_rgba(15,23,42,0.1)] sm:p-5">
+            <div className="grid shrink-0 grid-cols-3 gap-2 rounded-2xl bg-slate-100/70 p-1 ring-1 ring-white/70">
+              {(["owner", "doctor", "assistant"] as const).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setActiveRole(role)}
+                  className={`rounded-xl px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition sm:text-xs ${
+                    activeRole === role
+                      ? "bg-white text-slate-900 shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
 
-                <div className="mt-2 flex items-start gap-3 rounded-2xl bg-white/70 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 ring-1 ring-white/70 shadow-[0_14px_32px_rgba(15,23,42,0.12)]">
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
-                  <span className="leading-relaxed">
-                    Need quick routing? Owner can also switch into staff panels
-                    from the top-right hub.
-                  </span>
-                </div>
+            <div className="mt-3 shrink-0 rounded-2xl border border-slate-100 bg-white/70 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-slate-900">{detail.title}</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600 ring-1 ring-slate-100">
+                  <span className={`h-1.5 w-1.5 rounded-full ${detail.statusColor}`} />
+                  {detail.status}
+                </span>
               </div>
-            </Card>
+              <p className="mt-1 text-xs text-slate-500">{detail.lane}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                {detail.description}
+              </p>
+            </div>
+
+            <div className="mt-3 grid shrink-0 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 sm:col-span-2">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                  Organization Slug
+                </span>
+                <input
+                  value={organizationSlug}
+                  onChange={(event) => handleOrganizationSlugChange(event.target.value)}
+                  placeholder="sunrise-clinic"
+                  className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                  Email
+                </span>
+                <input
+                  value={roleCredentials.email}
+                  onChange={(event) =>
+                    updateCredential(activeRole, "email", event.target.value)
+                  }
+                  placeholder={`${activeRole}@email.com`}
+                  className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                  Password
+                </span>
+                <input
+                  type="password"
+                  value={roleCredentials.password}
+                  onChange={(event) =>
+                    updateCredential(activeRole, "password", event.target.value)
+                  }
+                  placeholder="********"
+                  className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition hover:border-sky-200 focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Link
+                href="/"
+                className="inline-flex items-center rounded-full bg-white/75 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 ring-1 ring-slate-100"
+              >
+                Back to home
+              </Link>
+              <button
+                type="button"
+                onClick={() => handleSignIn(activeRole)}
+                disabled={activeSubmission !== null}
+                className="app-button app-button--primary app-button--pill px-5"
+              >
+                {activeSubmission === activeRole ? "Signing in..." : detail.submitLabel}
+              </button>
+            </div>
+
+            {roleError ? (
+              <p className="mt-2 shrink-0 text-sm font-semibold text-rose-600">
+                {roleError}
+              </p>
+            ) : null}
           </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

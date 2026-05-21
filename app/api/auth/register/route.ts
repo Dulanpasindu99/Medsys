@@ -13,10 +13,40 @@ import {
 } from "@/app/lib/api-validation";
 import { attachSessionCookie } from "@/app/lib/session";
 import { readTokenClaims } from "@/app/lib/token-claims";
+import { getBackendOrigin } from "@/app/lib/backend-origin";
 
 function getBackendLoginUrl() {
-  const origin = process.env.BACKEND_URL ?? "http://localhost:4000";
-  return `${origin.replace(/\/+$/, "")}/v1/auth/login`;
+  return `${getBackendOrigin()}/v1/auth/login`;
+}
+
+function getBackendLoginWithSlugUrl() {
+  return `${getBackendOrigin()}/v1/auth/login-with-slug`;
+}
+
+type BootstrapOrganizationContext = {
+  organizationId?: string;
+  organizationSlug?: string;
+};
+
+function readServerEnv(name: string) {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function resolveBootstrapOrganizationContext(): BootstrapOrganizationContext {
+  const organizationSlug =
+    readServerEnv("MEDSYS_BOOTSTRAP_ORGANIZATION_SLUG") ??
+    readServerEnv("MEDSYS_DEFAULT_ORGANIZATION_SLUG") ??
+    readServerEnv("AUTH_ORGANIZATION_SLUG") ??
+    readServerEnv("NEXT_PUBLIC_ORGANIZATION_SLUG");
+  if (organizationSlug) {
+    return { organizationSlug };
+  }
+
+  const organizationId =
+    readServerEnv("MEDSYS_BOOTSTRAP_ORGANIZATION_ID") ??
+    readServerEnv("AUTH_ORGANIZATION_ID");
+  return organizationId ? { organizationId } : {};
 }
 
 function contractMismatchResponse() {
@@ -35,11 +65,15 @@ async function parseErrorMessage(response: Response) {
   }
 }
 
-async function loginAfterBootstrap(email: string, password: string, organizationId?: string) {
+async function loginAfterBootstrap(
+  email: string,
+  password: string,
+  organizationContext: BootstrapOrganizationContext
+) {
   const loginPayload = validateAuthLoginPayload({
     email,
     password,
-    organizationId,
+    ...organizationContext,
   });
   if (!loginPayload.ok) {
     return { ok: false as const, response: validationErrorResponse(loginPayload.issues) };
@@ -47,7 +81,10 @@ async function loginAfterBootstrap(email: string, password: string, organization
 
   let backendResponse: Response;
   try {
-    backendResponse = await fetch(getBackendLoginUrl(), {
+    const loginUrl = loginPayload.value.organizationSlug
+      ? getBackendLoginWithSlugUrl()
+      : getBackendLoginUrl();
+    backendResponse = await fetch(loginUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(loginPayload.value),
@@ -169,7 +206,7 @@ export async function POST(request: NextRequest) {
       const loginResult = await loginAfterBootstrap(
         validated.value.email,
         validated.value.password,
-        process.env.NEXT_PUBLIC_ORGANIZATION_ID
+        resolveBootstrapOrganizationContext()
       );
       if (!loginResult.ok) {
         return loginResult.response;

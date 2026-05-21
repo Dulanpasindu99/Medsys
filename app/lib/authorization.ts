@@ -83,7 +83,7 @@ const ROUTE_POLICIES: RoutePolicy[] = [
   {
     routeId: "doctorHome",
     navId: "doctor",
-    href: "/",
+    href: "/doctor",
     label: "Doctor Page",
     permission: "doctor.workspace.view",
   },

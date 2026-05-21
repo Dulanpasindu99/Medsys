@@ -457,10 +457,10 @@ export function DoctorHeader({
         }`}
       >
         <Image
-          src="/assets/brand-logo.png"
-          alt="Brand Logo"
-          width={160}
-          height={40}
+          src="/assets/medlink-logo-optimized.png"
+          alt="Medlink Logo"
+          width={200}
+          height={44}
           className="h-7 w-auto object-contain opacity-90 sm:h-8 xl:h-10"
         />
       </div>

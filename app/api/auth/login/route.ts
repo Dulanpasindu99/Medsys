@@ -34,10 +34,12 @@ function getBackendLoginWithSlugUrl() {
   return `${getBackendOrigin()}/v1/auth/login-with-slug`;
 }
 
-
 async function parseErrorMessage(response: Response) {
   try {
-    const payload = (await response.json()) as { message?: string; error?: string };
+    const payload = (await response.json()) as {
+      message?: string;
+      error?: string;
+    };
     return payload.message ?? payload.error ?? "Unable to sign in.";
   } catch {
     return "Unable to sign in.";
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
       {
         error: "organizationSlug or organizationId is required",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -120,18 +122,25 @@ export async function POST(request: NextRequest) {
         roleHint,
       });
     } else {
-      backendResponse = await loginLegacy({ email, password, organizationId: organizationId! });
+      backendResponse = await loginLegacy({
+        email,
+        password,
+        organizationId: organizationId!,
+      });
     }
   } catch {
     return NextResponse.json(
       { error: "Authentication service is unavailable." },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
   if (!backendResponse.ok) {
     const message = await parseErrorMessage(backendResponse);
-    return NextResponse.json({ error: message }, { status: backendResponse.status });
+    return NextResponse.json(
+      { error: message },
+      { status: backendResponse.status },
+    );
   }
 
   const rawPayload = await backendResponse.json();
@@ -142,7 +151,7 @@ export async function POST(request: NextRequest) {
         error: "Authentication service returned an invalid token payload.",
         issues: payload.issues,
       },
-      { status: 502 }
+      { status: 502 },
     );
   }
 
@@ -159,15 +168,18 @@ export async function POST(request: NextRequest) {
   const role = claims.role ?? backendUser?.role ?? roleHint ?? null;
   const roles = backendUser?.roles ?? (role ? [role] : []);
   const activeRole = backendUser?.active_role ?? role ?? null;
-  const name = claims.name ?? backendUser?.name ?? email.split("@")[0] ?? "User";
+  const name =
+    claims.name ?? backendUser?.name ?? email.split("@")[0] ?? "User";
   const resolvedEmail = claims.email ?? backendUser?.email ?? email;
   const resolvedPermissions =
-    claims.permissions.length > 0 ? claims.permissions : backendUser?.permissions ?? [];
+    claims.permissions.length > 0
+      ? claims.permissions
+      : (backendUser?.permissions ?? []);
 
   if (!role) {
     return NextResponse.json(
       { error: "Authenticated token did not contain a valid role." },
-      { status: 502 }
+      { status: 502 },
     );
   }
 
@@ -185,7 +197,7 @@ export async function POST(request: NextRequest) {
       doctorWorkflowMode:
         claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
       workflowProfiles: backendUser?.workflow_profiles ?? null,
-    })
+    }),
   );
 
   attachBackendAuthCookies(
@@ -197,7 +209,7 @@ export async function POST(request: NextRequest) {
     {
       accessExpiresAt: claims.exp,
       refreshExpiresAt: refreshClaims.exp,
-    }
+    },
   );
 
   attachSessionCookie(
@@ -218,7 +230,7 @@ export async function POST(request: NextRequest) {
     },
     {
       expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,
-    }
+    },
   );
 
   return response;

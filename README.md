@@ -36,9 +36,16 @@ npm test
 ## Environment
 
 ```bash
-NEXT_PUBLIC_ORGANIZATION_ID=11111111-1111-1111-1111-111111111111
+NEXT_PUBLIC_API_BASE_URL=https://api.medlinkapp.aldtan.com
+NEXT_PUBLIC_ORGANIZATION_SLUG=sunrise-clinic
 BACKEND_URL=http://localhost:4000
 MEDSYS_SESSION_SECRET=replace-with-a-long-random-secret
+# Optional during zero-downtime rotation:
+# MEDSYS_SESSION_SECRET_PREVIOUS=previous-long-random-secret
+# Optional server-only bootstrap override (preferred):
+# MEDSYS_BOOTSTRAP_ORGANIZATION_SLUG=sunrise-clinic
+# Optional server-only legacy fallback:
+# MEDSYS_BOOTSTRAP_ORGANIZATION_ID=11111111-1111-1111-1111-111111111111
 ```
 
-Use a strong random value for `MEDSYS_SESSION_SECRET` in any shared or production environment. The app now rejects placeholder secrets when `NODE_ENV=production`.
+Use a strong random value for `MEDSYS_SESSION_SECRET` in any shared or production environment. The app rejects placeholder secrets when `NODE_ENV=production`. During secret rotation, keep the new value in `MEDSYS_SESSION_SECRET` and set the old value in `MEDSYS_SESSION_SECRET_PREVIOUS` until existing sessions naturally expire.

@@ -5,6 +5,7 @@ import {
   type AnalyticsDashboardQuery,
   type AnalyticsDashboardResponse,
 } from "./analytics-types";
+import { generateRequestId } from "./request-id";
 
 export type ApiClientError = {
   message: string;
@@ -412,7 +413,10 @@ export type ConsultationSavePayload = {
 };
 
 const DEFAULT_API_BASE = "/api/backend";
-const API_BASE_URL = DEFAULT_API_BASE;
+const API_BASE_URL = (() => {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  return configured ? configured.replace(/\/+$/, "") : DEFAULT_API_BASE;
+})();
 const ORGANIZATION_SLUG = process.env.NEXT_PUBLIC_ORGANIZATION_SLUG ?? undefined;
 
 export function clearStoredAuth() {
@@ -624,7 +628,7 @@ export async function apiFetch<T>(
   }
 
   if (!headers.has("x-request-id")) {
-    headers.set("x-request-id", crypto.randomUUID());
+    headers.set("x-request-id", generateRequestId());
   }
 
   const requestInit: RequestInit = {

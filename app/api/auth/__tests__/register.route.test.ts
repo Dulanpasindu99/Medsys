@@ -16,6 +16,11 @@ function createJwt(payload: Record<string, unknown>) {
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    delete process.env.MEDSYS_BOOTSTRAP_ORGANIZATION_SLUG;
+    delete process.env.MEDSYS_DEFAULT_ORGANIZATION_SLUG;
+    delete process.env.AUTH_ORGANIZATION_SLUG;
+    delete process.env.MEDSYS_BOOTSTRAP_ORGANIZATION_ID;
+    delete process.env.AUTH_ORGANIZATION_ID;
   });
 
   it("rejects invalid registration payloads with a validation envelope", async () => {
@@ -128,6 +133,82 @@ describe("POST /api/auth/register", () => {
     expect(response.cookies.get(BACKEND_ACCESS_COOKIE_NAME)?.value).toBe(accessToken);
     expect(response.cookies.get(BACKEND_REFRESH_COOKIE_NAME)?.value).toBe(refreshToken);
     expect(response.cookies.get(SESSION_COOKIE_NAME)?.value).toBeTruthy();
+  });
+
+  it("uses slug-based bootstrap login from server-only organization env", async () => {
+    process.env.MEDSYS_BOOTSTRAP_ORGANIZATION_SLUG = "sunrise-clinic";
+
+    const accessToken = createJwt({
+      userId: 11,
+      role: "owner",
+      email: "owner@example.com",
+      name: "Owner User",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    const refreshToken = createJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ bootstrapping: true, users: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: {
+              id: 11,
+              name: "Owner User",
+              email: "owner@example.com",
+              role: "owner",
+              created_at: "2026-03-09T00:00:00.000Z",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            accessToken,
+            refreshToken,
+            expiresIn: 900,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new NextRequest("http://localhost/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Owner User",
+        email: "OWNER@example.com",
+        password: "owner-pass-123",
+        role: "owner",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe("http://localhost:4000/v1/auth/login-with-slug");
+    expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(
+      JSON.stringify({
+        email: "owner@example.com",
+        password: "owner-pass-123",
+        organizationSlug: "sunrise-clinic",
+      })
+    );
   });
 
   it("requires an authorized session for non-bootstrap registration", async () => {

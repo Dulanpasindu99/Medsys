@@ -1,7 +1,7 @@
-import DoctorSection from '../sections/DoctorSection';
-import { requirePageRoute } from '../lib/page-auth';
+import DoctorSection from "../../sections/DoctorSection";
+import { requirePageRoute } from "../../lib/page-auth";
 
-export default async function Home() {
+export default async function DoctorHomePage() {
   await requirePageRoute("doctorHome");
   return (
     <div className="flex h-full min-h-0 w-full flex-col">

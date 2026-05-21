@@ -71,4 +71,44 @@ describe("session secret enforcement", () => {
       name: "Owner Example",
     });
   });
+
+  it("supports verifying tokens signed with a previous rotated secret", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MEDSYS_SESSION_SECRET", "previous-prod-secret-32-characters");
+    vi.stubEnv("MEDSYS_SESSION_SECRET_PREVIOUS", "");
+
+    const legacyToken = createSessionToken({
+      userId: 17,
+      role: "assistant",
+      email: "assistant@example.com",
+      name: "Assistant Example",
+    });
+
+    vi.stubEnv("MEDSYS_SESSION_SECRET", "current-prod-secret-32-characters");
+    vi.stubEnv(
+      "MEDSYS_SESSION_SECRET_PREVIOUS",
+      "previous-prod-secret-32-characters"
+    );
+
+    expect(verifySessionToken(legacyToken)).toMatchObject({
+      userId: 17,
+      role: "assistant",
+      email: "assistant@example.com",
+      name: "Assistant Example",
+    });
+
+    const currentToken = createSessionToken({
+      userId: 18,
+      role: "owner",
+      email: "owner@example.com",
+      name: "Owner Current",
+    });
+
+    expect(verifySessionToken(currentToken)).toMatchObject({
+      userId: 18,
+      role: "owner",
+      email: "owner@example.com",
+      name: "Owner Current",
+    });
+  });
 });

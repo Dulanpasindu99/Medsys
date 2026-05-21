@@ -1,10 +1,11 @@
+import { getBackendOrigin } from "./backend-origin";
+
 type BackendAvailability =
   | { ok: true }
   | { ok: false; reason: "backend_unreachable" | "backend_unhealthy" };
 
 function getBackendHealthUrl() {
-  const backendOrigin = process.env.BACKEND_URL ?? "http://localhost:4000";
-  return `${backendOrigin.replace(/\/+$/, "")}/healthz`;
+  return `${getBackendOrigin()}/healthz`;
 }
 
 export async function getBackendAvailability(): Promise<BackendAvailability> {

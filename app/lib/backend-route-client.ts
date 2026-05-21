@@ -13,6 +13,8 @@ import {
   verifySessionToken,
 } from "@/app/lib/session";
 import { readTokenClaims } from "@/app/lib/token-claims";
+import { getBackendOrigin } from "@/app/lib/backend-origin";
+import { generateRequestId } from "@/app/lib/request-id";
 
 const FORWARDED_HEADER_ALLOWLIST = [
   "accept",
@@ -55,10 +57,6 @@ type BackendRouteFailure = {
 
 export type BackendRouteResult = BackendRouteSuccess | BackendRouteFailure;
 
-function getBackendOrigin() {
-  return (process.env.BACKEND_URL ?? "http://localhost:4000").replace(/\/+$/, "");
-}
-
 function buildBackendUrl(pathname: string, search = "") {
   return `${getBackendOrigin()}${pathname}${search}`;
 }
@@ -79,7 +77,7 @@ function buildForwardHeaders(request: NextRequest, accessToken?: string | null) 
   }
 
   if (!headers.has("x-request-id")) {
-    headers.set("x-request-id", crypto.randomUUID());
+    headers.set("x-request-id", generateRequestId());
   }
 
   if (accessToken) {

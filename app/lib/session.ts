@@ -38,13 +38,37 @@ const DISALLOWED_SESSION_SECRETS = new Set([
   "replace-with-a-long-random-secret",
 ]);
 
-function getSessionSecret() {
+type SessionSecretConfig = {
+  signingSecret: string;
+  verificationSecrets: string[];
+};
+
+function parseAdditionalSecrets(raw: string | undefined) {
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function getSessionSecretConfig(): SessionSecretConfig {
   const configuredSecret = process.env.MEDSYS_SESSION_SECRET?.trim() ?? "";
+  const additionalSecrets = parseAdditionalSecrets(
+    process.env.MEDSYS_SESSION_SECRET_PREVIOUS
+  );
   const isDevelopment = process.env.NODE_ENV !== "production";
+  const verificationSecrets: string[] = [];
 
   if (!configuredSecret) {
     if (isDevelopment) {
-      return DEV_FALLBACK_SESSION_SECRET;
+      verificationSecrets.push(DEV_FALLBACK_SESSION_SECRET);
+      return {
+        signingSecret: DEV_FALLBACK_SESSION_SECRET,
+        verificationSecrets,
+      };
     }
 
     throw new Error(
@@ -58,7 +82,23 @@ function getSessionSecret() {
     );
   }
 
-  return configuredSecret;
+  verificationSecrets.push(configuredSecret);
+  for (const candidate of additionalSecrets) {
+    if (!isDevelopment && DISALLOWED_SESSION_SECRETS.has(candidate.toLowerCase())) {
+      continue;
+    }
+
+    if (candidate === configuredSecret || verificationSecrets.includes(candidate)) {
+      continue;
+    }
+
+    verificationSecrets.push(candidate);
+  }
+
+  return {
+    signingSecret: configuredSecret,
+    verificationSecrets,
+  };
 }
 
 function toBase64Url(input: Buffer | string) {
@@ -69,14 +109,15 @@ function fromBase64Url(input: string) {
   return Buffer.from(input, "base64url");
 }
 
-function sign(rawPayload: string) {
-  return crypto.createHmac(HMAC_ALGORITHM, getSessionSecret()).update(rawPayload).digest("base64url");
+function sign(rawPayload: string, secret: string) {
+  return crypto.createHmac(HMAC_ALGORITHM, secret).update(rawPayload).digest("base64url");
 }
 
 export function createSessionToken(
   data: Omit<SessionPayload, "iat" | "exp">,
   options?: SessionOptions
 ) {
+  const { signingSecret } = getSessionSecretConfig();
   const now = Math.floor(Date.now() / 1000);
   const exp = options?.expiresAt && options.expiresAt > now
     ? options.expiresAt
@@ -88,27 +129,36 @@ export function createSessionToken(
   };
 
   const payloadEncoded = toBase64Url(JSON.stringify(payload));
-  const signature = sign(payloadEncoded);
+  const signature = sign(payloadEncoded, signingSecret);
   return `${payloadEncoded}.${signature}`;
 }
 
 function timingSafeEqual(a: string, b: string) {
-  const aBuffer = fromBase64Url(a);
-  const bBuffer = fromBase64Url(b);
-  if (aBuffer.length !== bBuffer.length) {
+  try {
+    const aBuffer = fromBase64Url(a);
+    const bBuffer = fromBase64Url(b);
+    if (aBuffer.length !== bBuffer.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(aBuffer, bBuffer);
+  } catch {
     return false;
   }
-  return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
 export function verifySessionToken(token: string): SessionPayload | null {
+  const { verificationSecrets } = getSessionSecretConfig();
   const [payloadEncoded, signature] = token.split(".");
   if (!payloadEncoded || !signature) {
     return null;
   }
 
-  const expected = sign(payloadEncoded);
-  if (!timingSafeEqual(signature, expected)) {
+  const hasMatchingSignature = verificationSecrets.some((secret) => {
+    const expected = sign(payloadEncoded, secret);
+    return timingSafeEqual(signature, expected);
+  });
+
+  if (!hasMatchingSignature) {
     return null;
   }
 
