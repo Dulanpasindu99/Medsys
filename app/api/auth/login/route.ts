@@ -21,7 +21,7 @@ function getBackendOrigin() {
     process.env.BACKEND_URL ||
     process.env.API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "http://54.179.192.214";
+    "http://54.179.192.214:3000";
 
   return origin.replace(/\/+$/, "");
 }
