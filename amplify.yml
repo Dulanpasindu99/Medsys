@@ -7,8 +7,9 @@ frontend:
     build:
       commands:
         - rm -f .env.production
-        - env | grep -e BACKEND_URL -e API_BASE_URL -e MEDSYS_SESSION_SECRET >> .env.production
-        - env | grep -e NEXT_PUBLIC_ >> .env.production
+        - env | grep -e BACKEND_URL -e API_BASE_URL -e MEDSYS_SESSION_SECRET >> .env.production || true
+        - env | grep -e NEXT_PUBLIC_ >> .env.production || true
+        - env | grep -e MEDSYS_BOOTSTRAP_ORGANIZATION_SLUG -e MEDSYS_BOOTSTRAP_ORGANIZATION_ID >> .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next

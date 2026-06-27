@@ -36,9 +36,10 @@ npm test
 ## Environment
 
 ```bash
-NEXT_PUBLIC_API_BASE_URL=https://api.medlinkapp.aldtan.com
+NEXT_PUBLIC_API_BASE_URL=https://medlinkapi.aldtan.com
 NEXT_PUBLIC_ORGANIZATION_SLUG=sunrise-clinic
-BACKEND_URL=http://localhost:4000
+BACKEND_URL=https://medlinkapi.aldtan.com
+API_BASE_URL=https://medlinkapi.aldtan.com
 MEDSYS_SESSION_SECRET=replace-with-a-long-random-secret
 # Optional during zero-downtime rotation:
 # MEDSYS_SESSION_SECRET_PREVIOUS=previous-long-random-secret

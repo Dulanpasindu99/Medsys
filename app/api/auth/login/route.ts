@@ -10,21 +10,7 @@ import {
 } from "@/app/lib/api-validation";
 import { attachSessionCookie } from "@/app/lib/session";
 import { readTokenClaims } from "@/app/lib/token-claims";
-
-// function getBackendOrigin() {
-//   const origin = process.env.BACKEND_URL ?? "http://localhost:4000";
-//   return origin.replace(/\/+$/, "");
-// }
-
-function getBackendOrigin() {
-  const origin =
-    process.env.BACKEND_URL ||
-    process.env.API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "http://54.179.192.214:3000";
-
-  return origin.replace(/\/+$/, "");
-}
+import { getBackendOrigin } from "@/app/lib/backend-origin";
 
 function getBackendLoginUrl() {
   return `${getBackendOrigin()}/v1/auth/login`;
