@@ -6,7 +6,7 @@ import { serializeUser } from "@/app/lib/api-serializers";
 import {
   parseJsonBody,
   parsePositiveInteger,
-  validateUserPermissionUpdatePayload,
+  validateUserAdminUpdatePayload,
   validationErrorResponse,
 } from "@/app/lib/api-validation";
 
@@ -37,7 +37,7 @@ export async function PATCH(
     return validationErrorResponse(parsedBody.issues);
   }
 
-  const validated = validateUserPermissionUpdatePayload(parsedBody.value);
+  const validated = validateUserAdminUpdatePayload(parsedBody.value);
   if (!validated.ok) {
     return validationErrorResponse(validated.issues);
   }
@@ -52,7 +52,7 @@ export async function PATCH(
   }
 
   if (!backend.response.ok) {
-    return toFrontendErrorResponse(backend.response, "Unable to update user permissions.");
+    return toFrontendErrorResponse(backend.response, "Unable to update user account.");
   }
 
   try {

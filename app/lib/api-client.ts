@@ -656,6 +656,7 @@ export async function apiFetch<T>(
   return executeFetchWithRetry<T>(url, requestInit, method);
 }
 
+export type OperatingMode = "standard" | "step_up";
 export type LoginResponse = {
   id: number | null;
   user_id?: number | null;
@@ -668,6 +669,7 @@ export type LoginResponse = {
   extra_permissions?: AppPermission[];
   doctor_workflow_mode?: DoctorWorkflowMode;
   workflow_profiles?: WorkflowProfiles | null;
+  operating_mode?: OperatingMode;
 };
 
 export type FrontendUser = {
@@ -812,6 +814,20 @@ export async function getCurrentUser() {
   }
 }
 
+export type ClinicSettings = {
+  id: string;
+  slug: string;
+  name: string;
+  operating_mode: OperatingMode;
+};
+
+export async function updateClinicOperatingMode(operatingMode: OperatingMode) {
+  return apiFetch<{ organization: ClinicSettings }>("/api/organizations/current", {
+    method: "PATCH",
+    body: JSON.stringify({ operatingMode }),
+  });
+}
+
 export async function getAuthStatus() {
   try {
     return await apiFetch<{ bootstrapping: boolean; users: number }>("/api/auth/status", {
@@ -874,6 +890,17 @@ export async function createUser(input: {
 export async function updateUserExtraPermissions(
   userId: number | string,
   input: { extraPermissions: AppPermission[] }
+) {
+  const response = await apiFetch<{ user: FrontendUser }>(`/api/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+  return response.user;
+}
+
+export async function updateUserCredentials(
+  userId: number | string,
+  input: { email?: string; password?: string }
 ) {
   const response = await apiFetch<{ user: FrontendUser }>(`/api/users/${userId}`, {
     method: "PATCH",
@@ -1175,6 +1202,32 @@ export async function getAnalyticsOverview() {
   return expectApiRecord(response, "analytics overview");
 }
 
+export type AnalyticsEarnings = {
+  currency: string;
+  totalEarnings: number;
+  dispenseCount: number;
+  range: string;
+};
+
+export async function getAnalyticsEarnings(
+  input: { range?: string; dateFrom?: string; dateTo?: string } = {},
+): Promise<AnalyticsEarnings> {
+  const params = new URLSearchParams();
+  if (input.range) params.set("range", input.range);
+  if (input.dateFrom) params.set("dateFrom", input.dateFrom);
+  if (input.dateTo) params.set("dateTo", input.dateTo);
+  const query = params.size ? `?${params.toString()}` : "";
+  const response = await apiFetch<Record<string, unknown>>(`/api/analytics/earnings${query}`, {
+    method: "GET",
+  });
+  return {
+    currency: typeof response.currency === "string" ? response.currency : "LKR",
+    totalEarnings: typeof response.totalEarnings === "number" ? response.totalEarnings : 0,
+    dispenseCount: typeof response.dispenseCount === "number" ? response.dispenseCount : 0,
+    range: typeof response.range === "string" ? response.range : "7d",
+  };
+}
+
 export async function getAnalyticsDashboard(
   input: AnalyticsDashboardQuery = {}
 ): Promise<AnalyticsDashboardResponse> {
@@ -1421,6 +1474,7 @@ export async function dispensePrescription(
     status: "completed" | "partially_completed" | "cancelled";
     notes: string;
     items: Array<{ inventoryItemId: number; quantity: number }>;
+    priceLkr?: number | null;
   }
 ) {
   return apiFetch(`/api/prescriptions/${prescriptionId}/dispense`, {

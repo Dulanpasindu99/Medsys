@@ -86,11 +86,13 @@ export default function DoctorSection() {
     handleAddOrUpdateAllergy,
     removeConsultationAllergy,
     handleClearPatientActions,
+    handleClearForm,
     canClearPatientActions,
     canSaveRecord,
     saveDisabledReason,
     selectedAppointmentStatus,
     workflowType,
+    isStepUpMode,
     workflowStatusLabel,
     dispenseStatusLabel,
     lastClinicalItemCount,
@@ -219,6 +221,9 @@ export default function DoctorSection() {
                 onGuardianSelect={handleGuardianSelect}
                 requiresGuardianDetails={requiresGuardianDetails}
                 nicIdentityLabel={nicIdentityLabel}
+                onClearForm={handleClearForm}
+                canClearForm={canClearPatientActions}
+                isStepUpMode={isStepUpMode}
                 clinicalWorkflow={clinicalWorkflow}
                 visitPlanner={visitPlanner}
                 onSaveRecord={handleSaveRecord}

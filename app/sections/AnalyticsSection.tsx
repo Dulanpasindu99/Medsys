@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import type { ReportType } from '../lib/api-client';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { getAnalyticsEarnings, type ReportType } from '../lib/api-client';
 import { AppSelectField } from '../components/ui/AppSelectField';
 import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import {
@@ -10,7 +12,6 @@ import {
   ViewportFrame,
   ViewportHeader,
   ViewportPage,
-  ViewportTabs,
 } from '../components/ui/ViewportLayout';
 import {
   isAssistantAnalytics,
@@ -1254,30 +1255,47 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
 
   return (
     <div className="space-y-3">
-      {insightCards.length ? (
-        <div className={getChartGridClass(insightCards.length)}>
-          {insightCards}
+      <div className="sticky top-0 z-20 rounded-[22px] border border-slate-200/70 bg-white/80 px-4 py-3 shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-white/70 backdrop-blur-xl">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)]">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 5h16M4 12h16M4 19h10" />
+              </svg>
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+                Report Views
+              </p>
+              <p className="text-sm font-semibold text-slate-900">Select a dashboard section</p>
+            </div>
+          </div>
+          <div
+            role="tablist"
+            aria-label="Report views"
+            className="flex items-center gap-1 overflow-x-auto rounded-full border border-slate-200/80 bg-slate-50/90 p-1 ring-1 ring-white/60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {tabs.map((tab) => {
+              const isActive = tab.key === activeTab;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`shrink-0 rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-[0_8px_18px_rgba(37,99,235,0.30)]'
+                      : 'text-slate-500 hover:-translate-y-0.5 hover:bg-white hover:text-slate-900 hover:shadow-sm'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)] ring-1 ring-sky-50/70">
-        <div className="min-w-[120px]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-            Report Views
-          </p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">
-            Select a dashboard section
-          </p>
-        </div>
-        <ViewportTabs
-          className="pb-0"
-          tabs={tabs.map((tab) => ({
-            key: tab.key,
-            label: tab.label,
-            active: tab.key === activeTab,
-            onClick: () => setActiveTab(tab.key),
-          }))}
-        />
       </div>
 
       <AnalyticsSectionBlock
@@ -1389,6 +1407,77 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
           <EmptyTabState message="No analytics data is available for this tab in the selected range yet." />
         )}
       </AnalyticsSectionBlock>
+
+      {insightCards.length ? (
+        <div className={getChartGridClass(insightCards.length)}>
+          {insightCards}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TotalEarningsCard({
+  range,
+  dateFrom,
+  dateTo,
+}: {
+  range: string;
+  dateFrom: string;
+  dateTo: string;
+}) {
+  const [revealed, setRevealed] = useState(false);
+  const isCustom = range === 'custom';
+  const earningsQuery = useQuery({
+    queryKey: ['analytics', 'earnings', range, isCustom ? dateFrom : null, isCustom ? dateTo : null],
+    queryFn: () =>
+      getAnalyticsEarnings({
+        range,
+        dateFrom: isCustom ? dateFrom : undefined,
+        dateTo: isCustom ? dateTo : undefined,
+      }),
+    enabled: !isCustom || (Boolean(dateFrom) && Boolean(dateTo)),
+    staleTime: 20_000,
+  });
+
+  const amount = earningsQuery.data?.totalEarnings ?? 0;
+  const dispenseCount = earningsQuery.data?.dispenseCount ?? 0;
+  const formattedAmount = new Intl.NumberFormat('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+
+  return (
+    <div className="relative overflow-hidden rounded-[24px] border border-emerald-300/40 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 p-5 text-white shadow-[0_24px_50px_rgba(5,150,105,0.28)]">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-12 right-16 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-50/80">
+            Total Earnings
+          </p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-sm font-bold text-emerald-50/90">LKR</span>
+            <span className="text-3xl font-extrabold tracking-tight tabular-nums sm:text-4xl">
+              {earningsQuery.isPending ? '…' : revealed ? formattedAmount : '••••••'}
+            </span>
+          </div>
+          <p className="mt-1.5 text-[12px] font-medium text-emerald-50/80">
+            {revealed
+              ? `Collected from ${dispenseCount} dispensed prescription${dispenseCount === 1 ? '' : 's'} in this range.`
+              : 'Amount hidden for privacy — reveal to view dispensed-medicine earnings.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setRevealed((value) => !value)}
+          aria-pressed={revealed}
+          className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-white/15 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-white ring-1 ring-white/30 backdrop-blur transition hover:bg-white/25"
+        >
+          {revealed ? <FiEyeOff className="h-4 w-4" aria-hidden="true" /> : <FiEye className="h-4 w-4" aria-hidden="true" />}
+          {revealed ? 'Hide' : 'Show'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1569,6 +1658,8 @@ export default function AnalyticsSection() {
 
           <div className="min-h-0 flex-1 overflow-y-scroll pr-1">
             <div className="space-y-3 pb-1">
+              <TotalEarningsCard range={range} dateFrom={customDateFrom} dateTo={customDateTo} />
+
               {data && isDoctorAnalytics(data) ? (
                 <div className="grid auto-rows-fr items-stretch gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
                   <MetricStrip title="Doctor Focus" metrics={getDoctorKpiMetrics(data)} />

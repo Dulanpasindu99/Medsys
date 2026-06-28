@@ -1,8 +1,9 @@
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { FiAlertCircle, FiInfo, FiUserCheck } from "react-icons/fi";
+import { FiAlertCircle, FiInfo, FiPrinter, FiUserCheck } from "react-icons/fi";
 import { appMuiPickerTextFieldProps } from "../../../components/ui/muiFieldStyles";
 import type { VisitOption } from "../hooks/useVisitPlanner";
 
@@ -18,6 +19,7 @@ type VisitPlannerProps = {
   onPrintPrescription?: () => void;
   selectedStatusLabel: string;
   workflowType?: "appointment" | "walk_in";
+  isStepUpMode?: boolean;
   workflowStatusLabel?: string | null;
   dispenseStatusLabel?: string | null;
   lastClinicalItemCount?: number;
@@ -109,6 +111,7 @@ export function VisitPlanner({
   onPrintPrescription,
   selectedStatusLabel,
   workflowType = "walk_in",
+  isStepUpMode = false,
   workflowStatusLabel = null,
   dispenseStatusLabel = null,
   lastClinicalItemCount = 0,
@@ -127,6 +130,24 @@ export function VisitPlanner({
   const diagnosisPreview = summaryDiagnoses;
   const testPreview = summaryTests;
   const prescriptionPreview = summaryPrescriptions;
+
+  // The save/dispense guidance warnings stay hidden until the doctor actually tries to
+  // save without enough data; a successful save clears them again.
+  const [showSaveHints, setShowSaveHints] = useState(false);
+  useEffect(() => {
+    if (saveFeedback?.tone === "success") {
+      setShowSaveHints(false);
+    }
+  }, [saveFeedback?.tone, saveFeedback?.message]);
+
+  const handleSaveClick = () => {
+    if (!canSaveRecord) {
+      setShowSaveHints(true);
+      return;
+    }
+    setShowSaveHints(false);
+    onSaveRecord();
+  };
 
   return (
     <div className="flex min-h-full flex-col gap-3">
@@ -303,43 +324,52 @@ export function VisitPlanner({
           </span>
         </div>
 
-        <div className="grid gap-2 md:grid-cols-3">
+        <div className="flex items-stretch gap-2">
           <button
             type="button"
-            onClick={onSaveRecord}
-            disabled={isSavingRecord || !canSaveRecord}
-            className="inline-flex min-h-9 w-full items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_20px_rgba(59,130,246,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+            onClick={handleSaveClick}
+            disabled={isSavingRecord}
+            className="inline-flex min-h-9 flex-1 items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_20px_rgba(59,130,246,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
           >
             {isSavingRecord ? "Saving consultation..." : "Save Consultation"}
           </button>
-          <button
-            type="button"
-            onClick={onSaveAndComplete}
-            disabled={workflowType !== "walk_in" || isSavingRecord || !canDirectDispense}
-            className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            Save + Dispense + Complete
-          </button>
+          {/* Step Up clinics complete dispense on the assistant side, so the doctor does
+              not get the one-shot dispense+complete action here. */}
+          {!isStepUpMode ? (
+            <button
+              type="button"
+              onClick={onSaveAndComplete}
+              disabled={workflowType !== "walk_in" || isSavingRecord || !canDirectDispense}
+              className="inline-flex min-h-9 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Save + Dispense + Complete
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onPrintPrescription}
             disabled={isSavingRecord || !canPrintPrescription || !onPrintPrescription}
+            aria-label="Print prescription"
             title={
               canPrintPrescription
                 ? "Print current consultation summary or latest saved prescription."
                 : "Add patient details, diagnosis, tests, or prescription items to enable print."
             }
-            className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex min-h-9 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-slate-50 text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Print Prescription
+            <FiPrinter className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
         <div className="space-y-1.5">
-          {!canSaveRecord && saveDisabledReason ? (
+          {showSaveHints && !canSaveRecord && saveDisabledReason ? (
             <GuidanceCallout tone="warning" message={saveDisabledReason} />
           ) : null}
-          {workflowType === "walk_in" && !canDirectDispense && directDispenseDisabledReason ? (
+          {showSaveHints &&
+          !isStepUpMode &&
+          workflowType === "walk_in" &&
+          !canDirectDispense &&
+          directDispenseDisabledReason ? (
             <GuidanceCallout tone="warning" message={directDispenseDisabledReason} />
           ) : null}
           {workflowStatusLabel || dispenseStatusLabel || lastClinicalItemCount > 0 || lastOutsideItemCount > 0 ? (

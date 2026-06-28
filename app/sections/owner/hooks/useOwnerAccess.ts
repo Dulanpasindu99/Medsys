@@ -6,6 +6,7 @@ import {
   createUser,
   type ApiClientError,
   updateUserExtraPermissions,
+  updateUserCredentials,
 } from '../../../lib/api-client';
 import {
   emptyLoadState,
@@ -584,6 +585,63 @@ export function useOwnerAccess() {
     }
   };
 
+  const saveUserCredentials = async (
+    user: StaffUser,
+    input: { email?: string; password?: string }
+  ) => {
+    if (!canManageStaff) {
+      const message =
+        manageStaffDisabledReason ?? "Owner access is required before updating staff logins.";
+      notifyWarning(message);
+      setUpdateStates((current) => ({ ...current, [user.id]: errorMutationState(message) }));
+      return;
+    }
+
+    if (user.backendUserId === null) {
+      const message = "Only synced staff accounts can have their login updated. Refresh and retry.";
+      notifyWarning(message);
+      setUpdateStates((current) => ({ ...current, [user.id]: errorMutationState(message) }));
+      return;
+    }
+
+    const email = input.email?.trim();
+    const password = input.password?.trim();
+    const payload: { email?: string; password?: string } = {};
+    if (email && email.toLowerCase() !== user.username.toLowerCase()) {
+      payload.email = email;
+    }
+    if (password) {
+      payload.password = password;
+    }
+
+    if (payload.email === undefined && payload.password === undefined) {
+      const message = "Enter a new email or password to update.";
+      notifyWarning(message);
+      setUpdateStates((current) => ({ ...current, [user.id]: errorMutationState(message) }));
+      return;
+    }
+
+    try {
+      setUpdateStates((current) => ({ ...current, [user.id]: pendingMutationState() }));
+      await updateUserCredentials(user.backendUserId, payload);
+      await refreshStaffQueries();
+      const changed = [
+        payload.email ? "email" : null,
+        payload.password ? "password" : null,
+      ]
+        .filter(Boolean)
+        .join(" and ");
+      const message = `Login ${changed} updated.`;
+      setUpdateStates((current) => ({ ...current, [user.id]: successMutationState(message) }));
+      notifySuccess(message);
+    } catch (error) {
+      const message =
+        (error as ApiClientError | undefined)?.message ?? "Unable to update staff login.";
+      notifyError(message);
+      setUpdateStates((current) => ({ ...current, [user.id]: errorMutationState(message) }));
+    }
+  };
+
   const handleCreate = async () => {
     if (!canManageStaff) {
       notifyWarning(
@@ -679,6 +737,7 @@ export function useOwnerAccess() {
     getEditableExtraPermissions,
     toggleUserExtraPermission,
     saveUserExtraPermissions,
+    saveUserCredentials,
     getUserUpdateFeedback: (userId: string) =>
       getMutationFeedback(updateStates[userId] ?? idleMutationState(), {
         pendingMessage: "Saving doctor support permissions...",

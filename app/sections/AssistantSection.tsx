@@ -35,6 +35,9 @@ export default function AssistantSection() {
         markDoneAndNext,
         canSubmitDispense,
         dispenseActionDisabledReason,
+        isStepUpMode,
+        dispensePriceInput,
+        setDispensePriceInput,
         setResolvedInventoryItem,
         loadState,
         createPatientState,
@@ -127,6 +130,9 @@ export default function AssistantSection() {
                                             workflowActionDisabledReason={workflowActionDisabledReason}
                                             isSubmitting={dispenseState.status === 'pending'}
                                             isLoading={loadState.status === 'loading'}
+                                            requirePrice={isStepUpMode}
+                                            priceLkr={dispensePriceInput}
+                                            onPriceLkrChange={setDispensePriceInput}
                                         />
                                     </AssistantPanelShell>
                                 ) : null}

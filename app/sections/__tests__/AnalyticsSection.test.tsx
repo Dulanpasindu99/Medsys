@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AnalyticsSection from "../AnalyticsSection";
 import { readyLoadState } from "../../lib/async-state";
+import { createQueryWrapper } from "../../lib/test-query-client";
 
 vi.mock("../analytics/hooks/useAnalyticsDashboard", () => ({
   useAnalyticsDashboard: vi.fn(),
@@ -72,7 +73,7 @@ describe("AnalyticsSection", () => {
   it("renders doctor analytics blocks from dashboard data", () => {
     mockedUseAnalyticsDashboard.mockReturnValue(buildDashboardState() as never);
 
-    render(<AnalyticsSection />);
+    render(<AnalyticsSection />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByText("Realtime Analytics")).toBeInTheDocument();
     expect(screen.getByText("Doctor Focus")).toBeInTheDocument();
@@ -102,7 +103,7 @@ describe("AnalyticsSection", () => {
       }) as never
     );
 
-    render(<AnalyticsSection />);
+    render(<AnalyticsSection />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByLabelText(/analytics role/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/doctor drill-down/i)).toBeInTheDocument();

@@ -756,6 +756,17 @@ export function useAssistantWorkflow() {
         : null;
   const canManageAssistantWorkflow =
     !!currentUserQuery.data && hasPermission(currentUserQuery.data, "prescription.dispense");
+  // Step Up clinics: first-come-first-serve, no appointments, and the assistant captures
+  // the medicine price (LKR) at dispense time before completing the patient.
+  const isStepUpMode = currentUserQuery.data?.operating_mode === "step_up";
+  const [dispensePriceInput, setDispensePriceInput] = useState("");
+  const parsedDispensePrice = (() => {
+    const trimmed = dispensePriceInput.trim();
+    if (trimmed === "") return null;
+    const value = Number(trimmed);
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  })();
+  const isDispensePriceValid = !isStepUpMode || parsedDispensePrice !== null;
   const workflowActionDisabledReason =
     currentUserQuery.isPending || currentUserQuery.isFetching
       ? "Checking dispense access."
@@ -796,6 +807,7 @@ export function useAssistantWorkflow() {
     canManageAssistantWorkflow &&
     !!activePrescription?.prescriptionId &&
     dispenseCooldownSeconds === 0 &&
+    isDispensePriceValid &&
     (!hasClinicalItemsToResolve ||
       (dispensePayloadItems.length > 0 &&
         activeClinicalResolutionRows.every((entry) => entry.resolvedInventoryItemId !== null)));
@@ -811,8 +823,11 @@ export function useAssistantWorkflow() {
           : hasClinicalItemsToResolve &&
               activeClinicalResolutionRows.some((entry) => entry.resolvedInventoryItemId === null)
             ? "Resolve every clinical drug to a stock item before dispensing."
-            : null;
+            : isStepUpMode && !isDispensePriceValid
+              ? "Enter the medicine price (LKR) before completing dispense."
+              : null;
   const canCreateAppointmentsInWorkflow =
+    !isStepUpMode &&
     !!currentUserQuery.data &&
     hasPermission(currentUserQuery.data, "appointment.create") &&
     currentUserId !== null;
@@ -1251,6 +1266,13 @@ export function useAssistantWorkflow() {
       return;
     }
 
+    if (isStepUpMode && parsedDispensePrice === null) {
+      const priceMessage = "Enter the medicine price (LKR) before completing dispense.";
+      setDispenseState(errorMutationState(priceMessage));
+      notifyWarning(priceMessage);
+      return;
+    }
+
     try {
       setDispenseState(pendingMutationState());
       await dispensePrescription(activePrescription.prescriptionId, {
@@ -1259,10 +1281,12 @@ export function useAssistantWorkflow() {
         status: "completed",
         notes: "Dispensed from assistant queue",
         items: dispensePayloadItems,
+        priceLkr: parsedDispensePrice,
       });
       await refreshAssistantQueries();
       setDispenseCooldownUntil(null);
       setDispenseCooldownSeconds(0);
+      setDispensePriceInput("");
       setDispenseState(successMutationState("Prescription marked as dispensed."));
       notifySuccess("Prescription marked as dispensed.");
     } catch (error) {
@@ -1307,6 +1331,9 @@ export function useAssistantWorkflow() {
     activeClinicalResolutionRows,
     canSubmitDispense,
     dispenseActionDisabledReason,
+    isStepUpMode,
+    dispensePriceInput,
+    setDispensePriceInput,
     setResolvedInventoryItem,
     formState,
     setFormState,

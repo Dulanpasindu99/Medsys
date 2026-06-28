@@ -842,6 +842,58 @@ export function validateUserPermissionUpdatePayload(payload: Record<string, unkn
   });
 }
 
+// Owner staff administration: edit login email, reset password, and/or change the
+// doctor-support overrides for an existing staff account in one PATCH.
+export function validateUserAdminUpdatePayload(payload: Record<string, unknown>) {
+  const issues: ValidationIssue[] = ensureAllowedKeys(payload, [
+    "email",
+    "password",
+    "extraPermissions",
+  ]);
+  const result: { email?: string; password?: string; extraPermissions?: AppPermission[] } = {};
+
+  if (payload.email !== undefined) {
+    const email = typeof payload.email === "string" ? payload.email.trim() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      issues.push({ field: "email", message: "Enter a valid email address." });
+    } else {
+      result.email = email;
+    }
+  }
+
+  if (payload.password !== undefined) {
+    const password = typeof payload.password === "string" ? payload.password : "";
+    if (password.length < 8 || password.length > 128) {
+      issues.push({ field: "password", message: "Password must be 8-128 characters." });
+    } else {
+      result.password = password;
+    }
+  }
+
+  if (payload.extraPermissions !== undefined) {
+    const extraPermissions = normalizePermissionList(payload.extraPermissions, "extraPermissions");
+    if (!extraPermissions.ok) {
+      issues.push(...extraPermissions.issues);
+    } else {
+      result.extraPermissions = extraPermissions.value ?? [];
+    }
+  }
+
+  if (issues.length > 0) {
+    return failure(issues);
+  }
+
+  if (
+    result.email === undefined &&
+    result.password === undefined &&
+    result.extraPermissions === undefined
+  ) {
+    return failure([{ field: "email", message: "Provide a new email or password to update." }]);
+  }
+
+  return success(result);
+}
+
 export function validateUserRoleQuery(value: string | null) {
   if (value === null) {
     return success<AppRole | undefined>(undefined);
