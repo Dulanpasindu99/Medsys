@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MutationFeedback } from "@/app/lib/async-state";
 import type { DoctorSupportPermission, PermissionKey, StaffUser } from "../types";
 import {
@@ -16,6 +16,7 @@ type OwnerStaffListCardProps = {
   getEditableExtraPermissions: (user: StaffUser) => DoctorSupportPermission[];
   onToggleExtraPermission: (userId: string, permission: DoctorSupportPermission) => void;
   onSaveUser: (user: StaffUser) => void;
+  onSaveCredentials: (user: StaffUser, input: { email?: string; password?: string }) => void;
   getUserFeedback: (userId: string) => MutationFeedback | null;
   isUpdatingUser: (userId: string) => boolean;
 };
@@ -26,6 +27,7 @@ export function OwnerStaffListCard({
   getEditableExtraPermissions,
   onToggleExtraPermission,
   onSaveUser,
+  onSaveCredentials,
   getUserFeedback,
   isUpdatingUser,
 }: OwnerStaffListCardProps) {
@@ -33,10 +35,19 @@ export function OwnerStaffListCard({
   const [search, setSearch] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
+  const [credEmail, setCredEmail] = useState("");
+  const [credPassword, setCredPassword] = useState("");
+  const [showCredPassword, setShowCredPassword] = useState(false);
   const activeUser = useMemo(
     () => staffUsers.find((entry) => entry.id === activeUserId) ?? null,
     [activeUserId, staffUsers]
   );
+  // Seed the editable login fields whenever a different staff member is opened.
+  useEffect(() => {
+    setCredEmail(activeUser?.username ?? "");
+    setCredPassword("");
+    setShowCredPassword(false);
+  }, [activeUserId, activeUser?.username]);
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return staffUsers;
@@ -55,14 +66,11 @@ export function OwnerStaffListCard({
   }, [filteredUsers, rowsPerPage, safePage]);
 
   return (
-    <div className="ios-surface flex h-full min-h-0 flex-col p-7 shadow-[0_22px_52px_rgba(15,23,42,0.12)]">
+    <div className="ios-surface flex flex-col p-7 shadow-[0_22px_52px_rgba(15,23,42,0.12)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Staff list</p>
           <h2 className="mt-1 text-xl font-bold text-slate-900">Manage existing accounts</h2>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Live staff entries reflect backend users plus recent audit and appointment activity. Doctor accounts can now carry explicit assistant-support overrides without changing their primary role.
-          </p>
         </div>
         <OwnerBadge label={`${staffUsers.length} users`} tone="emerald" />
       </div>
@@ -96,7 +104,7 @@ export function OwnerStaffListCard({
         </div>
       </div>
 
-      <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="mt-4">
       <div className="grid gap-3">
         {!filteredUsers.length ? (
           <div className={`rounded-2xl border border-slate-100 bg-white/70 px-5 py-6 text-sm font-semibold text-slate-500 ring-1 ring-slate-100 ${INSET}`}>
@@ -202,10 +210,79 @@ export function OwnerStaffListCard({
 
             <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 ring-1 ring-slate-100">
-                <p className="text-sm font-semibold text-slate-900">{activeUser.username}</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Full permission and override controls are shown below for this account.
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Login credentials
                 </p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
+                    <span>Login email</span>
+                    <input
+                      type="email"
+                      value={credEmail}
+                      onChange={(event) => setCredEmail(event.target.value)}
+                      disabled={!canManageStaff || activeUser.backendUserId === null}
+                      className={`rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:opacity-60 ${INSET}`}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
+                    <span>New password</span>
+                    <div className="relative">
+                      <input
+                        type={showCredPassword ? "text" : "password"}
+                        value={credPassword}
+                        onChange={(event) => setCredPassword(event.target.value)}
+                        placeholder="Leave blank to keep current"
+                        autoComplete="new-password"
+                        disabled={!canManageStaff || activeUser.backendUserId === null}
+                        className={`w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-16 text-sm font-semibold text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 disabled:opacity-60 ${INSET}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCredPassword((value) => !value)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600 transition hover:bg-slate-200"
+                      >
+                        {showCredPassword ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <p className="text-[11px] font-medium text-slate-500">
+                    {activeUser.backendUserId === null
+                      ? "This entry is from activity logs only. Refresh backend users to edit the login."
+                      : "Set a new email and/or password, then share the new password with the staff member."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSaveCredentials(activeUser, {
+                        email: credEmail,
+                        password: credPassword || undefined,
+                      })
+                    }
+                    disabled={
+                      !canManageStaff ||
+                      activeUser.backendUserId === null ||
+                      isUpdatingUser(activeUser.id)
+                    }
+                    className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isUpdatingUser(activeUser.id) ? "Saving..." : "Save login details"}
+                  </button>
+                </div>
+                {getUserFeedback(activeUser.id) ? (
+                  <p
+                    className={`mt-2 text-xs font-semibold ${
+                      getUserFeedback(activeUser.id)?.tone === "error"
+                        ? "text-rose-600"
+                        : getUserFeedback(activeUser.id)?.tone === "success"
+                          ? "text-emerald-700"
+                          : "text-slate-600"
+                    }`}
+                  >
+                    {getUserFeedback(activeUser.id)?.message}
+                  </p>
+                ) : null}
               </div>
 
               <div className="grid gap-2 md:grid-cols-2">

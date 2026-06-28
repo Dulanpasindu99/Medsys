@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { FiActivity, FiSearch, FiShield } from "react-icons/fi";
 import FormControl from "@mui/material/FormControl";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
@@ -63,6 +64,17 @@ type DoctorSidebarProps = {
   selectedAppointmentStatus?: AppointmentLifecycleStatus | null;
   showDraftEditors?: boolean;
 };
+
+function SidebarEmptyState({ icon, message }: { icon: ReactNode; message: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-5 text-center ring-1 ring-white/60">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sky-500 shadow-sm ring-1 ring-slate-100">
+        {icon}
+      </span>
+      <p className="max-w-[220px] text-[12px] font-semibold leading-5 text-slate-500">{message}</p>
+    </div>
+  );
+}
 
 function SidebarSection({
   title,
@@ -217,10 +229,10 @@ export function DoctorSidebar({
                   )}
                 </div>
               ) : (
-                <p className="rounded-2xl bg-slate-50 px-3 py-2.5 text-[13px] font-semibold text-slate-500 ring-1 ring-slate-100">
-                  Search for a patient on the left to begin treatment or review
-                  history.
-                </p>
+                <SidebarEmptyState
+                  icon={<FiSearch className="h-5 w-5" aria-hidden="true" />}
+                  message="Search for a patient on the left to begin treatment or review history."
+                />
               )}
             </SidebarSection>
 
@@ -322,10 +334,10 @@ export function DoctorSidebar({
                   </div>
                 </div>
               ) : (
-                <p className="rounded-2xl bg-slate-50 px-3 py-2.5 text-[13px] font-semibold text-slate-500 ring-1 ring-slate-100">
-                  Search for a patient or enter quick-create details to start
-                  entering vitals.
-                </p>
+                <SidebarEmptyState
+                  icon={<FiActivity className="h-5 w-5" aria-hidden="true" />}
+                  message="Search for a patient or enter quick-create details to start entering vitals."
+                />
               )}
             </SidebarSection>
 
@@ -361,9 +373,10 @@ export function DoctorSidebar({
                     </div>
                   ))
                 ) : (
-                  <p className="rounded-2xl bg-slate-50 px-3 py-2.5 text-[13px] font-semibold text-slate-500 ring-1 ring-slate-100">
-                    Allergy alerts will appear here after patient selection.
-                  </p>
+                  <SidebarEmptyState
+                    icon={<FiShield className="h-5 w-5" aria-hidden="true" />}
+                    message="Allergy alerts will appear here after patient selection."
+                  />
                 )}
                 {consultationAllergies.length ? (
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-2.5">
@@ -442,14 +455,6 @@ export function DoctorSidebar({
                       ) : null}
                     </div>
                   </div>
-                ) : null}
-                {!canEditAllergies && allergiesDisabledReason ? (
-                  <p
-                    title={allergiesDisabledReason}
-                    className="truncate whitespace-nowrap text-[11px] font-semibold text-amber-700"
-                  >
-                    {allergiesDisabledReason}
-                  </p>
                 ) : null}
                 {allergyFeedback ? (
                   <p

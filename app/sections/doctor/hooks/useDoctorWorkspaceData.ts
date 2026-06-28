@@ -1319,12 +1319,16 @@ export function useDoctorWorkspaceData(
   ]);
   const isDoctorRole = currentUserQuery.data?.role === "doctor";
   const doctorWorkflowMode = currentUserQuery.data?.doctor_workflow_mode ?? null;
+  // Step Up clinics are first-come-first-serve with no appointments, so the doctor is
+  // always pinned to the walk-in workflow regardless of any appointment context.
+  const isStepUpMode = currentUserQuery.data?.operating_mode === "step_up";
   const defaultWorkflowType: ConsultationWorkflowType =
     doctorWorkflowMode === "clinic_supported" ? "appointment" : "walk_in";
   const derivedWorkflowType: ConsultationWorkflowType =
     selectedAppointmentId !== null ? "appointment" : defaultWorkflowType;
-  const workflowType: ConsultationWorkflowType =
-    explicitWorkflowType ?? derivedWorkflowType;
+  const workflowType: ConsultationWorkflowType = isStepUpMode
+    ? "walk_in"
+    : explicitWorkflowType ?? derivedWorkflowType;
   const searchablePatients = workflowType === "appointment" ? waitingQueuePatients : patients;
   const searchMatches = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -1513,6 +1517,16 @@ export function useDoctorWorkspaceData(
     clearSaveState();
     clearPatientLookupNotice();
     setSearchState(value);
+    // New patient (no existing patient selected): mirror the typed search into the
+    // First/Last name fields so the doctor doesn't retype it. A single word becomes
+    // the first name; any remaining words become the last name. Selecting an existing
+    // patient overwrites these with that patient's real details.
+    if (selectedPatientId === null) {
+      setPatientNameState(value.trim());
+      const parts = splitPatientNameParts(value);
+      setPatientFirstNameState(parts.firstName);
+      setPatientLastNameState(parts.lastName);
+    }
   };
 
   const setPatientName = (value: string) => {
@@ -1667,7 +1681,7 @@ export function useDoctorWorkspaceData(
     setAllergyDraftSeverity(value);
   };
 
-  const clearSelectedPatientContext = () => {
+  const clearSelectedPatientContext = (options?: { preserveWorkflowMode?: boolean }) => {
     setPatientNameState("");
     setPatientFirstNameState("");
     setPatientLastNameState("");
@@ -1693,7 +1707,9 @@ export function useDoctorWorkspaceData(
     setSelectedEncounterId(null);
     setSelectedDoctorId(null);
     setSelectedAppointmentStatus(null);
-    setExplicitWorkflowType(null);
+    if (!options?.preserveWorkflowMode) {
+      setExplicitWorkflowType(null);
+    }
     setVitalDrafts({
       bloodPressure: "",
       heartRate: "",
@@ -1747,8 +1763,11 @@ export function useDoctorWorkspaceData(
     }
   };
 
-  const clearPatientActionsState = (options?: { preserveSaveFeedback?: boolean }) => {
-    clearSelectedPatientContext();
+  const clearPatientActionsState = (options?: {
+    preserveSaveFeedback?: boolean;
+    preserveWorkflowMode?: boolean;
+  }) => {
+    clearSelectedPatientContext({ preserveWorkflowMode: options?.preserveWorkflowMode });
     clearPatientLookupNotice();
     setSearchState("");
     setLastClinicalItemCount(0);
@@ -2518,6 +2537,15 @@ export function useDoctorWorkspaceData(
     clearPatientActionsState();
   };
 
+  // Clears only the working form inputs (patient fields, vitals/allergy drafts, diagnoses,
+  // tests, prescription, notes) and deselects the loaded patient. It deliberately keeps the
+  // appointment queue and the current workflow mode intact: we pin the resolved workflow type
+  // so deselecting the appointment cannot flip the doctor back to Walk-In and hide the queue.
+  const handleClearForm = () => {
+    setExplicitWorkflowType(workflowType);
+    clearPatientActionsState({ preserveWorkflowMode: true });
+  };
+
   const saveFeedback = getMutationFeedback(saveState, {
     pendingMessage: "Saving consultation...",
     errorMessage: "Failed to save consultation.",
@@ -2629,6 +2657,7 @@ export function useDoctorWorkspaceData(
         )
       ),
     handleClearPatientActions,
+    handleClearForm,
     canClearPatientActions,
     queueState,
     patientDetailsState,
@@ -2640,6 +2669,7 @@ export function useDoctorWorkspaceData(
     transitionDisabledReason,
     selectedAppointmentStatus,
     workflowType,
+    isStepUpMode,
     workflowStatusLabel,
     dispenseStatusLabel,
     lastClinicalItemCount,

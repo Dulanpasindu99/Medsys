@@ -169,6 +169,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const operatingMode =
+    (rawPayload as { organization?: { operating_mode?: unknown } })?.organization
+      ?.operating_mode === "step_up"
+      ? "step_up"
+      : "standard";
+
   const response = NextResponse.json(
     serializeSessionIdentity({
       id: claims.userId ?? backendUser?.id ?? null,
@@ -183,6 +189,7 @@ export async function POST(request: NextRequest) {
       doctorWorkflowMode:
         claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
       workflowProfiles: backendUser?.workflow_profiles ?? null,
+      operatingMode,
     }),
   );
 
@@ -213,6 +220,7 @@ export async function POST(request: NextRequest) {
       doctorWorkflowMode:
         claims.doctorWorkflowMode ?? backendUser?.doctorWorkflowMode ?? null,
       workflowProfiles: backendUser?.workflow_profiles ?? null,
+      operatingMode,
     },
     {
       expiresAt: refreshClaims.exp ?? claims.exp ?? undefined,

@@ -1,3 +1,4 @@
+import { FiArrowUpRight, FiUser } from "react-icons/fi";
 import type { Patient } from "../types";
 
 type PatientRecordCardProps = {
@@ -102,9 +103,14 @@ export function PatientRecordCard({
             <button
               type="button"
               onClick={() => onViewProfile(patient.profileId || null)}
-              className="ios-button-primary shrink-0 self-start px-5 py-2.5 text-sm"
+              className="group inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 hover:shadow-md"
             >
+              <FiUser className="h-4 w-4" aria-hidden="true" />
               View patient profile
+              <FiArrowUpRight
+                className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                aria-hidden="true"
+              />
             </button>
           ) : null}
         </div>

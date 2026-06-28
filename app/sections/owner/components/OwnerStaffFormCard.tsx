@@ -66,7 +66,7 @@ export function OwnerStaffFormCard({
   manageStaffDisabledReason = null,
 }: OwnerStaffFormCardProps) {
   return (
-    <div className="ios-surface flex h-full min-h-0 flex-col p-7 shadow-[0_22px_52px_rgba(15,23,42,0.12)]">
+    <div className="ios-surface flex flex-col p-7 shadow-[0_22px_52px_rgba(15,23,42,0.12)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Create staff</p>
@@ -75,7 +75,7 @@ export function OwnerStaffFormCard({
         <OwnerBadge label={role} />
       </div>
 
-      <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="mt-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
           <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Role (required)</span>
@@ -197,9 +197,6 @@ export function OwnerStaffFormCard({
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
                 Doctor support overrides
               </p>
-              <p className="mt-1 text-xs text-emerald-900/80">
-                Optional permissions for doctor-support coverage.
-              </p>
             </div>
             <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 ring-1 ring-emerald-200">
               {`${extraPermissions.length} selected`}
@@ -241,7 +238,7 @@ export function OwnerStaffFormCard({
       ) : null}
       </div>
 
-      <div className="mt-auto flex min-h-[56px] items-center justify-end gap-3 border-t border-slate-100 pt-3">
+      <div className="mt-6 flex min-h-[56px] items-center justify-end gap-3 border-t border-slate-100 pt-3">
         <button
           type="button"
           onClick={onReset}

@@ -4,14 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import FormControl from "@mui/material/FormControl";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { FiSearch } from "react-icons/fi";
-import {
-  appMuiPickerTextFieldProps,
-  appMuiSelectSx,
-} from "../../../components/ui/muiFieldStyles";
+import { FiRotateCcw, FiSearch } from "react-icons/fi";
+import { appMuiSelectSx } from "../../../components/ui/muiFieldStyles";
 import type {
   FamilyOption,
   GuardianCaptureMode,
@@ -42,38 +36,56 @@ function getAgeFromDateOfBirth(dateOfBirth: string) {
   return years >= 0 ? years : null;
 }
 
-const compactPickerSx = {
-  ...appMuiPickerTextFieldProps.sx,
-  "& .MuiOutlinedInput-root": {
-    ...appMuiPickerTextFieldProps.sx["& .MuiOutlinedInput-root"],
-    minHeight: 38,
-    height: 38,
-    borderRadius: "0.75rem",
-    boxShadow: "none",
-    "@media (min-width:1280px)": {
-      minHeight: 40,
-      height: 40,
-    },
-  },
-  "& .MuiOutlinedInput-notchedOutline": {
-    borderRadius: "0.75rem",
-  },
-  "& .MuiInputBase-input": {
-    ...appMuiPickerTextFieldProps.sx["& .MuiInputBase-input"],
-    height: "38px",
-    padding: "0 12px",
-    fontSize: "13px",
-    fontWeight: 600,
-    "@media (min-width:1280px)": {
-      height: "40px",
-      padding: "0 14px",
-      fontSize: "13px",
-    },
-  },
-  "& .MuiInputAdornment-root .MuiIconButton-root": {
-    padding: "6px",
-  },
-} as const;
+// Doctors enter a patient's age (in years) rather than an exact birthday — they need the
+// age, not the precise DOB, and typing a number is far faster at the point of care.
+// We persist this as a real date of birth (today minus N years) so the backend contract,
+// which treats dateOfBirth as canonical, is unchanged. Whole-year age <-> DOB round-trips
+// are stable, so the field can stay fully controlled off the stored dateOfBirth.
+const MAX_AGE_YEARS = 150;
+
+function dateOfBirthFromAgeYears(age: number) {
+  return dayjs().subtract(age, "year").format("YYYY-MM-DD");
+}
+
+function AgePickerField({
+  dateOfBirth,
+  onDateOfBirthChange,
+  className,
+  ariaLabel,
+}: {
+  dateOfBirth: string;
+  onDateOfBirthChange: (value: string) => void;
+  className: string;
+  ariaLabel: string;
+}) {
+  const age = getAgeFromDateOfBirth(dateOfBirth);
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={3}
+        aria-label={ariaLabel}
+        className={className}
+        placeholder="Age in years"
+        value={age !== null ? String(age) : ""}
+        onChange={(event) => {
+          const digits = event.target.value.replace(/\D/g, "").slice(0, 3);
+          if (!digits) {
+            onDateOfBirthChange("");
+            return;
+          }
+          const parsed = Math.min(Number.parseInt(digits, 10), MAX_AGE_YEARS);
+          onDateOfBirthChange(dateOfBirthFromAgeYears(parsed));
+        }}
+      />
+      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+        yrs
+      </span>
+    </div>
+  );
+}
 
 const compactSelectSx = {
   ...appMuiSelectSx,
@@ -172,6 +184,9 @@ type DoctorHeaderProps = {
   onGuardianSelect: (patient: Patient) => void;
   requiresGuardianDetails: boolean;
   nicIdentityLabel?: "Patient NIC" | "Guardian NIC" | null;
+  onClearForm?: () => void;
+  canClearForm?: boolean;
+  isStepUpMode?: boolean;
 };
 
 type QueueFilterKey = "all" | "waiting" | "in_consultation";
@@ -232,6 +247,9 @@ export function DoctorHeader({
   onGuardianSelect,
   requiresGuardianDetails,
   nicIdentityLabel = null,
+  onClearForm,
+  canClearForm = false,
+  isStepUpMode = false,
 }: DoctorHeaderProps) {
   const showSelectedPatientIdentity = Boolean(
     selectedPatientProfileId && !isCreatingPatientInline,
@@ -252,7 +270,11 @@ export function DoctorHeader({
   const [queueSearch, setQueueSearch] = useState("");
   const [queuePopupOpen, setQueuePopupOpen] = useState(false);
   const isAppointmentMode = workflowType === "appointment";
-  const modeLabel = isAppointmentMode ? "Appointment Mode" : "Walk-In Mode";
+  const modeLabel = isStepUpMode
+    ? "Step Up Mode"
+    : isAppointmentMode
+      ? "Appointment Mode"
+      : "Walk-In Mode";
   const modeToneClass = isAppointmentMode
     ? "bg-sky-50 text-sky-700 ring-sky-100"
     : "bg-emerald-50 text-emerald-700 ring-emerald-100";
@@ -448,6 +470,18 @@ export function DoctorHeader({
             <span className="inline-flex h-9 shrink-0 items-center rounded-[999px] bg-amber-50 px-3.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-700 ring-1 ring-amber-100 xl:h-10 xl:px-4">
               New patient draft
             </span>
+          ) : null}
+          {onClearForm ? (
+            <button
+              type="button"
+              onClick={onClearForm}
+              disabled={!canClearForm}
+              title="Clear all fields"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[999px] border border-rose-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 xl:h-10 xl:px-4"
+            >
+              <FiRotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              Clear
+            </button>
           ) : null}
         </div>
       </div>
@@ -685,32 +719,12 @@ export function DoctorHeader({
               value={patientLastName}
               onChange={(e) => onPatientLastNameChange(e.target.value)}
             />
-            <div className="relative">
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  value={patientDateOfBirth ? dayjs(patientDateOfBirth) : null}
-                  onChange={(value) =>
-                    onPatientDateOfBirthChange(
-                      value ? value.format("YYYY-MM-DD") : "",
-                    )
-                  }
-                  format="DD/MM/YYYY"
-                  slotProps={{
-                    textField: {
-                      ...appMuiPickerTextFieldProps,
-                      sx: {
-                        ...compactPickerSx,
-                      },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
-              {patientAge !== null ? (
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-sky-700 ring-1 ring-sky-100">
-                  {patientAge}y
-                </span>
-              ) : null}
-            </div>
+            <AgePickerField
+              dateOfBirth={patientDateOfBirth}
+              onDateOfBirthChange={onPatientDateOfBirthChange}
+              ariaLabel="Patient age in years"
+              className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-3.5 pr-11 text-[13px] font-semibold text-slate-900 placeholder:text-[13px] placeholder:font-semibold placeholder:text-slate-400 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 xl:h-10 xl:pr-12 xl:text-sm"
+            />
           </div>
           <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_210px] lg:gap-3">
             <div className="grid gap-2.5 md:grid-cols-2">
@@ -888,29 +902,12 @@ export function DoctorHeader({
                       onChange={(e) => onGuardianNameChange(e.target.value)}
                     />
                     {guardianMode === "draft" ? (
-                      <div className="relative">
-                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                          <DatePicker
-                            value={
-                              guardianDateOfBirth
-                                ? dayjs(guardianDateOfBirth)
-                                : null
-                            }
-                            onChange={(value) =>
-                              onGuardianDateOfBirthChange(
-                                value ? value.format("YYYY-MM-DD") : "",
-                              )
-                            }
-                            format="DD/MM/YYYY"
-                            slotProps={{
-                              textField: {
-                                ...appMuiPickerTextFieldProps,
-                                sx: compactPickerSx,
-                              },
-                            }}
-                          />
-                        </LocalizationProvider>
-                      </div>
+                      <AgePickerField
+                        dateOfBirth={guardianDateOfBirth}
+                        onDateOfBirthChange={onGuardianDateOfBirthChange}
+                        ariaLabel="Guardian age in years"
+                        className="h-9 w-full rounded-xl border border-amber-200 bg-white pl-3.5 pr-11 text-[13px] font-semibold text-slate-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100 xl:h-10 xl:pr-12 xl:text-sm"
+                      />
                     ) : (
                       <input
                         className="h-9 rounded-xl border border-amber-200 bg-white px-3.5 text-[13px] font-semibold text-slate-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100 xl:h-10 xl:px-4 xl:text-sm"

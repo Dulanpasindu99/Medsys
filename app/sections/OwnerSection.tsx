@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
-import { ViewportBody, ViewportFrame, ViewportHeader, ViewportPage } from '../components/ui/ViewportLayout';
+import { ViewportFrame, ViewportHeader, ViewportPage, ViewportScrollBody } from '../components/ui/ViewportLayout';
 import { OwnerBadge } from './owner/components/OwnerBadge';
+import { OwnerClinicModeCard } from './owner/components/OwnerClinicModeCard';
 import { OwnerStaffFormCard } from './owner/components/OwnerStaffFormCard';
 import { OwnerStaffListCard } from './owner/components/OwnerStaffListCard';
 import { useOwnerAccess } from './owner/hooks/useOwnerAccess';
@@ -32,6 +33,7 @@ export default function OwnerSection() {
     getEditableExtraPermissions,
     toggleUserExtraPermission,
     saveUserExtraPermissions,
+    saveUserCredentials,
     getUserUpdateFeedback,
     isUpdatingUser,
     loadState,
@@ -43,10 +45,9 @@ export default function OwnerSection() {
   return (
     <ViewportPage className="h-full overflow-hidden">
       <ViewportFrame>
-        <ViewportBody className="gap-6 px-4 py-5 sm:px-6 sm:py-7 lg:px-10">
+        <ViewportScrollBody className="flex flex-col gap-6 px-4 py-5 sm:px-6 sm:py-7 lg:px-10">
           <ViewportHeader
             title="Create User & Manage Staff"
-            description="Add, edit, and manage doctor/assistant access with owner-only controls in one workspace."
             actions={
               <>
                 <OwnerBadge label="Owner tools" />
@@ -74,64 +75,61 @@ export default function OwnerSection() {
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[1.32fr_0.68fr]">
-              <div className="min-h-0 overflow-hidden">
-                <OwnerStaffFormCard
-                  role={role}
-                  setRole={setRole}
-                  name={name}
-                  setName={setName}
-                  username={username}
-                  setUsername={setUsername}
-                  password={password}
-                  setPassword={setPassword}
-                  doctorWorkflowMode={doctorWorkflowMode}
-                  setDoctorWorkflowMode={setDoctorWorkflowMode}
-                  onReset={resetCreateForm}
-                  fieldErrors={createFieldErrors}
-                  permissions={permissions}
-                  extraPermissions={extraPermissions}
-                  onToggleExtraPermission={toggleCreateExtraPermission}
-                  onCreate={handleCreate}
-                  isSubmitting={createState.status === 'pending'}
-                  canManageStaff={canManageStaff}
-                  manageStaffDisabledReason={manageStaffDisabledReason}
-                />
-              </div>
+          <OwnerClinicModeCard />
 
-              <div className="min-h-0 overflow-hidden">
-                {loadState.status === 'loading' ? (
-                  <AsyncStatePanel
-                    eyebrow="Loading"
-                    title="Loading staff access"
-                    description="Audit-derived staff activity and appointment ownership are being synchronized."
-                    tone="loading"
-                  />
-                ) : loadState.status === 'error' && !staffUsers.length ? (
-                  <AsyncStatePanel
-                    eyebrow="Error"
-                    title="Staff access data could not be loaded"
-                    description={loadState.error ?? 'The owner staff workspace is unavailable right now.'}
-                    tone="error"
-                    actionLabel="Retry staff sync"
-                    onAction={refresh}
-                  />
-                ) : (
-                  <OwnerStaffListCard
-                    staffUsers={staffUsers}
-                    canManageStaff={canManageStaff}
-                    getEditableExtraPermissions={getEditableExtraPermissions}
-                    onToggleExtraPermission={toggleUserExtraPermission}
-                    onSaveUser={saveUserExtraPermissions}
-                    getUserFeedback={getUserUpdateFeedback}
-                    isUpdatingUser={isUpdatingUser}
-                  />
-                )}
-              </div>
-            </div>
+          <div className="grid items-start gap-6 lg:grid-cols-[1.32fr_0.68fr]">
+            <OwnerStaffFormCard
+              role={role}
+              setRole={setRole}
+              name={name}
+              setName={setName}
+              username={username}
+              setUsername={setUsername}
+              password={password}
+              setPassword={setPassword}
+              doctorWorkflowMode={doctorWorkflowMode}
+              setDoctorWorkflowMode={setDoctorWorkflowMode}
+              onReset={resetCreateForm}
+              fieldErrors={createFieldErrors}
+              permissions={permissions}
+              extraPermissions={extraPermissions}
+              onToggleExtraPermission={toggleCreateExtraPermission}
+              onCreate={handleCreate}
+              isSubmitting={createState.status === 'pending'}
+              canManageStaff={canManageStaff}
+              manageStaffDisabledReason={manageStaffDisabledReason}
+            />
+
+            {loadState.status === 'loading' ? (
+              <AsyncStatePanel
+                eyebrow="Loading"
+                title="Loading staff access"
+                description="Audit-derived staff activity and appointment ownership are being synchronized."
+                tone="loading"
+              />
+            ) : loadState.status === 'error' && !staffUsers.length ? (
+              <AsyncStatePanel
+                eyebrow="Error"
+                title="Staff access data could not be loaded"
+                description={loadState.error ?? 'The owner staff workspace is unavailable right now.'}
+                tone="error"
+                actionLabel="Retry staff sync"
+                onAction={refresh}
+              />
+            ) : (
+              <OwnerStaffListCard
+                staffUsers={staffUsers}
+                canManageStaff={canManageStaff}
+                getEditableExtraPermissions={getEditableExtraPermissions}
+                onToggleExtraPermission={toggleUserExtraPermission}
+                onSaveUser={saveUserExtraPermissions}
+                onSaveCredentials={saveUserCredentials}
+                getUserFeedback={getUserUpdateFeedback}
+                isUpdatingUser={isUpdatingUser}
+              />
+            )}
           </div>
-        </ViewportBody>
+        </ViewportScrollBody>
       </ViewportFrame>
     </ViewportPage>
   );

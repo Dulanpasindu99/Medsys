@@ -3,6 +3,12 @@ import { adaptAuthenticatedUserResponse } from "@/app/lib/backend-contract-adapt
 import { callBackendRoute } from "@/app/lib/backend-route-client";
 import { serializeSessionIdentity } from "@/app/lib/api-serializers";
 import { attachSessionCookie, readSessionFromRequest } from "@/app/lib/session";
+import type { OperatingMode } from "@/app/lib/api-client";
+
+function readOperatingMode(value: unknown): OperatingMode {
+  const record = value as { organization?: { operating_mode?: unknown } } | null;
+  return record?.organization?.operating_mode === "step_up" ? "step_up" : "standard";
+}
 
 function serializeSessionFallback(request: NextRequest) {
   const session = readSessionFromRequest(request);
@@ -22,6 +28,7 @@ function serializeSessionFallback(request: NextRequest) {
       extraPermissions: session.extraPermissions ?? [],
       doctorWorkflowMode: session.doctorWorkflowMode ?? null,
       workflowProfiles: session.workflowProfiles ?? null,
+      operatingMode: session.operatingMode ?? "standard",
     })
   );
 }
@@ -40,7 +47,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const authenticatedUser = adaptAuthenticatedUserResponse(await backend.response.json());
+    const rawMe = await backend.response.json();
+    const authenticatedUser = adaptAuthenticatedUserResponse(rawMe);
+    const operatingMode = readOperatingMode(rawMe);
     const response = NextResponse.json(
       serializeSessionIdentity({
         id: authenticatedUser.id,
@@ -54,6 +63,7 @@ export async function GET(request: NextRequest) {
           authenticatedUser.extra_permissions ?? authenticatedUser.extraPermissions ?? [],
         doctorWorkflowMode: authenticatedUser.doctorWorkflowMode ?? null,
         workflowProfiles: authenticatedUser.workflow_profiles ?? null,
+        operatingMode,
       })
     );
 
@@ -69,6 +79,7 @@ export async function GET(request: NextRequest) {
         authenticatedUser.extra_permissions ?? authenticatedUser.extraPermissions ?? [],
       doctorWorkflowMode: authenticatedUser.doctorWorkflowMode ?? null,
       workflowProfiles: authenticatedUser.workflow_profiles ?? null,
+      operatingMode,
     });
     backend.applyTo(response);
     return response;

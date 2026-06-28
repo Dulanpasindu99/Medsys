@@ -17,6 +17,9 @@ type AssistantPickupPanelProps = {
     workflowActionDisabledReason?: string | null;
     isSubmitting?: boolean;
     isLoading?: boolean;
+    requirePrice?: boolean;
+    priceLkr?: string;
+    onPriceLkrChange?: (value: string) => void;
 };
 
 function DrugColumn({
@@ -65,6 +68,9 @@ export function AssistantPickupPanel({
     workflowActionDisabledReason = null,
     isSubmitting = false,
     isLoading = false,
+    requirePrice = false,
+    priceLkr = "",
+    onPriceLkrChange,
 }: AssistantPickupPanelProps) {
     return (
         <>
@@ -167,6 +173,35 @@ export function AssistantPickupPanel({
                                         </label>
                                     ))}
                             </div>
+                        </div>
+                    ) : null}
+
+                    {requirePrice ? (
+                        <div className="rounded-[22px] border border-sky-200/90 bg-sky-50/70 p-3">
+                            <label className="block space-y-1.5">
+                                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                                    Medicine price (LKR)
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="rounded-lg bg-slate-200 px-3 py-2 text-xs font-bold text-slate-700">
+                                        LKR
+                                    </span>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={priceLkr}
+                                        onChange={(event) =>
+                                            onPriceLkrChange?.(event.target.value.replace(/[^0-9.]/g, ""))
+                                        }
+                                        placeholder="0.00"
+                                        aria-label="Medicine price in LKR"
+                                        className="h-10 flex-1 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                                    />
+                                </div>
+                                <span className="text-[11px] font-medium text-slate-500">
+                                    Required before completing dispense.
+                                </span>
+                            </label>
                         </div>
                     ) : null}
 

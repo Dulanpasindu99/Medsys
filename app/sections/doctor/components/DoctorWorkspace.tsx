@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PatientProfileModal } from "../../../components/PatientProfileModal";
+import { ConsultationSuccessOverlay } from "./ConsultationSuccessOverlay";
 import type { MutationFeedback, MutationState } from "../../../lib/async-state";
 import type { FamilyOption, GuardianCaptureMode, Patient, PatientGender } from "../types";
 import { DoctorHeader } from "./DoctorHeader";
@@ -63,6 +64,9 @@ type DoctorWorkspaceProps = {
   onGuardianSelect: (patient: Patient) => void;
   requiresGuardianDetails: boolean;
   nicIdentityLabel?: "Patient NIC" | "Guardian NIC" | null;
+  onClearForm?: () => void;
+  canClearForm?: boolean;
+  isStepUpMode?: boolean;
   clinicalWorkflow: ClinicalWorkflow;
   visitPlanner: VisitPlannerState;
   onSaveRecord: () => void;
@@ -133,6 +137,9 @@ export function DoctorWorkspace({
   onGuardianSelect,
   requiresGuardianDetails,
   nicIdentityLabel = null,
+  onClearForm,
+  canClearForm = false,
+  isStepUpMode = false,
   clinicalWorkflow,
   visitPlanner,
   onSaveRecord,
@@ -154,6 +161,27 @@ export function DoctorWorkspace({
   const [activeTab, setActiveTab] = useState<
     "clinical" | "prescription" | "notes"
   >("clinical");
+  const [showSuccessTick, setShowSuccessTick] = useState(false);
+  const prevSaveStatusRef = useRef(saveState?.status);
+
+  // After every successful consultation save, jump back to the Clinical tab and flash a
+  // confirmation tick so the doctor clearly sees the save landed before the next patient.
+  useEffect(() => {
+    if (saveState?.status === "success" && prevSaveStatusRef.current !== "success") {
+      setActiveTab("clinical");
+      setShowSuccessTick(true);
+    }
+    prevSaveStatusRef.current = saveState?.status;
+  }, [saveState?.status]);
+
+  useEffect(() => {
+    if (!showSuccessTick) {
+      return;
+    }
+    const timer = setTimeout(() => setShowSuccessTick(false), 1800);
+    return () => clearTimeout(timer);
+  }, [showSuccessTick]);
+
   const summaryDiagnoses = clinicalWorkflow.selectedDiseases
     .map((entry) => entry.display)
     .filter((entry) => entry.trim().length > 0);
@@ -172,6 +200,7 @@ export function DoctorWorkspace({
     <div className="order-1 col-span-12 flex h-auto min-h-0 flex-col lg:col-span-8 lg:h-full 2xl:col-span-9">
       <div className="flex h-auto min-h-0 flex-col gap-2 rounded-[24px] border border-white/70 bg-white/80 p-2.5 shadow-[0_24px_60px_rgba(14,116,144,0.08)] ring-0 backdrop-blur-0 sm:rounded-[28px] sm:p-3 lg:h-full lg:gap-3 lg:p-4">
         <PatientProfileModal profileId={profileId} onClose={onCloseProfile} />
+        {showSuccessTick ? <ConsultationSuccessOverlay /> : null}
 
         <DoctorHeader
           search={search}
@@ -222,6 +251,9 @@ export function DoctorWorkspace({
           onGuardianSelect={onGuardianSelect}
           requiresGuardianDetails={requiresGuardianDetails}
           nicIdentityLabel={nicIdentityLabel}
+          onClearForm={onClearForm}
+          canClearForm={canClearForm}
+          isStepUpMode={isStepUpMode}
         />
 
         <div className="mobile-visible-x-scroll flex flex-nowrap items-center gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-1 lg:flex-wrap lg:overflow-visible lg:pb-0">
@@ -336,6 +368,7 @@ export function DoctorWorkspace({
               onPrintPrescription={onPrintPrescription}
               selectedStatusLabel={selectedStatusLabel}
               workflowType={workflowType}
+              isStepUpMode={isStepUpMode}
               workflowStatusLabel={workflowStatusLabel}
               dispenseStatusLabel={dispenseStatusLabel}
               lastClinicalItemCount={lastClinicalItemCount}
