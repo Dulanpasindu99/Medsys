@@ -93,6 +93,8 @@ export default function DoctorSection() {
     selectedAppointmentStatus,
     workflowType,
     isStepUpMode,
+    consultationPriceLkr,
+    setConsultationPriceLkr,
     workflowStatusLabel,
     dispenseStatusLabel,
     lastClinicalItemCount,
@@ -224,6 +226,8 @@ export default function DoctorSection() {
                 onClearForm={handleClearForm}
                 canClearForm={canClearPatientActions}
                 isStepUpMode={isStepUpMode}
+                consultationPriceLkr={consultationPriceLkr}
+                onConsultationPriceChange={setConsultationPriceLkr}
                 clinicalWorkflow={clinicalWorkflow}
                 visitPlanner={visitPlanner}
                 onSaveRecord={handleSaveRecord}

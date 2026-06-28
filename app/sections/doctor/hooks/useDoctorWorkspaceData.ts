@@ -1073,6 +1073,7 @@ export function useDoctorWorkspaceData(
   const currentUserQuery = useCurrentUserQuery();
   const inventoryQuery = useInventoryQuery();
   const [search, setSearchState] = useState("");
+  const [consultationPriceLkr, setConsultationPriceLkrState] = useState("");
   const [patientName, setPatientNameState] = useState("");
   const [patientFirstName, setPatientFirstNameState] = useState("");
   const [patientLastName, setPatientLastNameState] = useState("");
@@ -1364,7 +1365,8 @@ export function useDoctorWorkspaceData(
     hasDoctorWorkspaceAccess &&
       !!currentUserQuery.data &&
       hasPermission(currentUserQuery.data, "appointment.update") &&
-      (selectedPatientId !== null || hasValidDraftPatient)
+      (selectedPatientId !== null || hasValidDraftPatient) &&
+      consultationPriceLkr.trim() !== ""
   );
   const canClearPatientActions = Boolean(
     search.trim() ||
@@ -1485,7 +1487,9 @@ export function useDoctorWorkspaceData(
                     !guardianNic.trim() &&
                     !guardianPhone.trim()
                   ? "Guardian NIC or guardian phone is required for minors without a NIC."
-            : null;
+            : !consultationPriceLkr.trim()
+              ? "Enter the consultation price (LKR) before saving."
+              : null;
   const vitalsDisabledReason =
     !canEditVitals
       ? "Search for a patient or enter quick-create details before recording vitals."
@@ -1511,6 +1515,11 @@ export function useDoctorWorkspaceData(
 
   const clearPatientLookupNotice = () => {
     setPatientLookupNotice(null);
+  };
+
+  const setConsultationPriceLkr = (value: string) => {
+    clearSaveState();
+    setConsultationPriceLkrState(value.replace(/[^0-9]/g, ""));
   };
 
   const setSearch = (value: string) => {
@@ -1720,6 +1729,7 @@ export function useDoctorWorkspaceData(
     setAllergyDraftName("");
     setAllergyDraftSeverity("moderate");
     setConsultationAllergies([]);
+    setConsultationPriceLkrState("");
     clearVitalsSaveState();
     clearAllergySaveState();
   };
@@ -2141,7 +2151,10 @@ export function useDoctorWorkspaceData(
       const checkedAt = new Date().toISOString();
       const payload = {
         workflowType,
-        ...(selectedAppointmentId !== null
+        ...(consultationPriceLkr.trim() !== ""
+          ? { priceLkr: Number.parseInt(consultationPriceLkr, 10) }
+          : {}),
+        ...(workflowType === "appointment" && selectedAppointmentId !== null
           ? { appointmentId: selectedAppointmentId }
           : {}),
         ...(selectedPatientId === null &&
@@ -2441,7 +2454,9 @@ export function useDoctorWorkspaceData(
       const response = await saveConsultation({
         workflowType,
         patientId: selectedPatientId,
-        appointmentId: selectedAppointmentId,
+        ...(workflowType === "appointment" && selectedAppointmentId !== null
+          ? { appointmentId: selectedAppointmentId }
+          : {}),
         checkedAt: new Date().toISOString(),
         diagnoses: [],
         vitals: {
@@ -2576,6 +2591,8 @@ export function useDoctorWorkspaceData(
   return {
     search,
     setSearch,
+    consultationPriceLkr,
+    setConsultationPriceLkr,
     patientName,
     setPatientName,
     patientFirstName,

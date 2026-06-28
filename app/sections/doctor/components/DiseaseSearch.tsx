@@ -240,7 +240,7 @@ export function DiseaseSearch({
         <button
           type="button"
           onClick={onOpenPrescription}
-          className="group inline-flex items-center gap-2 rounded-full border border-slate-900 bg-slate-900 px-6 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-[0_12px_24px_rgba(15,23,42,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-[0_16px_30px_rgba(15,23,42,0.30)] active:translate-y-0"
+          className="group inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-slate-800"
         >
           Next
           <FiArrowRight

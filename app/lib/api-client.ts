@@ -132,6 +132,9 @@ export type InventoryItem = {
   minStockLevel: string | null;
   maxStockLevel: string | null;
   expiryDate: string | null;
+  remindBefore3m?: boolean;
+  remindBefore2m?: boolean;
+  remindBefore1m?: boolean;
   batchNo: string | null;
   storageLocation: string | null;
   directDispenseAllowed: boolean;
@@ -204,6 +207,9 @@ export type InventoryCreatePayload = {
   minStockLevel?: number | null;
   maxStockLevel?: number | null;
   expiryDate?: string | null;
+  remindBefore3m?: boolean;
+  remindBefore2m?: boolean;
+  remindBefore1m?: boolean;
   batchNo?: string | null;
   storageLocation?: string | null;
   directDispenseAllowed?: boolean;

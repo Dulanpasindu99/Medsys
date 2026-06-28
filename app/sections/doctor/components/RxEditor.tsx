@@ -3,7 +3,7 @@ import FormControl from "@mui/material/FormControl";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import type { SelectChangeEvent } from "@mui/material/Select";
-import { FiPlus } from "react-icons/fi";
+import { FiArrowRight, FiPlus } from "react-icons/fi";
 import type {
   ClinicalDrug,
   ClinicalDrugForm,
@@ -404,13 +404,17 @@ export function RxEditor({
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-end gap-2 pt-1">
+      <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
         <button
           type="button"
           onClick={onOpenNotes}
-          className="rounded-full border border-slate-900 bg-slate-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white transition hover:bg-slate-800"
+          className="group inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-slate-800"
         >
           Next
+          <FiArrowRight
+            className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+            aria-hidden="true"
+          />
         </button>
       </div>
     </div>

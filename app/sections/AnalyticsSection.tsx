@@ -1417,6 +1417,143 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
   );
 }
 
+function formatLkrInteger(amount: number) {
+  return new Intl.NumberFormat('en-LK', {
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
+}
+
+function todayDateInput() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
+
+function useSingleDayEarnings(date: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['analytics', 'earnings', 'day', date],
+    queryFn: () =>
+      getAnalyticsEarnings({
+        range: 'custom',
+        dateFrom: date,
+        dateTo: date,
+      }),
+    enabled: enabled && Boolean(date),
+    staleTime: 20_000,
+  });
+}
+
+function EarningsCompareModal({ onClose }: { onClose: () => void }) {
+  const [dateA, setDateA] = useState(todayDateInput());
+  const [dateB, setDateB] = useState('');
+
+  const queryA = useSingleDayEarnings(dateA, true);
+  const queryB = useSingleDayEarnings(dateB, Boolean(dateB));
+
+  const amountA = queryA.data?.totalEarnings ?? 0;
+  const amountB = queryB.data?.totalEarnings ?? 0;
+  const difference = amountA - amountB;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Compare earnings by date"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.25)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200/80 bg-gradient-to-br from-emerald-500 to-teal-700 px-5 py-4 text-white">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/80">
+              Earnings By Date
+            </p>
+            <h3 className="mt-0.5 text-lg font-bold">Filter & Compare</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/30 transition hover:bg-white/25"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                Date A
+              </span>
+              <input
+                type="date"
+                value={dateA}
+                onChange={(event) => setDateA(event.target.value)}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+              />
+              <span className="block text-2xl font-extrabold tabular-nums text-emerald-700">
+                {queryA.isPending && dateA ? '…' : `LKR ${formatLkrInteger(amountA)}`}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">
+                {queryA.data?.dispenseCount ?? 0} consultation
+                {(queryA.data?.dispenseCount ?? 0) === 1 ? '' : 's'}
+              </span>
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                Compare with (Date B)
+              </span>
+              <input
+                type="date"
+                value={dateB}
+                onChange={(event) => setDateB(event.target.value)}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+              />
+              <span className="block text-2xl font-extrabold tabular-nums text-slate-800">
+                {!dateB ? '—' : queryB.isPending ? '…' : `LKR ${formatLkrInteger(amountB)}`}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500">
+                {!dateB
+                  ? 'Pick a date to compare'
+                  : `${queryB.data?.dispenseCount ?? 0} consultation${(queryB.data?.dispenseCount ?? 0) === 1 ? '' : 's'}`}
+              </span>
+            </label>
+          </div>
+
+          {dateB ? (
+            <div
+              className={`rounded-[18px] border px-4 py-3 ${
+                difference >= 0
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-rose-200 bg-rose-50 text-rose-800'
+              }`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+                Difference (A − B)
+              </p>
+              <p className="mt-1 text-xl font-extrabold tabular-nums">
+                {difference >= 0 ? '+' : '−'}LKR {formatLkrInteger(Math.abs(difference))}
+              </p>
+              <p className="mt-0.5 text-[12px] font-medium">
+                {difference === 0
+                  ? 'Both dates earned the same.'
+                  : difference > 0
+                    ? 'Date A earned more than Date B.'
+                    : 'Date B earned more than Date A.'}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TotalEarningsCard({
   range,
   dateFrom,
@@ -1427,6 +1564,7 @@ function TotalEarningsCard({
   dateTo: string;
 }) {
   const [revealed, setRevealed] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const isCustom = range === 'custom';
   const earningsQuery = useQuery({
     queryKey: ['analytics', 'earnings', range, isCustom ? dateFrom : null, isCustom ? dateTo : null],
@@ -1442,10 +1580,7 @@ function TotalEarningsCard({
 
   const amount = earningsQuery.data?.totalEarnings ?? 0;
   const dispenseCount = earningsQuery.data?.dispenseCount ?? 0;
-  const formattedAmount = new Intl.NumberFormat('en-LK', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  const formattedAmount = formatLkrInteger(amount);
 
   return (
     <div className="relative overflow-hidden rounded-[24px] border border-emerald-300/40 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 p-5 text-white shadow-[0_24px_50px_rgba(5,150,105,0.28)]">
@@ -1456,16 +1591,22 @@ function TotalEarningsCard({
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-50/80">
             Total Earnings
           </p>
-          <div className="mt-2 flex items-baseline gap-2">
+          <button
+            type="button"
+            onClick={() => setCompareOpen(true)}
+            disabled={!revealed}
+            title={revealed ? 'Filter and compare earnings by date' : 'Reveal earnings to compare by date'}
+            className="mt-2 flex items-baseline gap-2 rounded-xl text-left transition enabled:hover:opacity-90 disabled:cursor-not-allowed"
+          >
             <span className="text-sm font-bold text-emerald-50/90">LKR</span>
-            <span className="text-3xl font-extrabold tracking-tight tabular-nums sm:text-4xl">
+            <span className="text-3xl font-extrabold tracking-tight tabular-nums underline-offset-4 enabled:hover:underline sm:text-4xl">
               {earningsQuery.isPending ? '…' : revealed ? formattedAmount : '••••••'}
             </span>
-          </div>
+          </button>
           <p className="mt-1.5 text-[12px] font-medium text-emerald-50/80">
             {revealed
-              ? `Collected from ${dispenseCount} dispensed prescription${dispenseCount === 1 ? '' : 's'} in this range.`
-              : 'Amount hidden for privacy — reveal to view dispensed-medicine earnings.'}
+              ? `Collected from ${dispenseCount} consultation${dispenseCount === 1 ? '' : 's'} in this range. Click the amount to filter & compare by date.`
+              : 'Amount hidden for privacy — reveal to view consultation earnings.'}
           </p>
         </div>
         <button
@@ -1478,6 +1619,7 @@ function TotalEarningsCard({
           {revealed ? 'Hide' : 'Show'}
         </button>
       </div>
+      {compareOpen ? <EarningsCompareModal onClose={() => setCompareOpen(false)} /> : null}
     </div>
   );
 }

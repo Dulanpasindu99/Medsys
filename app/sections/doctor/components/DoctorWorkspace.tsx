@@ -67,6 +67,8 @@ type DoctorWorkspaceProps = {
   onClearForm?: () => void;
   canClearForm?: boolean;
   isStepUpMode?: boolean;
+  consultationPriceLkr?: string;
+  onConsultationPriceChange?: (value: string) => void;
   clinicalWorkflow: ClinicalWorkflow;
   visitPlanner: VisitPlannerState;
   onSaveRecord: () => void;
@@ -140,6 +142,8 @@ export function DoctorWorkspace({
   onClearForm,
   canClearForm = false,
   isStepUpMode = false,
+  consultationPriceLkr = "",
+  onConsultationPriceChange,
   clinicalWorkflow,
   visitPlanner,
   onSaveRecord,
@@ -369,6 +373,8 @@ export function DoctorWorkspace({
               selectedStatusLabel={selectedStatusLabel}
               workflowType={workflowType}
               isStepUpMode={isStepUpMode}
+              consultationPriceLkr={consultationPriceLkr}
+              onConsultationPriceChange={onConsultationPriceChange}
               workflowStatusLabel={workflowStatusLabel}
               dispenseStatusLabel={dispenseStatusLabel}
               lastClinicalItemCount={lastClinicalItemCount}
