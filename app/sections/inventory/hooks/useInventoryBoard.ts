@@ -54,7 +54,7 @@ import {
 
 type AnyRecord = Record<string, unknown>;
 
-export type InventoryTab = "overview" | "inventory" | "detail" | "movements" | "batches" | "alerts" | "reports";
+export type InventoryTab = "overview" | "inventory" | "detail" | "movements" | "batches" | "alerts" | "expiry" | "reports";
 export type ReportsRangePreset = "7d" | "30d" | "custom";
 
 export type InventoryFormState = {
@@ -81,6 +81,9 @@ export type InventoryFormState = {
   minStockLevel: string;
   maxStockLevel: string;
   expiryDate: string;
+  remindBefore3m: boolean;
+  remindBefore2m: boolean;
+  remindBefore1m: boolean;
   batchNo: string;
   storageLocation: string;
   directDispenseAllowed: boolean;
@@ -127,6 +130,9 @@ export type InventoryItemView = {
   minStockLevel: number | null;
   maxStockLevel: number | null;
   expiryDate: string;
+  remindBefore3m: boolean;
+  remindBefore2m: boolean;
+  remindBefore1m: boolean;
   batchNo: string;
   storageLocation: string;
   directDispenseAllowed: boolean;
@@ -189,7 +195,8 @@ type InventoryItemFieldErrorKey =
   | "stock"
   | "reorderLevel"
   | "dispenseUnitSize"
-  | "purchaseUnitSize";
+  | "purchaseUnitSize"
+  | "expiryDate";
 type InventoryMovementFieldErrorKey = "movementType" | "quantity";
 type InventoryBatchFieldErrorKey = "batchNo" | "quantity";
 
@@ -217,6 +224,9 @@ const EMPTY_FORM: InventoryFormState = {
   minStockLevel: "",
   maxStockLevel: "",
   expiryDate: "",
+  remindBefore3m: true,
+  remindBefore2m: true,
+  remindBefore1m: true,
   batchNo: "",
   storageLocation: "",
   directDispenseAllowed: false,
@@ -377,6 +387,9 @@ function normalizeItem(row: AnyRecord): InventoryItemView {
     minStockLevel: getNullableNumber(row.minStockLevel ?? row.min_stock_level),
     maxStockLevel: getNullableNumber(row.maxStockLevel ?? row.max_stock_level),
     expiryDate: toString(row.expiryDate ?? row.expiry_date, ""),
+    remindBefore3m: toBoolean(row.remindBefore3m ?? row.remind_before_3m, true),
+    remindBefore2m: toBoolean(row.remindBefore2m ?? row.remind_before_2m, true),
+    remindBefore1m: toBoolean(row.remindBefore1m ?? row.remind_before_1m, true),
     batchNo: toString(row.batchNo ?? row.batch_no, ""),
     storageLocation: toString(row.storageLocation ?? row.storage_location, ""),
     directDispenseAllowed: toBoolean(row.directDispenseAllowed ?? row.direct_dispense_allowed, false),
@@ -465,6 +478,9 @@ function toFormState(item?: InventoryItemView | null): InventoryFormState {
     minStockLevel: item.minStockLevel === null ? "" : String(item.minStockLevel),
     maxStockLevel: item.maxStockLevel === null ? "" : String(item.maxStockLevel),
     expiryDate: item.expiryDate,
+    remindBefore3m: item.remindBefore3m,
+    remindBefore2m: item.remindBefore2m,
+    remindBefore1m: item.remindBefore1m,
     batchNo: item.batchNo,
     storageLocation: item.storageLocation,
     directDispenseAllowed: item.directDispenseAllowed,
@@ -1080,6 +1096,9 @@ export function useInventoryBoard(
       minStockLevel: toNullableNumber(itemForm.minStockLevel),
       maxStockLevel: toNullableNumber(itemForm.maxStockLevel),
       expiryDate: toNullableText(itemForm.expiryDate),
+      remindBefore3m: itemForm.remindBefore3m,
+      remindBefore2m: itemForm.remindBefore2m,
+      remindBefore1m: itemForm.remindBefore1m,
       batchNo: toNullableText(itemForm.batchNo),
       storageLocation: toNullableText(itemForm.storageLocation),
       directDispenseAllowed: itemForm.directDispenseAllowed,
@@ -1133,6 +1152,13 @@ export function useInventoryBoard(
         const firstIssue = itemValidation.error.issues[0]?.message ?? "Please fix inventory form errors.";
         notifyError(firstIssue);
         setCreateState(errorMutationState(firstIssue));
+        return;
+      }
+
+      if (itemForm.category === "medicine" && !itemForm.expiryDate.trim()) {
+        setItemFieldErrors({ expiryDate: "Expiry date is required for medicine items." });
+        notifyError("Expiry date is required for medicine items.");
+        setCreateState(errorMutationState("Expiry date is required for medicine items."));
         return;
       }
 

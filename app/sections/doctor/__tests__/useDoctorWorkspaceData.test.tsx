@@ -320,6 +320,10 @@ describe("useDoctorWorkspaceData", () => {
       result.current.setVitalDraft("temperature", "98.6");
     });
 
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
+    });
+
     await act(async () => {
       await result.current.handleSaveRecord();
     });
@@ -412,6 +416,10 @@ describe("useDoctorWorkspaceData", () => {
       expect(result.current.consultationAllergies).toHaveLength(1);
     });
 
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
+    });
+
     await act(async () => {
       await result.current.handleSaveRecord();
     });
@@ -465,6 +473,10 @@ describe("useDoctorWorkspaceData", () => {
       result.current.setAllergySeverityDraft("moderate");
     });
 
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
+    });
+
     await act(async () => {
       await result.current.handleSaveRecord();
     });
@@ -506,6 +518,10 @@ describe("useDoctorWorkspaceData", () => {
       });
     });
 
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
+    });
+
     await act(async () => {
       await result.current.handleSaveRecord();
     });
@@ -538,6 +554,10 @@ describe("useDoctorWorkspaceData", () => {
       result.current.setGuardianNic("198812345678");
     });
 
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
+    });
+
     await act(async () => {
       await result.current.handleSaveRecord();
     });
@@ -567,6 +587,10 @@ describe("useDoctorWorkspaceData", () => {
       result.current.setPatientName("Amila Perera");
       result.current.setPatientDateOfBirth("1995-01-10");
       result.current.setSelectedFamilyId("9");
+    });
+
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
     });
 
     await act(async () => {
@@ -609,6 +633,10 @@ describe("useDoctorWorkspaceData", () => {
       result.current.setGuardianRelationship("Mother");
     });
 
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
+    });
+
     await act(async () => {
       await result.current.handleSaveRecord();
     });
@@ -647,6 +675,10 @@ describe("useDoctorWorkspaceData", () => {
         time: "-",
       });
       result.current.setGuardianRelationship("Sister");
+    });
+
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
     });
 
     await act(async () => {
@@ -689,6 +721,10 @@ describe("useDoctorWorkspaceData", () => {
       result.current.setGuardianNic("198812345678");
       result.current.setGuardianPhone("+94771112233");
       result.current.setGuardianRelationship("Mother");
+    });
+
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
     });
 
     await act(async () => {
@@ -735,6 +771,10 @@ describe("useDoctorWorkspaceData", () => {
         time: "10:30",
         profileId: "7",
       });
+    });
+
+    act(() => {
+      result.current.setConsultationPriceLkr("500");
     });
 
     await act(async () => {

@@ -126,6 +126,8 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
   return {
     search: "",
     setSearch: vi.fn(),
+    consultationPriceLkr: "",
+    setConsultationPriceLkr: vi.fn(),
     patientName: "Jane Doe",
     setPatientName: vi.fn(),
     patientFirstName: "Jane",

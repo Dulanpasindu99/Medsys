@@ -31,6 +31,7 @@ export interface Prescription {
   clinical: PrescriptionDrugEntry[];
   outside: PrescriptionDrugEntry[];
   allergies: string[];
+  priceLkr: number | null;
   dispenseItems?: { inventoryItemId: number; quantity: number }[];
 }
 

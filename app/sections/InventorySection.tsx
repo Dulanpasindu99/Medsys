@@ -853,7 +853,8 @@ function InventoryItemModal({
       | "stock"
       | "reorderLevel"
       | "dispenseUnitSize"
-      | "purchaseUnitSize",
+      | "purchaseUnitSize"
+      | "expiryDate",
       string
     >
   >;
@@ -949,6 +950,64 @@ function InventoryItemModal({
                 </div>
               </div>
             ) : null}
+
+            <div className="rounded-[28px] bg-gradient-to-br from-amber-50 via-white to-rose-50 p-4 ring-1 ring-amber-100">
+              <FieldLabel
+                title="Expiry & reminders"
+                hint="Set the drug expiry date and choose which reminders you want before it expires."
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <label className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-amber-600"
+                    checked={itemForm.remindBefore3m}
+                    onChange={(e) => updateItemForm("remindBefore3m", e.target.checked)}
+                    disabled={!canWriteInventory}
+                  />
+                  Remind me 3 months before
+                </label>
+                <label className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-amber-600"
+                    checked={itemForm.remindBefore2m}
+                    onChange={(e) => updateItemForm("remindBefore2m", e.target.checked)}
+                    disabled={!canWriteInventory}
+                  />
+                  2 months before
+                </label>
+                <label className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-amber-600"
+                    checked={itemForm.remindBefore1m}
+                    onChange={(e) => updateItemForm("remindBefore1m", e.target.checked)}
+                    disabled={!canWriteInventory}
+                  />
+                  1 month before
+                </label>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <FormField
+                  label={
+                    itemForm.category === "medicine" ? "Expiry date (required)" : "Expiry date"
+                  }
+                  optional={itemForm.category !== "medicine"}
+                >
+                  <input
+                    className={helperFieldClass}
+                    type="date"
+                    value={itemForm.expiryDate}
+                    onChange={(e) => updateItemForm("expiryDate", e.target.value)}
+                    disabled={!canWriteInventory}
+                  />
+                  {fieldErrors?.expiryDate ? (
+                    <p className="text-[11px] font-semibold text-rose-600">{fieldErrors.expiryDate}</p>
+                  ) : null}
+                </FormField>
+              </div>
+            </div>
 
             <div className="rounded-[28px] bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 ring-1 ring-sky-100">
               <FieldLabel
@@ -1325,17 +1384,6 @@ function InventoryItemModal({
                       placeholder="B-001"
                     />
                   </FormField>
-                  <FormField label="Expiry date" optional>
-                    <input
-                      className={helperFieldClass}
-                      value={itemForm.expiryDate}
-                      onChange={(e) =>
-                        updateItemForm("expiryDate", e.target.value)
-                      }
-                      disabled={!canWriteInventory}
-                      type="date"
-                    />
-                  </FormField>
                   <FormField label="Storage location" optional>
                     <input
                       className={helperFieldClass}
@@ -1607,6 +1655,39 @@ export default function InventorySection() {
   >("in");
   const [inventoryPage, setInventoryPage] = useState(0);
   const [inventoryPageSize, setInventoryPageSize] = useState(5);
+  const [expiryFilter, setExpiryFilter] = useState<"3m" | "2m" | "1m">("3m");
+
+  const expiryRows = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return items
+      .filter((item) => Boolean(item.expiryDate))
+      .map((item) => {
+        const expiry = new Date(`${item.expiryDate}T00:00:00`);
+        const days = Math.round((expiry.getTime() - today.getTime()) / 86_400_000);
+        return { item, days };
+      })
+      .sort((a, b) => a.days - b.days);
+  }, [items]);
+
+  const expiryWithin = (days: number, remind: (r: { item: InventoryItemView }) => boolean) =>
+    expiryRows.filter((row) => row.days <= days && remind(row));
+  const expiryCounts = {
+    "3m": expiryWithin(90, (r) => r.item.remindBefore3m).length,
+    "2m": expiryWithin(60, (r) => r.item.remindBefore2m).length,
+    "1m": expiryWithin(30, (r) => r.item.remindBefore1m).length,
+  };
+  const expiryThreshold = expiryFilter === "1m" ? 30 : expiryFilter === "2m" ? 60 : 90;
+  const expiryFlag = (item: InventoryItemView) =>
+    expiryFilter === "1m"
+      ? item.remindBefore1m
+      : expiryFilter === "2m"
+        ? item.remindBefore2m
+        : item.remindBefore3m;
+  const filteredExpiryRows = expiryRows.filter(
+    (row) => row.days <= expiryThreshold && expiryFlag(row.item),
+  );
+
   const fieldClass =
     "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none";
 
@@ -1793,6 +1874,12 @@ export default function InventorySection() {
                   label: "Alerts",
                   active: activeTab === "alerts",
                   onClick: () => setActiveTab("alerts"),
+                },
+                {
+                  key: "expiry",
+                  label: "Expiry date checking",
+                  active: activeTab === "expiry",
+                  onClick: () => setActiveTab("expiry"),
                 },
                 {
                   key: "reports",
@@ -2637,6 +2724,88 @@ export default function InventorySection() {
                   </div>
                 </ViewportPanel>
               </div>
+            </div>
+          ) : null}
+
+          {activeTab === "expiry" ? (
+            <div className="space-y-5">
+              <ViewportPanel>
+                <FieldLabel
+                  title="Expiry date checking"
+                  hint="Drugs approaching their expiry date. Use the cards to filter by how soon they expire."
+                />
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {([
+                    { key: "3m" as const, label: "Within 3 months", tone: "from-amber-50 to-white ring-amber-200 text-amber-700" },
+                    { key: "2m" as const, label: "Within 2 months", tone: "from-orange-50 to-white ring-orange-200 text-orange-700" },
+                    { key: "1m" as const, label: "Within 1 month", tone: "from-rose-50 to-white ring-rose-200 text-rose-700" },
+                  ]).map((card) => (
+                    <button
+                      key={card.key}
+                      type="button"
+                      onClick={() => setExpiryFilter(card.key)}
+                      className={`rounded-3xl border bg-gradient-to-br p-4 text-left ring-1 transition ${card.tone} ${
+                        expiryFilter === card.key
+                          ? "border-slate-900 shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
+                          : "border-transparent hover:-translate-y-0.5"
+                      }`}
+                    >
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em]">{card.label}</p>
+                      <p className="mt-1 text-3xl font-extrabold text-slate-900">{expiryCounts[card.key]}</p>
+                      <p className="text-[11px] font-semibold text-slate-500">drugs near expiry</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-5 overflow-x-auto rounded-2xl ring-1 ring-slate-100">
+                  <table className="w-full min-w-[720px] text-left text-sm">
+                    <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3">Drug</th>
+                        <th className="px-4 py-3">Category</th>
+                        <th className="px-4 py-3">Batch</th>
+                        <th className="px-4 py-3">Stock</th>
+                        <th className="px-4 py-3">Expiry date</th>
+                        <th className="px-4 py-3">Time left</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredExpiryRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                            No drugs expiring within this window.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredExpiryRows.map(({ item, days }) => (
+                          <tr key={item.id ?? item.name} className="border-t border-slate-100">
+                            <td className="px-4 py-3 font-semibold text-slate-900">{item.name}</td>
+                            <td className="px-4 py-3 capitalize text-slate-600">{item.category}</td>
+                            <td className="px-4 py-3 text-slate-600">{item.batchNo || "—"}</td>
+                            <td className="px-4 py-3 text-slate-600">{item.stock} {item.unit}</td>
+                            <td className="px-4 py-3 text-slate-600">{item.expiryDate}</td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.1em] ${
+                                  days < 0
+                                    ? "bg-rose-100 text-rose-700"
+                                    : days <= 30
+                                      ? "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+                                      : days <= 60
+                                        ? "bg-orange-50 text-orange-700 ring-1 ring-orange-100"
+                                        : "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+                                }`}
+                              >
+                                {days < 0 ? `Expired ${Math.abs(days)}d ago` : `${days} days left`}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </ViewportPanel>
             </div>
           ) : null}
 
