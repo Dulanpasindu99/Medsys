@@ -1838,6 +1838,8 @@ export function useDoctorWorkspaceData(
 
   // ---- Auto-fill the clinical draft from the patient's most recent consultation ----
   const autoFilledPatientRef = useRef<number | null>(null);
+  // True only when an existing patient's last record was actually auto-filled into the draft.
+  const [clinicalDraftAutoFilled, setClinicalDraftAutoFilled] = useState(false);
   const selectedConsultationsQuery = usePatientConsultationsQuery(
     selectedPatientId ?? 0,
     Boolean(selectedPatientId)
@@ -1846,6 +1848,7 @@ export function useDoctorWorkspaceData(
   useEffect(() => {
     if (!selectedPatientId) {
       autoFilledPatientRef.current = null;
+      setClinicalDraftAutoFilled(false);
       return;
     }
     if (autoFilledPatientRef.current === selectedPatientId) return;
@@ -1855,9 +1858,11 @@ export function useDoctorWorkspaceData(
     // Never clobber a draft the doctor has already started typing.
     if (clinicalWorkflow.rxRows.length > 0 || clinicalWorkflow.selectedDiseases.length > 0) {
       autoFilledPatientRef.current = selectedPatientId;
+      setClinicalDraftAutoFilled(false);
       return;
     }
     autoFilledPatientRef.current = selectedPatientId;
+    setClinicalDraftAutoFilled(false);
 
     const records = Array.isArray(payload.consultations)
       ? payload.consultations.filter((row): row is AnyRecord => !!row && typeof row === "object")
@@ -1921,9 +1926,18 @@ export function useDoctorWorkspaceData(
     const notes = text(
       latest.notes ?? latest.note ?? latest.description ?? latest.clinical_summary
     ).trim();
-    if (notes && notes.toLowerCase() !== "no additional notes.") {
+    const hasNotes = Boolean(notes && notes.toLowerCase() !== "no additional notes.");
+    if (hasNotes) {
       visitPlanner.setNotes(notes);
     }
+
+    const filledDiagnoses = recArr(latest.diagnoses).some((entry) =>
+      text(entry.name ?? entry.diagnosisName ?? entry.label).trim()
+    );
+    const filledTests = recArr(latest.tests).some((entry) =>
+      text(entry.name ?? entry.testName ?? entry.label).trim()
+    );
+    setClinicalDraftAutoFilled(filledDiagnoses || filledTests || drugs.length > 0 || hasNotes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPatientId, selectedConsultationsQuery.data]);
 
@@ -1933,6 +1947,7 @@ export function useDoctorWorkspaceData(
     clinicalWorkflow.resetDraft();
     visitPlanner.setNotes("");
     autoFilledPatientRef.current = selectedPatientId; // don't re-autofill after an explicit clear
+    setClinicalDraftAutoFilled(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPatientId]);
 
@@ -2782,6 +2797,7 @@ export function useDoctorWorkspaceData(
     handleClearPatientActions,
     handleClearForm,
     handleClearClinicalDraft,
+    clinicalDraftAutoFilled,
     canClearPatientActions,
     queueState,
     patientDetailsState,
