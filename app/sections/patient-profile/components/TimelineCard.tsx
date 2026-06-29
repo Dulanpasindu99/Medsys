@@ -18,8 +18,8 @@ export function TimelineCard({ timeline, formatDate }: TimelineCardProps) {
                 </span>
             </div>
 
-            <div className="relative mt-6 h-full min-h-0 overflow-y-auto pr-2">
-                <div className="absolute bottom-0 left-4 top-0 w-px bg-gradient-to-b from-sky-200 via-slate-200 to-transparent" />
+            <div className="relative mt-6 h-full min-h-0 overflow-y-auto px-2">
+                <div className="absolute bottom-0 left-[0.9375rem] top-0 w-px bg-gradient-to-b from-sky-200 via-slate-200 to-transparent" />
                 <div className="space-y-6 pb-4">
                     {timeline.length > 0 ? (
                         timeline.map((entry, index) => (
