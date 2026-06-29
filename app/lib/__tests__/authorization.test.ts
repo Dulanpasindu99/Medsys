@@ -84,6 +84,7 @@ describe("authorization policy", () => {
   it("returns role-specific navigation sets from the same policy", () => {
     expect(getNavigationItemsForRole("doctor").map((item) => item.id)).toEqual([
       "doctor",
+      "dictionary",
       "patient",
       "analytics",
       "inventory",
@@ -110,7 +111,7 @@ describe("authorization policy", () => {
   it("keeps navigation ordering stable for page transitions", () => {
     expect(getNavigationIndexForPath("/doctor")).toBe(0);
     expect(getNavigationIndexForPath("/")).toBe(-1);
-    expect(getNavigationIndexForPath("/inventory")).toBe(4);
-    expect(getNavigationIndexForPath("/create-user")).toBe(7);
+    expect(getNavigationIndexForPath("/inventory")).toBe(5);
+    expect(getNavigationIndexForPath("/create-user")).toBe(8);
   });
 });

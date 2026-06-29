@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { suggestDictionaryTerms } from "../../../lib/api-client";
 import { DIAGNOSIS_MAPPING } from "../../../data/diagnosisMapping";
 import type { ClinicalDrug, ClinicalDrugForm, DrugDoseUnit, DrugFrequencyCode } from "../types";
 import type {
@@ -202,13 +204,39 @@ export function useDoctorClinicalWorkflow() {
     source: "Clinical",
   });
 
+  // Debounce the drug name so the dictionary suggest endpoint isn't hit on every keystroke.
+  const [debouncedDrugName, setDebouncedDrugName] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedDrugName(clinicalDrugForm.name.trim()), 200);
+    return () => clearTimeout(handle);
+  }, [clinicalDrugForm.name]);
+
+  // Local dictionary suggestions: the doctor's saved drug terms + clinic inventory names.
+  const dictionaryDrugSuggestionsQuery = useQuery({
+    queryKey: ["dictionary", "suggest", "drug", debouncedDrugName],
+    queryFn: () => suggestDictionaryTerms("drug", debouncedDrugName, 8),
+    enabled: debouncedDrugName.length >= 1,
+    staleTime: 30_000,
+  });
+
   const filteredDrugSuggestions = useMemo(() => {
     const query = clinicalDrugForm.name.trim().toLowerCase();
-    if (!query) {
-      return suggestedDrugNames.slice(0, 6);
+    const dictionaryMatches = dictionaryDrugSuggestionsQuery.data ?? [];
+    const staticMatches = query
+      ? suggestedDrugNames.filter((name) => name.toLowerCase().includes(query))
+      : suggestedDrugNames;
+    // Dictionary (doctor-typed + inventory) first, then the built-in fallback list, deduped.
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    for (const name of [...dictionaryMatches, ...staticMatches]) {
+      const key = name.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(name);
+      if (merged.length >= 6) break;
     }
-    return suggestedDrugNames.filter((name) => name.toLowerCase().includes(query)).slice(0, 6);
-  }, [clinicalDrugForm.name, suggestedDrugNames]);
+    return merged;
+  }, [clinicalDrugForm.name, dictionaryDrugSuggestionsQuery.data, suggestedDrugNames]);
 
   const updateClinicalDrugForm = (patch: Partial<ClinicalDrugForm>) => {
     if (drugDraftFeedback) {

@@ -1356,6 +1356,55 @@ export async function searchInventory(input: {
   return expectApiRecordArray(response, "inventory search");
 }
 
+export type DictionaryTermType = "diagnosis" | "test" | "drug";
+
+export type DictionaryTerm = {
+  id: number;
+  term_type: DictionaryTermType;
+  name: string;
+  usage_count: number;
+  last_used_at: string | null;
+};
+
+export async function getDictionaryTerms(type?: DictionaryTermType) {
+  const query = type ? `?type=${encodeURIComponent(type)}` : "";
+  const response = await apiFetch<{ terms?: DictionaryTerm[] }>(
+    `/v1/dictionary/terms${query}`,
+    { method: "GET" }
+  );
+  return Array.isArray(response?.terms) ? response.terms : [];
+}
+
+export async function updateDictionaryTerm(id: number, name: string) {
+  const response = await apiFetch<{ term?: DictionaryTerm }>(
+    `/v1/dictionary/terms/${id}`,
+    { method: "PATCH", body: JSON.stringify({ name }) }
+  );
+  return response?.term ?? null;
+}
+
+export async function deleteDictionaryTerm(id: number) {
+  await apiFetch<{ ok?: boolean }>(`/v1/dictionary/terms/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function suggestDictionaryTerms(
+  type: DictionaryTermType,
+  q: string,
+  limit = 12
+) {
+  const params = new URLSearchParams({ type, limit: String(limit) });
+  if (q.trim()) params.set("q", q.trim());
+  const response = await apiFetch<{ suggestions?: Array<{ name: string }> }>(
+    `/v1/dictionary/suggest?${params.toString()}`,
+    { method: "GET" }
+  );
+  return Array.isArray(response?.suggestions)
+    ? response.suggestions.map((entry) => entry.name)
+    : [];
+}
+
 export async function createInventoryItem(input: InventoryCreatePayload) {
   return apiFetch("/api/inventory", {
     method: "POST",
