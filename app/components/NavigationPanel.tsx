@@ -443,7 +443,7 @@ export default function NavigationPanel({
                 aria-current={active ? 'page' : undefined}
                 className={`flex h-11 min-w-[2.75rem] flex-1 items-center justify-center rounded-2xl transition ${
                   active
-                    ? 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_10px_20px_rgba(37,99,235,0.30)]'
+                    ? 'bg-sky-600 text-white shadow-[0_6px_14px_rgba(2,132,199,0.25)]'
                     : 'text-slate-500 hover:bg-slate-100'
                 }`}
               >
