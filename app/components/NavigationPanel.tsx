@@ -173,11 +173,18 @@ export default function NavigationPanel({
   }));
   const displayName = (currentUser?.name ?? userName).trim() || 'Medlink User';
 
+  // Dictionary lives in the bottom panel (next to logout), not the main icon list.
+  const mainNavItems = navigationItems.filter((item) => item.id !== 'dictionary');
+  const dictionaryItem = navigationItems.find((item) => item.id === 'dictionary');
+  const dictionaryActive = Boolean(dictionaryItem) && pathname.startsWith('/dictionary');
+
   // Determine active ID based on pathname
-  const activeId = navigationItems.find(item => {
+  const matchedMainId = mainNavItems.find(item => {
     if (item.href === '/') return pathname === '/';
     return pathname.startsWith(item.href);
-  })?.id || navigationItems[0]?.id || 'doctor';
+  })?.id;
+  // On the Dictionary page no main item should look active (it lives in the bottom panel).
+  const activeId = matchedMainId ?? (dictionaryActive ? '' : (mainNavItems[0]?.id || 'doctor'));
 
   const handleLogout = async () => {
     if (typeof window !== 'undefined' && !window.confirm('Log out of Medlink?')) {
@@ -352,7 +359,7 @@ export default function NavigationPanel({
           }
         >
           <span ref={indicatorRef} className="nav-rail__indicator" aria-hidden="true" />
-          {navigationItems.map((item) => (
+          {mainNavItems.map((item) => (
             <li key={item.id} className="flex justify-center">
               <Link
                 href={item.href}
@@ -377,17 +384,25 @@ export default function NavigationPanel({
       </div>
 
       <div className="flex flex-col items-center gap-3 rounded-[26px] bg-white/95 px-3 py-4 shadow-[0_14px_30px_rgba(15,23,42,0.12)]">
-        <button
-          className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-sky-100 bg-white/90 text-sky-600 shadow-[0_12px_24px_rgba(10,132,255,0.18)] transition hover:-translate-y-0.5 hover:border-sky-200"
-          aria-label="Help"
-        >
-          <HelpIcon className="size-5" />
-          <span
-            className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-700 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+        {dictionaryItem ? (
+          <Link
+            href={dictionaryItem.href}
+            aria-label={dictionaryItem.label}
+            aria-current={dictionaryActive ? 'page' : undefined}
+            className={`ios-nav-button group relative flex size-12 items-center justify-center rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-500 ${
+              dictionaryActive
+                ? 'ios-nav-button--active bg-sky-600 text-white shadow-[0_6px_14px_rgba(2,132,199,0.25)]'
+                : 'border border-sky-100 bg-white/90 text-sky-600 hover:-translate-y-0.5 hover:border-sky-200'
+            }`}
           >
-            Help
-          </span>
-        </button>
+            <DictionaryIcon className="size-5" />
+            <span
+              className={`pointer-events-none absolute left-full ml-3 hidden origin-left scale-90 rounded-full bg-slate-700 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white opacity-0 ${NAV_TOOLTIP} transition group-hover:scale-100 group-hover:opacity-100 md:inline-block`}
+            >
+              {dictionaryItem.label}
+            </span>
+          </Link>
+        ) : null}
 
         <button
           className="ios-nav-button group relative flex size-12 items-center justify-center rounded-full border border-rose-100 bg-white/90 text-rose-500 shadow-[0_12px_24px_rgba(244,63,94,0.25)] transition hover:-translate-y-0.5 hover:border-rose-200"
@@ -433,7 +448,7 @@ export default function NavigationPanel({
         style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
       >
         <div className="flex flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {navigationItems.map((item) => {
+          {mainNavItems.map((item) => {
             const active = item.id === activeId;
             return (
               <Link
@@ -453,6 +468,18 @@ export default function NavigationPanel({
           })}
         </div>
         <span className="mx-0.5 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+        {dictionaryItem ? (
+          <Link
+            href={dictionaryItem.href}
+            aria-label={dictionaryItem.label}
+            aria-current={dictionaryActive ? 'page' : undefined}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+              dictionaryActive ? 'bg-sky-600 text-white' : 'border border-sky-100 bg-white text-sky-600'
+            }`}
+          >
+            <DictionaryIcon className="size-[18px]" />
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={handleLogout}
