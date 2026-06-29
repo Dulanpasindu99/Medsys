@@ -1,10 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useDoctorClinicalWorkflow } from "../hooks/useDoctorClinicalWorkflow";
+import { createQueryWrapper } from "../../../lib/test-query-client";
 
 describe("useDoctorClinicalWorkflow", () => {
   it("prevents adding the same drug more than once", () => {
-    const { result } = renderHook(() => useDoctorClinicalWorkflow());
+    const { result } = renderHook(() => useDoctorClinicalWorkflow(), {
+      wrapper: createQueryWrapper(),
+    });
 
     act(() => {
       result.current.updateClinicalDrugForm({

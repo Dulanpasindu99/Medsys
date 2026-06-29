@@ -14,6 +14,9 @@ type PatientFiltersProps = {
   family: string;
   setFamily: (value: string) => void;
   families: string[];
+  diagnosis: string;
+  setDiagnosis: (value: string) => void;
+  diagnoses: string[];
   ageRange: AgeBucketId;
   setAgeRange: (value: AgeBucketId) => void;
   filteredCount: number;
@@ -27,6 +30,9 @@ export function PatientFilters({
   family,
   setFamily,
   families,
+  diagnosis,
+  setDiagnosis,
+  diagnoses,
   ageRange,
   setAgeRange,
   filteredCount,
@@ -114,6 +120,42 @@ export function PatientFilters({
                 }}
               >
                 {families.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {item}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+
+          <div className="hidden items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] sm:flex">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Diagnosis</span>
+            <FormControl size="small" sx={{ minWidth: 190 }}>
+              <Select
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+                sx={{
+                  ...appMuiSelectSx,
+                  minHeight: 40,
+                  height: 40,
+                  backgroundColor: "transparent",
+                  boxShadow: "none",
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+                  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+                  "& .MuiSelect-select": {
+                    minHeight: "40px",
+                    paddingTop: "0 !important",
+                    paddingBottom: "0 !important",
+                    paddingLeft: "0.25rem",
+                    paddingRight: "1.75rem",
+                  },
+                }}
+              >
+                {diagnoses.map((item) => (
                   <MenuItem key={item} value={item}>
                     {item}
                   </MenuItem>

@@ -25,6 +25,9 @@ export default function PatientSection() {
     setSearch,
     family,
     setFamily,
+    diagnosis,
+    setDiagnosis,
+    diagnoses,
     ageRange,
     setAgeRange,
     gender,
@@ -62,7 +65,7 @@ export default function PatientSection() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, family, ageRange, gender, pageSize]);
+  }, [search, family, diagnosis, ageRange, gender, pageSize]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -95,6 +98,9 @@ export default function PatientSection() {
               family={family}
               setFamily={setFamily}
               families={families}
+              diagnosis={diagnosis}
+              setDiagnosis={setDiagnosis}
+              diagnoses={diagnoses}
               ageRange={ageRange}
               setAgeRange={setAgeRange}
               filteredCount={filteredPatients.length}

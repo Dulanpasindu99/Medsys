@@ -122,6 +122,7 @@ export function usePatientDirectory() {
   });
   const [search, setSearch] = useState("");
   const [family, setFamily] = useState("All Families");
+  const [diagnosis, setDiagnosis] = useState("All Diagnoses");
   const [ageRange, setAgeRange] = useState<AgeBucketId>("all");
   const [gender, setGender] = useState<Gender | "all">("all");
   const patients = directoryQuery.data?.patients ?? EMPTY_PATIENTS;
@@ -143,7 +144,18 @@ export function usePatientDirectory() {
     return Array.from(set);
   }, [patients]);
 
+  const diagnoses = useMemo(() => {
+    const set = new Set<string>();
+    for (const patient of patients) {
+      for (const entry of patient.diagnoses) {
+        if (entry) set.add(entry);
+      }
+    }
+    return ["All Diagnoses", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+  }, [patients]);
+
   const filteredPatients = useMemo(() => {
+    const diagnosisNeedle = diagnosis.toLowerCase();
     return patients.filter((patient) => {
       const matchesSearch = `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.mobile} ${patient.family} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
         .toLowerCase()
@@ -156,16 +168,22 @@ export function usePatientDirectory() {
         (ageRange === "18-30" && patient.age >= 18 && patient.age <= 30) ||
         (ageRange === "31-45" && patient.age >= 31 && patient.age <= 45) ||
         (ageRange === "46+" && patient.age >= 46);
+      const matchesDiagnosis =
+        diagnosis === "All Diagnoses" ||
+        patient.diagnoses.some((entry) => entry.toLowerCase() === diagnosisNeedle);
 
-      return matchesSearch && matchesFamily && matchesGender && matchesAge;
+      return matchesSearch && matchesFamily && matchesGender && matchesAge && matchesDiagnosis;
     });
-  }, [ageRange, family, gender, patients, search]);
+  }, [ageRange, diagnosis, family, gender, patients, search]);
 
   return {
     search,
     setSearch,
     family,
     setFamily,
+    diagnosis,
+    setDiagnosis,
+    diagnoses,
     ageRange,
     setAgeRange,
     gender,
@@ -225,6 +243,12 @@ async function fetchPatientDirectorySnapshot(): Promise<{
         ""
       ).trim();
       const conditionAlerts = majorActiveCondition ? [majorActiveCondition] : [];
+      const diagnoses = Array.from(
+        new Set([
+          ...toStringArray(row.diagnoses ?? row.diagnosis_names ?? row.diagnosisNames),
+          ...(majorActiveCondition ? [majorActiveCondition] : []),
+        ])
+      );
 
       return {
         patientId,
@@ -245,6 +269,7 @@ async function fetchPatientDirectorySnapshot(): Promise<{
         nextAppointment: nextAppointment || undefined,
         tags: [],
         conditions: [...allergyHighlights, ...conditionAlerts],
+        diagnoses,
         profileId: patientId ? String(patientId) : undefined,
       } satisfies Patient;
     });

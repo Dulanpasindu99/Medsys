@@ -17,6 +17,7 @@ export type Patient = {
   nextAppointment?: string;
   tags: string[];
   conditions: string[];
+  diagnoses: string[];
   profileId?: string;
 };
 

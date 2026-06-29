@@ -44,6 +44,7 @@ export type AppPermission = KnownAppPermission | (string & {});
 
 export type AppRouteId =
   | "doctorHome"
+  | "dictionaryBoard"
   | "patientDirectory"
   | "tasksBoard"
   | "analyticsOverview"
@@ -54,6 +55,7 @@ export type AppRouteId =
 
 export type NavigationItemId =
   | "doctor"
+  | "dictionary"
   | "patient"
   | "tasks"
   | "analytics"
@@ -85,6 +87,13 @@ const ROUTE_POLICIES: RoutePolicy[] = [
     navId: "doctor",
     href: "/doctor",
     label: "Doctor Page",
+    permission: "doctor.workspace.view",
+  },
+  {
+    routeId: "dictionaryBoard",
+    navId: "dictionary",
+    href: "/dictionary",
+    label: "Dictionary",
     permission: "doctor.workspace.view",
   },
   {
