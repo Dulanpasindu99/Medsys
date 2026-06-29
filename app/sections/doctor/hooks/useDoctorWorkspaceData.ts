@@ -399,9 +399,13 @@ function buildConsultationAllergyPayload(
 
 function toDiagnosisPayloadEntry(diagnosis: string | ClinicalDiagnosisSelection) {
   if (typeof diagnosis !== "string") {
+    const code = diagnosis.code.trim();
+    // Free-typed diagnoses carry a synthetic "custom:" code, not a real ICD-10 code.
+    const isCustom =
+      diagnosis.codeSystem === "custom" || code.toLowerCase().startsWith("custom:");
     return {
       diagnosisName: diagnosis.display.trim(),
-      icd10Code: diagnosis.code.trim().toUpperCase(),
+      icd10Code: isCustom ? "" : code.toUpperCase(),
     };
   }
 

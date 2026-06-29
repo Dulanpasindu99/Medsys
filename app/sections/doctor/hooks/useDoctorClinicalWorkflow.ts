@@ -379,7 +379,23 @@ export function useDoctorClinicalWorkflow() {
       try {
         setIsFetchingTests(true);
         setTestSearchFeedback(null);
-        const suggestions = await fetchTestSuggestionsCached(q, controller.signal);
+        const [clinical, dictionary] = await Promise.all([
+          fetchTestSuggestionsCached(q, controller.signal),
+          suggestDictionaryTerms("test", q, 8).catch(() => [] as string[]),
+        ]);
+        // The doctor's own saved tests (dictionary) first, then the standard catalog.
+        const dictionaryOptions = dictionary.map((name) => ({
+          code: `custom:${name.toLowerCase()}`,
+          codeSystem: "custom",
+          display: name,
+        }));
+        const seen = new Set<string>();
+        const suggestions = [...dictionaryOptions, ...clinical].filter((option) => {
+          const key = option.display.trim().toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         setTestSuggestions(suggestions);
         setHighlightedTestIndex(suggestions.length ? 0 : -1);
       } catch (error) {
@@ -480,6 +496,16 @@ export function useDoctorClinicalWorkflow() {
         (highlightedTestIndex >= 0 && filteredTestOptions[highlightedTestIndex]) || filteredTestOptions[0];
       if (selected) {
         addMedicalTest(selected);
+      } else {
+        // No matching suggestion: add the free-typed test so it saves + is captured.
+        const text = testQuery.trim();
+        if (text.length >= 2) {
+          addMedicalTest({
+            code: `custom:${text.toLowerCase()}`,
+            codeSystem: "custom",
+            display: text,
+          });
+        }
       }
     }
   };
@@ -517,7 +543,23 @@ export function useDoctorClinicalWorkflow() {
       try {
         setIsFetchingDiseases(true);
         setDiseaseSearchFeedback(null);
-        const suggestions = await fetchDiagnosisSuggestionsCached(q, controller.signal);
+        const [clinical, dictionary] = await Promise.all([
+          fetchDiagnosisSuggestionsCached(q, controller.signal),
+          suggestDictionaryTerms("diagnosis", q, 8).catch(() => [] as string[]),
+        ]);
+        // Surface the doctor's own saved diagnoses (dictionary) first, then ICD-10 matches.
+        const dictionaryOptions = dictionary.map((name) => ({
+          code: `custom:${name.toLowerCase()}`,
+          codeSystem: "custom",
+          display: name,
+        }));
+        const seen = new Set<string>();
+        const suggestions = [...dictionaryOptions, ...clinical].filter((option) => {
+          const key = option.display.trim().toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         setDiseaseSuggestions(suggestions);
         setHighlightedDiseaseIndex(suggestions.length ? 0 : -1);
       } catch (error) {
@@ -713,6 +755,17 @@ export function useDoctorClinicalWorkflow() {
           : null;
       if (selected) {
         addDisease(selected);
+      } else {
+        // No matching suggestion: add what the doctor typed as a free-text diagnosis
+        // so it saves to the encounter and is captured into the dictionary.
+        const text = diseaseQuery.trim();
+        if (text.length >= 2) {
+          addDisease({
+            code: `custom:${text.toLowerCase()}`,
+            codeSystem: "custom",
+            display: text,
+          });
+        }
       }
     }
   };
