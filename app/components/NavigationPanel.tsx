@@ -180,6 +180,9 @@ export default function NavigationPanel({
   })?.id || navigationItems[0]?.id || 'doctor';
 
   const handleLogout = async () => {
+    if (typeof window !== 'undefined' && !window.confirm('Log out of Medlink?')) {
+      return;
+    }
     await logoutUser();
     queryClient.clear();
     router.replace('/login');
@@ -418,13 +421,14 @@ export default function NavigationPanel({
             );
           })}
         </div>
+        <span className="mx-0.5 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
         <button
           type="button"
           onClick={handleLogout}
           aria-label="Logout"
-          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-100 bg-white text-rose-500"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-white text-rose-500"
         >
-          <LogoutIcon className="size-5" />
+          <LogoutIcon className="size-[18px]" />
         </button>
       </nav>
     </div>
