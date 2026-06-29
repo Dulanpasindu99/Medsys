@@ -1369,7 +1369,7 @@ export type DictionaryTerm = {
 export async function getDictionaryTerms(type?: DictionaryTermType) {
   const query = type ? `?type=${encodeURIComponent(type)}` : "";
   const response = await apiFetch<{ terms?: DictionaryTerm[] }>(
-    `/v1/dictionary/terms${query}`,
+    `/api/backend/v1/dictionary/terms${query}`,
     { method: "GET" }
   );
   return Array.isArray(response?.terms) ? response.terms : [];
@@ -1377,14 +1377,14 @@ export async function getDictionaryTerms(type?: DictionaryTermType) {
 
 export async function updateDictionaryTerm(id: number, name: string) {
   const response = await apiFetch<{ term?: DictionaryTerm }>(
-    `/v1/dictionary/terms/${id}`,
+    `/api/backend/v1/dictionary/terms/${id}`,
     { method: "PATCH", body: JSON.stringify({ name }) }
   );
   return response?.term ?? null;
 }
 
 export async function deleteDictionaryTerm(id: number) {
-  await apiFetch<{ ok?: boolean }>(`/v1/dictionary/terms/${id}`, {
+  await apiFetch<{ ok?: boolean }>(`/api/backend/v1/dictionary/terms/${id}`, {
     method: "DELETE",
   });
 }
@@ -1397,7 +1397,7 @@ export async function suggestDictionaryTerms(
   const params = new URLSearchParams({ type, limit: String(limit) });
   if (q.trim()) params.set("q", q.trim());
   const response = await apiFetch<{ suggestions?: Array<{ name: string }> }>(
-    `/v1/dictionary/suggest?${params.toString()}`,
+    `/api/backend/v1/dictionary/suggest?${params.toString()}`,
     { method: "GET" }
   );
   return Array.isArray(response?.suggestions)
