@@ -167,18 +167,6 @@ export function DoctorSidebar({
             <SidebarSection
               title="Patient Actions"
               subtitle="History and registration"
-              accent={
-                onClearPatientActions ? (
-                  <button
-                    type="button"
-                    onClick={onClearPatientActions}
-                    disabled={!canClearPatientActions}
-                    className="inline-flex min-h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Clear
-                  </button>
-                ) : null
-              }
             >
               {selectedPatientProfileId ? (
                 <div className="space-y-2">

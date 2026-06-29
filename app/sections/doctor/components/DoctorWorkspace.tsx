@@ -337,24 +337,6 @@ export function DoctorWorkspace({
               onDrugFormKeyDown={clinicalWorkflow.handleDrugFormKeyDown}
               onUpdateRxRow={clinicalWorkflow.updateRxRow}
               onRemoveRxRow={clinicalWorkflow.removeRxRow}
-              onDemoFill={() =>
-                clinicalWorkflow.setRxRows([
-                  {
-                    drug: "Paracetamol",
-                    dose: "500MG",
-                    terms: "Daily 3 x 4",
-                    amount: "12",
-                    source: "Clinical",
-                  },
-                  {
-                    drug: "Amoxicillin",
-                    dose: "250MG",
-                    terms: "Hourly 6",
-                    amount: "10",
-                    source: "Outside",
-                  },
-                ])
-              }
               onClear={() => clinicalWorkflow.setRxRows([])}
             />
           ) : null}

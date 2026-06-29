@@ -26,7 +26,6 @@ describe("RxEditor", () => {
         onDrugFormKeyDown={vi.fn()}
         onUpdateRxRow={vi.fn()}
         onRemoveRxRow={vi.fn()}
-        onDemoFill={vi.fn()}
         onClear={vi.fn()}
       />
     );
@@ -60,7 +59,6 @@ describe("RxEditor", () => {
         onDrugFormKeyDown={vi.fn()}
         onUpdateRxRow={vi.fn()}
         onRemoveRxRow={vi.fn()}
-        onDemoFill={vi.fn()}
         onClear={vi.fn()}
       />
     );
@@ -94,7 +92,6 @@ describe("RxEditor", () => {
         onDrugFormKeyDown={vi.fn()}
         onUpdateRxRow={vi.fn()}
         onRemoveRxRow={vi.fn()}
-        onDemoFill={vi.fn()}
         onClear={vi.fn()}
       />
     );
