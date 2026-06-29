@@ -66,6 +66,7 @@ type DoctorWorkspaceProps = {
   nicIdentityLabel?: "Patient NIC" | "Guardian NIC" | null;
   onClearForm?: () => void;
   onClearClinicalDraft?: () => void;
+  clinicalDraftAutoFilled?: boolean;
   canClearForm?: boolean;
   isStepUpMode?: boolean;
   consultationPriceLkr?: string;
@@ -142,6 +143,7 @@ export function DoctorWorkspace({
   nicIdentityLabel = null,
   onClearForm,
   onClearClinicalDraft,
+  clinicalDraftAutoFilled = false,
   canClearForm = false,
   isStepUpMode = false,
   consultationPriceLkr = "",
@@ -285,7 +287,7 @@ export function DoctorWorkspace({
               </button>
             ))}
           </div>
-          {onClearClinicalDraft ? (
+          {onClearClinicalDraft && clinicalDraftAutoFilled ? (
             <button
               type="button"
               onClick={onClearClinicalDraft}
