@@ -87,6 +87,7 @@ export default function DoctorSection() {
     removeConsultationAllergy,
     handleClearPatientActions,
     handleClearForm,
+    handleClearClinicalDraft,
     canClearPatientActions,
     canSaveRecord,
     saveDisabledReason,
@@ -224,6 +225,7 @@ export default function DoctorSection() {
                 requiresGuardianDetails={requiresGuardianDetails}
                 nicIdentityLabel={nicIdentityLabel}
                 onClearForm={handleClearForm}
+                onClearClinicalDraft={handleClearClinicalDraft}
                 canClearForm={canClearPatientActions}
                 isStepUpMode={isStepUpMode}
                 consultationPriceLkr={consultationPriceLkr}
