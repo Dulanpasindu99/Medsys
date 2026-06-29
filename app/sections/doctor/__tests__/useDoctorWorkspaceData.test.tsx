@@ -18,6 +18,7 @@ vi.mock("../../../lib/query-hooks", () => ({
   usePatientProfileQuery: vi.fn(),
   usePatientVitalsQuery: vi.fn(),
   usePatientAllergiesQuery: vi.fn(),
+  usePatientConsultationsQuery: vi.fn(() => ({ data: undefined })),
   useEncounterDetailQuery: vi.fn(),
 }));
 

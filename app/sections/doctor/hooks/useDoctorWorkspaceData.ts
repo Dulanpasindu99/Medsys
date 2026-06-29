@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getPrescriptionById,
   saveConsultation,
@@ -26,6 +26,7 @@ import {
   useEncounterDetailQuery,
   useInventoryQuery,
   usePatientAllergiesQuery,
+  usePatientConsultationsQuery,
   usePatientProfileQuery,
   usePatientsQuery,
   usePatientVitalsQuery,
@@ -37,6 +38,7 @@ import type {
   AllergyAlert,
   AppointmentLifecycleStatus,
   ClinicalDiagnosisSelection,
+  ClinicalDrug,
   GuardianCaptureMode,
   FamilyOption,
   Patient,
@@ -1834,6 +1836,106 @@ export function useDoctorWorkspaceData(
     setAllergySaveState((current) => (current.status === "idle" ? current : idleMutationState()));
   }, []);
 
+  // ---- Auto-fill the clinical draft from the patient's most recent consultation ----
+  const autoFilledPatientRef = useRef<number | null>(null);
+  const selectedConsultationsQuery = usePatientConsultationsQuery(
+    selectedPatientId ?? 0,
+    Boolean(selectedPatientId)
+  );
+
+  useEffect(() => {
+    if (!selectedPatientId) {
+      autoFilledPatientRef.current = null;
+      return;
+    }
+    if (autoFilledPatientRef.current === selectedPatientId) return;
+    const payload = selectedConsultationsQuery.data as { consultations?: unknown } | undefined;
+    if (!payload) return; // wait for the consultations to load
+
+    // Never clobber a draft the doctor has already started typing.
+    if (clinicalWorkflow.rxRows.length > 0 || clinicalWorkflow.selectedDiseases.length > 0) {
+      autoFilledPatientRef.current = selectedPatientId;
+      return;
+    }
+    autoFilledPatientRef.current = selectedPatientId;
+
+    const records = Array.isArray(payload.consultations)
+      ? payload.consultations.filter((row): row is AnyRecord => !!row && typeof row === "object")
+      : [];
+    if (records.length === 0) return;
+
+    const timeOf = (row: AnyRecord) =>
+      new Date(
+        String(
+          row.checked_at ?? row.checkedAt ?? row.event_date ?? row.eventDate ?? row.date ??
+            row.created_at ?? row.createdAt ?? 0
+        )
+      ).getTime();
+    const latest = [...records].sort((a, b) => timeOf(b) - timeOf(a))[0];
+    if (!latest) return;
+
+    const recArr = (value: unknown): AnyRecord[] =>
+      Array.isArray(value) ? value.filter((x): x is AnyRecord => !!x && typeof x === "object") : [];
+    const text = (value: unknown) =>
+      typeof value === "string" ? value : value == null ? "" : String(value);
+
+    // Diagnoses first (addDisease can auto-add mapped drugs, which the real drugs below override).
+    recArr(latest.diagnoses).forEach((entry) => {
+      const name = text(entry.name ?? entry.diagnosisName ?? entry.label).trim();
+      if (!name) return;
+      const icd = text(entry.icd10Code ?? entry.icd10 ?? entry.code).trim();
+      const isIcd = /^[A-Z][0-9]/i.test(icd);
+      clinicalWorkflow.addDisease({
+        code: isIcd ? icd.toUpperCase() : `custom:${name.toLowerCase()}`,
+        codeSystem: isIcd ? "ICD-10" : "custom",
+        display: name,
+      });
+    });
+
+    recArr(latest.tests).forEach((entry) => {
+      const name = text(entry.name ?? entry.testName ?? entry.label).trim();
+      if (!name) return;
+      clinicalWorkflow.addMedicalTest({
+        code: `custom:${name.toLowerCase()}`,
+        codeSystem: "custom",
+        display: name,
+      });
+    });
+
+    const drugs: ClinicalDrug[] = recArr(latest.drugs)
+      .map((entry) => {
+        const drug = text(entry.name ?? entry.drugName ?? entry.label).trim();
+        const dose = text(entry.dose).trim();
+        const frequency = text(entry.frequency ?? entry.terms).trim();
+        const duration = text(entry.duration).trim();
+        const terms = [frequency, duration].filter(Boolean).join(" • ") || frequency;
+        const amount = text(entry.amount ?? entry.quantity ?? entry.total ?? entry.totalQuantity).trim();
+        const source = text(entry.source).toLowerCase() === "outside" ? "Outside" : "Clinical";
+        return { drug, dose, terms, amount, source } as ClinicalDrug;
+      })
+      .filter((entry) => entry.drug);
+    if (drugs.length > 0) {
+      clinicalWorkflow.setRxRows(drugs);
+    }
+
+    const notes = text(
+      latest.notes ?? latest.note ?? latest.description ?? latest.clinical_summary
+    ).trim();
+    if (notes && notes.toLowerCase() !== "no additional notes.") {
+      visitPlanner.setNotes(notes);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPatientId, selectedConsultationsQuery.data]);
+
+  // Clear only the clinical draft (diagnoses / drugs / tests / notes) — keeps personal info
+  // and never touches the patient's saved history.
+  const handleClearClinicalDraft = useCallback(() => {
+    clinicalWorkflow.resetDraft();
+    visitPlanner.setNotes("");
+    autoFilledPatientRef.current = selectedPatientId; // don't re-autofill after an explicit clear
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPatientId]);
+
   useEffect(() => {
     if (!selectedPatientId || !selectedPatientProfile) {
       return;
@@ -2679,6 +2781,7 @@ export function useDoctorWorkspaceData(
       ),
     handleClearPatientActions,
     handleClearForm,
+    handleClearClinicalDraft,
     canClearPatientActions,
     queueState,
     patientDetailsState,

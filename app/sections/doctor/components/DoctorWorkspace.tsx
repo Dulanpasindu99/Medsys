@@ -65,6 +65,7 @@ type DoctorWorkspaceProps = {
   requiresGuardianDetails: boolean;
   nicIdentityLabel?: "Patient NIC" | "Guardian NIC" | null;
   onClearForm?: () => void;
+  onClearClinicalDraft?: () => void;
   canClearForm?: boolean;
   isStepUpMode?: boolean;
   consultationPriceLkr?: string;
@@ -140,6 +141,7 @@ export function DoctorWorkspace({
   requiresGuardianDetails,
   nicIdentityLabel = null,
   onClearForm,
+  onClearClinicalDraft,
   canClearForm = false,
   isStepUpMode = false,
   consultationPriceLkr = "",
@@ -260,27 +262,39 @@ export function DoctorWorkspace({
           isStepUpMode={isStepUpMode}
         />
 
-        <div className="mobile-visible-x-scroll flex flex-nowrap items-center gap-2 overflow-x-auto border-t border-slate-100 pt-2 pb-1 lg:flex-wrap lg:overflow-visible lg:pb-0">
-          {[
-            { key: "clinical", label: "Clinical" },
-            { key: "prescription", label: "Prescription" },
-            { key: "notes", label: "Complete" },
-          ].map((tab) => (
+        <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2 pb-1 lg:pb-0">
+          <div className="mobile-visible-x-scroll flex flex-nowrap items-center gap-2 overflow-x-auto lg:flex-wrap lg:overflow-visible">
+            {[
+              { key: "clinical", label: "Clinical" },
+              { key: "prescription", label: "Prescription" },
+              { key: "notes", label: "Complete" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() =>
+                  setActiveTab(tab.key as "clinical" | "prescription" | "notes")
+                }
+                className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition lg:px-4 lg:py-2 lg:text-[11px] lg:tracking-[0.14em] ${
+                  activeTab === tab.key
+                    ? "bg-slate-800 text-white shadow-md"
+                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {onClearClinicalDraft ? (
             <button
-              key={tab.key}
               type="button"
-              onClick={() =>
-                setActiveTab(tab.key as "clinical" | "prescription" | "notes")
-              }
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition lg:px-4 lg:py-2 lg:text-[11px] lg:tracking-[0.14em] ${
-                activeTab === tab.key
-                  ? "bg-slate-800 text-white shadow-md"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
+              onClick={onClearClinicalDraft}
+              title="Clear the auto-filled Clinical, Prescription and Complete fields (does not affect saved history)"
+              className="shrink-0 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-rose-500 transition hover:bg-rose-50 lg:text-[11px]"
             >
-              {tab.label}
+              Clear filled data
             </button>
-          ))}
+          ) : null}
         </div>
 
         <div
