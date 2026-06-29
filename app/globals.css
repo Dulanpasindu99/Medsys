@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Hide scrollbars everywhere — scrolling still works, just no visible bars. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;

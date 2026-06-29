@@ -25,8 +25,8 @@ export default async function ShellLayout({
         sessionPermissions={session.permissions}
         userName={session.name}
       />
-      <main className="min-w-0 flex-1 overflow-hidden pb-[calc(env(safe-area-inset-bottom)+6.5rem)] pt-3 md:pb-4 md:pl-[7rem] md:pt-4 lg:pl-[8.5rem]">
-        <div className="page-width h-full min-h-0">
+      <main className="min-w-0 flex-1 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-3 md:overflow-hidden md:pb-4 md:pl-[7rem] md:pt-4 lg:pl-[8.5rem]">
+        <div className="page-width min-h-full md:h-full md:min-h-0">
           <PageTransition>{children}</PageTransition>
         </div>
       </main>
