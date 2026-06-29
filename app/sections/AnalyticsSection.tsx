@@ -1258,7 +1258,7 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
       <div className="sticky top-0 z-20 rounded-[22px] border border-slate-200/70 bg-white/80 px-4 py-3 shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-white/70 backdrop-blur-xl">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-600 text-white shadow-[0_6px_14px_rgba(2,132,199,0.22)]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 5h16M4 12h16M4 19h10" />
               </svg>
@@ -1286,7 +1286,7 @@ function RoleAnalyticsPanels({ data }: { data: AnalyticsDashboardResponse }) {
                   onClick={() => setActiveTab(tab.key)}
                   className={`shrink-0 rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition-all duration-200 ${
                     isActive
-                      ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-[0_8px_18px_rgba(37,99,235,0.30)]'
+                      ? 'bg-sky-600 text-white shadow-[0_6px_14px_rgba(2,132,199,0.22)]'
                       : 'text-slate-500 hover:-translate-y-0.5 hover:bg-white hover:text-slate-900 hover:shadow-sm'
                   }`}
                 >
@@ -1466,7 +1466,7 @@ function EarningsCompareModal({ onClose }: { onClose: () => void }) {
         className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_70px_rgba(15,23,42,0.25)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200/80 bg-gradient-to-br from-emerald-500 to-teal-700 px-5 py-4 text-white">
+        <div className="flex items-center justify-between border-b border-slate-200/80 bg-emerald-600 px-5 py-4 text-white">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/80">
               Earnings By Date
@@ -1583,7 +1583,7 @@ function TotalEarningsCard({
   const formattedAmount = formatLkrInteger(amount);
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] border border-emerald-300/40 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 p-5 text-white shadow-[0_24px_50px_rgba(5,150,105,0.28)]">
+    <div className="relative overflow-hidden rounded-[24px] border border-emerald-600/30 bg-emerald-600 p-5 text-white shadow-[0_10px_28px_rgba(5,150,105,0.18)]">
       <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-12 right-16 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

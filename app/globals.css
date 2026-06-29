@@ -140,8 +140,8 @@ body {
 }
 
 .ios-button-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-200 ease-out;
-  box-shadow: 0 14px 32px rgba(10, 132, 255, 0.32);
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition-all duration-200 ease-out hover:bg-sky-700;
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.18);
 }
 
 @media (max-width: 1279px) {
@@ -191,12 +191,8 @@ body {
 
 .app-button--primary {
   color: white;
-  background: linear-gradient(
-    90deg,
-    var(--button-primary-from),
-    var(--button-primary-to)
-  );
-  box-shadow: 0 18px 34px rgba(10, 132, 255, 0.34);
+  background: var(--button-primary-from);
+  box-shadow: 0 6px 16px rgba(10, 132, 255, 0.18);
 }
 
 .app-button--primary:hover {

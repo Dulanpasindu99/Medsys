@@ -173,7 +173,7 @@ export function BarChartCard({ title, data }: { title: string; data: unknown }) 
               <span className="text-[0.75rem] font-bold text-slate-900">{item.count}</span>
               <div className="flex h-36 w-full items-end rounded-2xl bg-white/80 px-2 py-2 ring-1 ring-slate-100" title={item.label}>
                 <div
-                  className="w-full rounded-xl bg-gradient-to-t from-blue-600 via-sky-500 to-cyan-300 shadow-[0_10px_20px_rgba(14,165,233,0.22)]"
+                  className="w-full rounded-md bg-sky-600/90"
                   style={{ height: `${Math.max((item.count / max) * 100, 8)}%` }}
                 />
               </div>
@@ -320,7 +320,7 @@ export function FunnelChartCard({ title, data }: { title: string; data: unknown 
               <span className="font-bold text-slate-900">{item.count}</span>
             </div>
             <div
-              className="mt-2 mx-auto rounded-full bg-gradient-to-r from-cyan-500 to-sky-700 py-2 text-center text-xs font-bold uppercase tracking-[0.16em] text-white"
+              className="mt-2 mx-auto rounded-full bg-sky-600 py-2 text-center text-xs font-bold uppercase tracking-[0.16em] text-white"
               style={{ width: `${Math.max((item.count / max) * (100 - index * 10), 28)}%` }}
             >
               {item.label}
