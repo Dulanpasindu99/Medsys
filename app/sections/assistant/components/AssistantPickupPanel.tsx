@@ -9,6 +9,7 @@ type AssistantPickupPanelProps = {
         options: Array<{ id: number; name: string; quantity: number; category?: string }>;
     }>;
     queueCount: number;
+    pendingPatients?: Prescription[];
     onDoneAndNext: () => void;
     onResolvedInventoryItemChange?: (drugKey: string, inventoryItemId: number) => void;
     canSubmitDispense?: boolean;
@@ -57,6 +58,7 @@ export function AssistantPickupPanel({
     activePrescription,
     activeClinicalResolutionRows = [],
     queueCount,
+    pendingPatients = [],
     onDoneAndNext,
     onResolvedInventoryItemChange,
     canSubmitDispense = true,
@@ -72,9 +74,47 @@ export function AssistantPickupPanel({
                 <h2 className="text-lg font-semibold text-slate-900">Doctor Checked Patient</h2>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
                     <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">{queueCount}</span>
-                    <span className="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-700 shadow-[0_8px_18px_rgba(148,163,184,0.28)]">Patient</span>
+                    <span className="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-700">Patient</span>
                 </div>
             </div>
+
+            {pendingPatients.length > 0 ? (
+                <div className="mb-4">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        Queue · Doctor checked
+                    </p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                        {pendingPatients.map((entry, index) => {
+                            const activeKey = activePrescription?.prescriptionId ?? activePrescription?.patientCode;
+                            const entryKey = entry.prescriptionId ?? entry.patientCode;
+                            const isActive = activeKey !== undefined ? entryKey === activeKey : index === 0;
+                            return (
+                                <div
+                                    key={entry.prescriptionId ?? entry.patientCode ?? index}
+                                    className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                                        isActive
+                                            ? 'border-sky-300 bg-sky-50 text-sky-800'
+                                            : 'border-slate-200 bg-white text-slate-600'
+                                    }`}
+                                >
+                                    <span
+                                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                                            isActive ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'
+                                        }`}
+                                    >
+                                        {index + 1}
+                                    </span>
+                                    <span className="max-w-[150px] truncate">{entry.patient}</span>
+                                    {entry.patientCode ? (
+                                        <span className="text-[10px] font-medium text-slate-400">{entry.patientCode}</span>
+                                    ) : null}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ) : null}
+
             {isLoading ? (
                 <p className="text-sm font-semibold text-slate-500">Loading dispense queue...</p>
             ) : activePrescription ? (

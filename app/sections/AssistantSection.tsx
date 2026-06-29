@@ -120,6 +120,7 @@ export default function AssistantSection() {
                                             activePrescription={activePrescription}
                                             activeClinicalResolutionRows={activeClinicalResolutionRows}
                                             queueCount={pendingPatients.length}
+                                            pendingPatients={pendingPatients}
                                             onDoneAndNext={markDoneAndNext}
                                             onResolvedInventoryItemChange={setResolvedInventoryItem}
                                             canSubmitDispense={canSubmitDispense}
