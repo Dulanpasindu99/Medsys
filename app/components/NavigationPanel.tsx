@@ -268,8 +268,10 @@ export default function NavigationPanel({
     : displayName;
 
   const content = (
+    <>
+    {/* Desktop / tablet: vertical left rail */}
     <aside
-      className={`nav-rail fixed inset-x-4 bottom-4 z-50 flex items-center justify-between gap-6 rounded-[32px] px-5 py-4 transition-all md:inset-auto md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:items-center md:justify-between md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
+      className={`nav-rail fixed z-50 hidden items-center justify-between gap-6 rounded-[32px] md:flex md:left-4 md:top-4 md:bottom-4 md:w-24 md:flex-col md:px-5 md:py-6 lg:left-6 lg:top-6 lg:bottom-6 lg:w-28 ${className}`}
     >
       <div className="flex flex-col items-center gap-3 text-center text-slate-700">
         <div
@@ -371,6 +373,62 @@ export default function NavigationPanel({
         </button>
       </div>
     </aside>
+
+    {/* Mobile: horizontal bottom tab bar */}
+    <div className="fixed inset-x-3 bottom-3 z-50 flex flex-col items-center gap-2 md:hidden">
+      {availableRoles.length > 1 ? (
+        <div className="flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 shadow-[0_10px_24px_rgba(15,23,42,0.14)] ring-1 ring-slate-200">
+          {availableRoles.map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => handleRoleSwitch(role)}
+              disabled={currentUserQuery.isFetching}
+              className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] transition ${
+                role === effectiveRole ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {role}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <nav
+        aria-label="Primary navigation"
+        className="flex w-full items-center gap-1 rounded-[24px] border border-slate-200 bg-white/95 px-2 py-2 shadow-[0_18px_38px_rgba(15,23,42,0.18)] ring-1 ring-white/70 backdrop-blur-xl"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {navigationItems.map((item) => {
+            const active = item.id === activeId;
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                aria-label={item.label}
+                aria-current={active ? 'page' : undefined}
+                className={`flex h-11 min-w-[2.75rem] flex-1 items-center justify-center rounded-2xl transition ${
+                  active
+                    ? 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_10px_20px_rgba(37,99,235,0.30)]'
+                    : 'text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <item.icon className="size-5" />
+              </Link>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Logout"
+          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-100 bg-white text-rose-500"
+        >
+          <LogoutIcon className="size-5" />
+        </button>
+      </nav>
+    </div>
+    </>
   );
 
   if (pathname === '/login' || !mounted || navigationItems.length === 0) return null;

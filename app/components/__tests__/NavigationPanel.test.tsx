@@ -65,15 +65,20 @@ describe("NavigationPanel", () => {
     mockedUsePathname.mockReturnValue("/");
   });
 
+  // The panel renders nav links twice (desktop rail + mobile bottom bar), so
+  // queries can match more than one element; assert against all matches.
+  const hasCurrent = (label: string) =>
+    screen.getAllByLabelText(label).some((el) => el.getAttribute("aria-current") === "page");
+
   it("shows only assistant-accessible navigation items for assistants", () => {
     mockedUsePathname.mockReturnValue("/assistant");
 
     renderWithQueryClient(<NavigationPanel sessionRole="assistant" userName="Alex Support" />);
 
-    expect(screen.getByLabelText("Assistant Panel")).toHaveAttribute("aria-current", "page");
-    expect(screen.getByLabelText("Patient Management")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Doctor Page")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Manage Staff Access")).not.toBeInTheDocument();
+    expect(hasCurrent("Assistant Panel")).toBe(true);
+    expect(screen.getAllByLabelText("Patient Management").length).toBeGreaterThan(0);
+    expect(screen.queryAllByLabelText("Doctor Page")).toHaveLength(0);
+    expect(screen.queryAllByLabelText("Manage Staff Access")).toHaveLength(0);
     expect(screen.getByText("AS")).toBeInTheDocument();
   });
 
@@ -82,9 +87,9 @@ describe("NavigationPanel", () => {
 
     renderWithQueryClient(<NavigationPanel sessionRole="owner" userName="Olivia Owner" />);
 
-    expect(screen.queryByLabelText("Doctor Page")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Assistant Panel")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Create User")).toHaveAttribute("aria-current", "page");
+    expect(screen.queryAllByLabelText("Doctor Page")).toHaveLength(0);
+    expect(screen.queryAllByLabelText("Assistant Panel")).toHaveLength(0);
+    expect(hasCurrent("Create User")).toBe(true);
   });
 
   it("shows assistant navigation for doctors with explicit assistant coverage permissions", () => {
@@ -98,7 +103,7 @@ describe("NavigationPanel", () => {
       />
     );
 
-    expect(screen.getByLabelText("Doctor Page")).toBeInTheDocument();
-    expect(screen.getByLabelText("Assistant Panel")).toHaveAttribute("aria-current", "page");
+    expect(screen.getAllByLabelText("Doctor Page").length).toBeGreaterThan(0);
+    expect(hasCurrent("Assistant Panel")).toBe(true);
   });
 });
