@@ -16,125 +16,96 @@ export function PatientRecordCard({
   const conditionAlerts = patient.conditions.filter(
     (condition) => !condition.startsWith("Allergy:"),
   );
-  const visibleAlerts = [
-    ...allergyAlerts.slice(0, 2),
-    ...conditionAlerts,
-  ].slice(0, 2);
-  const remainingAlertCount = Math.max(
-    0,
-    patient.conditions.length - visibleAlerts.length,
-  );
+  const visibleAlerts = [...allergyAlerts.slice(0, 2), ...conditionAlerts].slice(0, 2);
+  const remainingAlertCount = Math.max(0, patient.conditions.length - visibleAlerts.length);
   const guardianLabel =
     patient.age < 18
-      ? patient.guardianName ||
-        patient.guardianRelationship ||
-        patient.guardianNic ||
-        null
+      ? patient.guardianName || patient.guardianRelationship || patient.guardianNic || null
       : null;
-  const genderToneClass =
-    patient.gender === "Male"
-      ? "bg-sky-50 text-sky-700 ring-1 ring-sky-100"
-      : patient.gender === "Female"
-        ? "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
-        : "bg-violet-50 text-violet-700 ring-1 ring-violet-100";
+  const genderDot =
+    patient.gender === "Male" ? "bg-sky-500" : patient.gender === "Female" ? "bg-rose-500" : "bg-violet-500";
   const nicProvided = patient.nic !== "No NIC";
   const phoneProvided = patient.mobile !== "Not provided";
 
-  return (
-    <article className="rounded-[22px] border border-white/60 bg-gradient-to-br from-white/95 via-white/90 to-sky-50/80 shadow-[0_12px_32px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 backdrop-blur">
-      <div className="flex flex-col gap-3 px-4 py-4 md:px-5 md:py-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="inline-flex max-w-full items-center gap-2 rounded-full bg-slate-700 px-3.5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(71,85,105,0.25)]">
-                {patient.patientCode || `#${patient.patientId ?? "--"}`}
-                <span className="text-slate-300">|</span>
-                <span className="truncate">{patient.name}</span>
-              </div>
-              <span className="inline-flex min-h-10 items-center rounded-full bg-amber-50/70 px-3.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-100">
-                Family: {patient.family}
-              </span>
-              <span
-                className={`inline-flex min-h-10 items-center rounded-full px-3 text-[11px] font-semibold uppercase tracking-[0.18em] ${genderToneClass}`}
-              >
-                {patient.gender}
-              </span>
-            </div>
+  const meta: Array<{ label: string; value: string; warn?: boolean }> = [
+    { label: "NIC", value: nicProvided ? patient.nic : "Not provided", warn: !nicProvided },
+    { label: "Age", value: String(patient.age) },
+    { label: "Visits", value: String(patient.visits) },
+    { label: "Phone", value: phoneProvided ? patient.mobile : "Not provided", warn: !phoneProvided },
+    { label: "Last visit", value: patient.lastVisit },
+  ];
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex min-h-10 items-center rounded-full px-3.5 text-sm font-semibold ring-1 ${
-                  nicProvided
-                    ? "bg-white/70 text-slate-800 ring-slate-100"
-                    : "bg-white/70 text-orange-700 ring-slate-100"
-                }`}
-              >
-                {nicProvided ? `NIC: ${patient.nic}` : "NIC: Not provided"}
+  return (
+    <article className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-[0_4px_16px_rgba(15,23,42,0.05)] transition hover:border-sky-200 hover:shadow-[0_8px_24px_rgba(15,23,42,0.09)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {/* Name front and center */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${genderDot}`} aria-hidden="true" />
+            <h3 className="truncate text-base font-bold text-slate-900">{patient.name}</h3>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
+              {patient.patientCode || `#${patient.patientId ?? "--"}`}
+            </span>
+            <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+              {patient.family}
+            </span>
+          </div>
+
+          {/* Compact meta line */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
+            {meta.map((item) => (
+              <span key={item.label} className="whitespace-nowrap">
+                <span className="text-slate-400">{item.label}:</span>{" "}
+                <span className={`font-semibold ${item.warn ? "text-orange-600" : "text-slate-700"}`}>
+                  {item.value}
+                </span>
               </span>
-              <span className="inline-flex min-h-10 items-center rounded-full bg-slate-50 px-3.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-100">
-                Age: {patient.age}
+            ))}
+            {guardianLabel ? (
+              <span className="whitespace-nowrap">
+                <span className="text-slate-400">Guardian:</span>{" "}
+                <span className="font-semibold text-amber-700">{guardianLabel}</span>
               </span>
-              <span className="inline-flex min-h-10 items-center rounded-full bg-slate-50 px-3.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-100">
-                Visits: {patient.visits}
-              </span>
-              <span
-                className={`inline-flex min-h-10 items-center rounded-full px-3.5 text-sm font-semibold ring-1 ${
-                  phoneProvided
-                    ? "bg-white/70 text-slate-800 ring-slate-100"
-                    : "bg-white/70 text-orange-700 ring-slate-100"
-                }`}
-              >
-                {phoneProvided
-                  ? `Phone: ${patient.mobile}`
-                  : "Phone: Not provided"}
-              </span>
-              <span className="inline-flex min-h-10 items-center rounded-full bg-white/70 px-3.5 text-sm font-semibold text-slate-800 ring-1 ring-slate-100">
-                Last visit: {patient.lastVisit}
-              </span>
-              {guardianLabel ? (
-                <span className="inline-flex min-h-10 items-center rounded-full bg-amber-50 px-3.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">
-                  Guardian: {guardianLabel}
+            ) : null}
+          </div>
+
+          {/* Alerts */}
+          {visibleAlerts.length || patient.nextAppointment ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {visibleAlerts.map((condition, index) => (
+                <span
+                  key={`${condition}-${index}`}
+                  className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-100"
+                >
+                  {condition}
+                </span>
+              ))}
+              {remainingAlertCount > 0 ? (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                  +{remainingAlertCount}
+                </span>
+              ) : null}
+              {patient.nextAppointment ? (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                  Next: {patient.nextAppointment}
                 </span>
               ) : null}
             </div>
-          </div>
-
-          {patient.profileId ? (
-            <button
-              type="button"
-              onClick={() => onViewProfile(patient.profileId || null)}
-              className="group inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-50 hover:shadow-md"
-            >
-              <FiUser className="h-4 w-4" aria-hidden="true" />
-              View patient profile
-              <FiArrowUpRight
-                className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                aria-hidden="true"
-              />
-            </button>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {visibleAlerts.map((condition, index) => (
-            <span
-              key={`${condition}-${index}`}
-              className="inline-flex min-h-9 items-center rounded-full bg-gradient-to-r from-rose-50 to-amber-50 px-3 py-1.5 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-100"
-            >
-              {condition}
-            </span>
-          ))}
-          {remainingAlertCount > 0 ? (
-            <span className="inline-flex min-h-9 items-center rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 ring-1 ring-slate-200">
-              +{remainingAlertCount} more
-            </span>
-          ) : null}
-          {patient.nextAppointment ? (
-            <span className="inline-flex min-h-9 items-center rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 ring-1 ring-emerald-100">
-              Next: {patient.nextAppointment}
-            </span>
-          ) : null}
-        </div>
+        {patient.profileId ? (
+          <button
+            type="button"
+            onClick={() => onViewProfile(patient.profileId || null)}
+            aria-label={`View patient profile for ${patient.name}`}
+            className="group inline-flex shrink-0 items-center gap-1.5 self-center rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-50"
+          >
+            <FiUser className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">View profile</span>
+            <FiArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
     </article>
   );

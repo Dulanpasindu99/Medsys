@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   listPatients,
+  getDictionaryTerms,
   type ApiClientError,
 } from "../../../lib/api-client";
 import {
@@ -120,6 +121,13 @@ export function usePatientDirectory() {
     queryKey: queryKeys.patients.directory,
     queryFn: fetchPatientDirectorySnapshot,
   });
+  // The doctor's clinical dictionary feeds the Diagnosis filter so it stays in sync
+  // with the terms they actually use, not just diagnoses present on loaded patients.
+  const dictionaryDiagnosesQuery = useQuery({
+    queryKey: ["dictionary", "terms", "diagnosis"],
+    queryFn: () => getDictionaryTerms("diagnosis"),
+    staleTime: 60_000,
+  });
   const [search, setSearch] = useState("");
   const [family, setFamily] = useState("All Families");
   const [diagnosis, setDiagnosis] = useState("All Diagnoses");
@@ -151,8 +159,11 @@ export function usePatientDirectory() {
         if (entry) set.add(entry);
       }
     }
+    for (const term of dictionaryDiagnosesQuery.data ?? []) {
+      if (term.name) set.add(term.name);
+    }
     return ["All Diagnoses", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [patients]);
+  }, [patients, dictionaryDiagnosesQuery.data]);
 
   const filteredPatients = useMemo(() => {
     const diagnosisNeedle = diagnosis.toLowerCase();
