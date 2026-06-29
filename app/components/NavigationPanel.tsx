@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -211,6 +211,33 @@ export default function NavigationPanel({
   };
 
   const [indicatorOffset, setIndicatorOffset] = useState(0);
+  const [navHidden, setNavHidden] = useState(false);
+
+  // Auto-hide the mobile bottom bar on scroll-down, reveal it on scroll-up.
+  useEffect(() => {
+    if (!mounted) return;
+    const scroller = document.querySelector('main');
+    const target: HTMLElement | Window = scroller ?? window;
+    const readY = () => (scroller ? scroller.scrollTop : window.scrollY);
+    let lastY = readY();
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        const y = readY();
+        if (y > lastY + 6 && y > 48) {
+          setNavHidden(true);
+        } else if (y < lastY - 6) {
+          setNavHidden(false);
+        }
+        lastY = y;
+        ticking = false;
+      });
+    };
+    target.addEventListener('scroll', onScroll, { passive: true });
+    return () => target.removeEventListener('scroll', onScroll);
+  }, [mounted, pathname]);
 
   useLayoutEffect(() => {
     const updateIndicator = () => {
@@ -377,8 +404,12 @@ export default function NavigationPanel({
       </div>
     </aside>
 
-    {/* Mobile: horizontal bottom tab bar */}
-    <div className="fixed inset-x-3 bottom-3 z-50 flex flex-col items-center gap-2 md:hidden">
+    {/* Mobile: horizontal bottom tab bar (auto-hides on scroll-down) */}
+    <div
+      className={`fixed inset-x-3 bottom-3 z-50 flex flex-col items-center gap-2 transition-all duration-300 ease-out md:hidden ${
+        navHidden ? 'pointer-events-none translate-y-[170%] opacity-0' : 'translate-y-0 opacity-100'
+      }`}
+    >
       {availableRoles.length > 1 ? (
         <div className="flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 shadow-[0_10px_24px_rgba(15,23,42,0.14)] ring-1 ring-slate-200">
           {availableRoles.map((role) => (
@@ -398,7 +429,7 @@ export default function NavigationPanel({
       ) : null}
       <nav
         aria-label="Primary navigation"
-        className="flex w-full items-center gap-1 rounded-[24px] border border-slate-200 bg-white/95 px-2 py-2 shadow-[0_18px_38px_rgba(15,23,42,0.18)] ring-1 ring-white/70 backdrop-blur-xl"
+        className="flex w-full items-center gap-1 rounded-full border border-slate-200 bg-white/95 px-2.5 py-2 shadow-[0_18px_38px_rgba(15,23,42,0.18)] ring-1 ring-white/70 backdrop-blur-xl"
         style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
       >
         <div className="flex flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
