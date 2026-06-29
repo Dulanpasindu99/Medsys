@@ -55,7 +55,6 @@ type RxEditorProps = {
     value: string,
   ) => void;
   onRemoveRxRow: (index: number) => void;
-  onDemoFill: () => void;
   onClear: () => void;
 };
 
@@ -70,7 +69,6 @@ export function RxEditor({
   onDrugFormKeyDown,
   onUpdateRxRow,
   onRemoveRxRow,
-  onDemoFill,
   onClear,
 }: RxEditorProps) {
   const controlHeightClass = "h-10";
@@ -126,13 +124,6 @@ export function RxEditor({
           Prescription / Drugs
         </p>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onDemoFill}
-            className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
-          >
-            Demo Fill
-          </button>
           <button
             type="button"
             onClick={onClear}
