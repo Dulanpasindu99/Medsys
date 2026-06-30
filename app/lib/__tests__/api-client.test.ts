@@ -294,6 +294,27 @@ describe("api client backend compatibility", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/appointments?status=waiting");
   });
 
+  it("forwards pagination and date-range params for appointment lists", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listAppointments({
+      status: "completed",
+      from: "2026-06-01T00:00:00.000Z",
+      to: "2026-06-30T23:59:59.000Z",
+      limit: 50,
+      offset: 100,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "/api/appointments?status=completed&from=2026-06-01T00%3A00%3A00.000Z&to=2026-06-30T23%3A59%3A59.000Z&limit=50&offset=100"
+    );
+  });
+
   it("creates appointments through the dedicated BFF route", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

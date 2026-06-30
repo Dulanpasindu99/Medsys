@@ -41,6 +41,7 @@ import {
   type ListPatientsInput,
   type AppointmentStatus,
 } from "./api-client";
+import type { ListQueryInput } from "./api-client";
 import { queryKeys } from "./query-keys";
 
 export function useCurrentUserQuery(enabled = true) {
@@ -86,10 +87,16 @@ export function useAnalyticsDashboardQuery(input?: AnalyticsDashboardQuery, enab
   });
 }
 
-export function useEncountersQuery() {
+function listQuerySuffix(input?: ListQueryInput) {
+  return input?.from || input?.to || input?.limit != null || input?.offset != null
+    ? [input?.from ?? null, input?.to ?? null, input?.limit ?? null, input?.offset ?? null]
+    : [];
+}
+
+export function useEncountersQuery(input?: ListQueryInput) {
   return useQuery({
-    queryKey: queryKeys.encounters.list,
-    queryFn: listEncounters,
+    queryKey: [...queryKeys.encounters.list, ...listQuerySuffix(input)],
+    queryFn: () => listEncounters(input),
   });
 }
 
@@ -266,9 +273,9 @@ export function usePatientTimelineQuery(patientId: number | string, enabled = tr
   });
 }
 
-export function useAppointmentsQuery(input?: { status?: AppointmentStatus }) {
+export function useAppointmentsQuery(input?: { status?: AppointmentStatus } & ListQueryInput) {
   return useQuery({
-    queryKey: queryKeys.appointments.list(input?.status),
+    queryKey: [...queryKeys.appointments.list(input?.status), ...listQuerySuffix(input)],
     queryFn: () => listAppointments(input),
   });
 }
