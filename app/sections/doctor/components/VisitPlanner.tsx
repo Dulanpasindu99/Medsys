@@ -240,75 +240,45 @@ export function VisitPlanner({
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Dx</p>
-              <p className="text-sm font-semibold text-slate-900">{summaryDiagnoses.length}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Tests</p>
-              <p className="text-sm font-semibold text-slate-900">{summaryTests.length}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Rx</p>
-              <p className="text-sm font-semibold text-slate-900">{summaryPrescriptions.length}</p>
-            </div>
+          {/* Compact receipt-style summary */}
+          <div className="flex items-center gap-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <span>Dx <span className="text-slate-900">{summaryDiagnoses.length}</span></span>
+            <span className="text-slate-300">·</span>
+            <span>Tests <span className="text-slate-900">{summaryTests.length}</span></span>
+            <span className="text-slate-300">·</span>
+            <span>Rx <span className="text-slate-900">{summaryPrescriptions.length}</span></span>
           </div>
 
-          <div
-            className="max-h-[280px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#94a3b8_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/70 hover:[&::-webkit-scrollbar-thumb]:bg-slate-500/80 xl:max-h-[300px]"
-          >
-            <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Diagnosis</p>
-              {diagnosisPreview.length > 0 ? (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {diagnosisPreview.map((diagnosis) => (
-                    <span
-                      key={`diagnosis-${diagnosis}`}
-                      className="rounded-full bg-slate-900/5 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
-                    >
-                      {diagnosis}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-1.5 text-[11px] text-slate-500">No diagnosis selected yet.</p>
-              )}
+          <div className="max-h-[230px] overflow-y-auto rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 xl:max-h-[260px]">
+            <div className="flex gap-2">
+              <span className="w-16 shrink-0 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Diagnosis</span>
+              <span className="min-w-0 flex-1 font-medium text-slate-700">
+                {diagnosisPreview.length > 0 ? diagnosisPreview.join(", ") : "—"}
+              </span>
             </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Tests</p>
-              {testPreview.length > 0 ? (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {testPreview.map((test) => (
-                    <span
-                      key={`test-${test}`}
-                      className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700"
-                    >
-                      {test}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-1.5 text-[11px] text-slate-500">No tests selected yet.</p>
-              )}
+            <div className="mt-1.5 flex gap-2 border-t border-dashed border-slate-200 pt-1.5">
+              <span className="w-16 shrink-0 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Tests</span>
+              <span className="min-w-0 flex-1 font-medium text-slate-700">
+                {testPreview.length > 0 ? testPreview.join(", ") : "—"}
+              </span>
             </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Prescriptions</p>
+            <div className="mt-1.5 border-t border-dashed border-slate-200 pt-1.5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Prescriptions</p>
               {prescriptionPreview.length > 0 ? (
-                <div className="mt-1.5 space-y-1.5">
+                <ul className="mt-0.5 divide-y divide-slate-100">
                   {prescriptionPreview.map((item, index) => (
-                    <div key={`${item.drug}-${index}`} className="rounded-lg bg-slate-50 px-2.5 py-1.5">
-                      <p className="truncate text-[11px] font-semibold text-slate-900">{item.drug}</p>
-                      <p className="truncate text-[10px] text-slate-600">
-                        {item.dose || "-"} | {item.terms || "-"} | Qty {item.amount || "-"} | {item.source}
-                      </p>
-                    </div>
+                    <li key={`${item.drug}-${index}`} className="flex items-baseline justify-between gap-2 py-1">
+                      <span className="truncate font-semibold text-slate-900">{item.drug}</span>
+                      <span className="shrink-0 text-[10px] text-slate-500">
+                        {[item.dose, item.terms, item.amount ? `×${item.amount}` : "", item.source]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               ) : (
-                <p className="mt-1.5 text-[11px] text-slate-500">No medicines added yet.</p>
+                <p className="mt-0.5 text-slate-500">—</p>
               )}
             </div>
           </div>
