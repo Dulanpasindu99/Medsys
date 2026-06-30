@@ -72,7 +72,7 @@ export function RxEditor({
   onClear,
 }: RxEditorProps) {
   const controlHeightClass = "h-10";
-  const rowControlClass = "h-10 rounded-xl";
+  const rowControlClass = "h-8 rounded-lg";
   const muiSelectSx = {
     borderRadius: "0.75rem",
     backgroundColor: "#f8fafc",
@@ -337,8 +337,8 @@ export function RxEditor({
         </div>
       </form>
 
-      <div className="max-h-[22rem] overflow-y-auto pr-1">
-        <div className="flex flex-col gap-2">
+      <div className="max-h-[30rem] overflow-y-auto pr-1">
+        <div className="flex flex-col gap-1.5">
           {rxRows.length === 0 && (
             <div className="py-4 text-center text-sm italic text-slate-400">
               No drugs added yet.
@@ -347,11 +347,11 @@ export function RxEditor({
           {rxRows.map((row, index) => (
             <div
               key={`${row.drug}-${index}`}
-              className="group grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-sky-200 hover:shadow-md md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_180px_96px_210px_110px] xl:items-center"
+              className="group grid gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm transition hover:border-sky-200 md:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr)_150px_72px_168px_84px] xl:items-center"
             >
-              <div className="flex min-w-0 flex-[2] flex-col justify-center">
-                <span className="text-sm font-bold text-slate-900">{row.drug}</span>
-                <span className="mt-1 text-xs text-slate-500">{row.dose}</span>
+              <div className="flex min-w-0 flex-col justify-center leading-tight">
+                <span className="truncate text-[13px] font-bold text-slate-900">{row.drug}</span>
+                <span className="truncate text-[11px] text-slate-500">{row.dose}</span>
               </div>
               <div
                 className={`${rowControlClass} flex items-center rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700 ring-1 ring-slate-200`}
