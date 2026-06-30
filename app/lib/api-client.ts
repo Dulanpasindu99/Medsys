@@ -1034,8 +1034,26 @@ export async function listPatientTimeline(patientId: number | string) {
   return expectApiRecordArray(response, "patient timeline");
 }
 
-export async function listAppointments(input?: { status?: AppointmentStatus }) {
-  const query = input?.status ? `?status=${encodeURIComponent(input.status)}` : "";
+export interface ListQueryInput {
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+function buildListQuery(input?: ListQueryInput & { status?: string }) {
+  const params = new URLSearchParams();
+  if (input?.status) params.set("status", input.status);
+  if (input?.from) params.set("from", input.from);
+  if (input?.to) params.set("to", input.to);
+  if (input?.limit != null) params.set("limit", String(input.limit));
+  if (input?.offset != null) params.set("offset", String(input.offset));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export async function listAppointments(input?: { status?: AppointmentStatus } & ListQueryInput) {
+  const query = buildListQuery(input);
   const response = await apiFetch<unknown>(`/api/appointments${query}`, { method: "GET" });
   return expectApiRecordArray(response, "appointments");
 }
@@ -1134,8 +1152,9 @@ export async function saveConsultation(input: ConsultationSavePayload) {
   });
 }
 
-export async function listEncounters() {
-  const response = await apiFetch<unknown>("/api/encounters", { method: "GET" });
+export async function listEncounters(input?: ListQueryInput) {
+  const query = buildListQuery(input);
+  const response = await apiFetch<unknown>(`/api/encounters${query}`, { method: "GET" });
   return expectApiRecordArray(response, "encounters");
 }
 

@@ -115,6 +115,15 @@ export function useAnalyticsSnapshot() {
       completed: 0,
       cancelled: 0,
     };
+    // Prefer the server-side aggregate (accurate org-wide) over the raw list,
+    // which is now bounded/paginated and would otherwise undercount.
+    const overviewCounts = overview?.appointmentStatusCounts as Record<string, unknown> | undefined;
+    if (overviewCounts && typeof overviewCounts === 'object') {
+      (Object.keys(counts) as Array<keyof typeof counts>).forEach((key) => {
+        counts[key] = toNumber(overviewCounts[key]) ?? 0;
+      });
+      return counts;
+    }
     appointments.forEach((row) => {
       const status = toString(row.status).toLowerCase();
       if (status in counts) {
@@ -122,7 +131,7 @@ export function useAnalyticsSnapshot() {
       }
     });
     return counts;
-  }, [appointments]);
+  }, [overview, appointments]);
 
   const inventoryStock = useMemo(() => {
     const totalItems = inventory.length;
@@ -137,8 +146,14 @@ export function useAnalyticsSnapshot() {
 
   const encounterCount =
     toNumber(overview?.totalEncounters ?? overview?.encounterCount) ?? encounters.length;
-  const completionRate = appointments.length
-    ? Math.round((appointmentStatusSummary.completed / appointments.length) * 100)
+  const totalAppointmentsForRate =
+    toNumber(overview?.totalAppointments) ??
+    (appointmentStatusSummary.waiting +
+      appointmentStatusSummary.in_consultation +
+      appointmentStatusSummary.completed +
+      appointmentStatusSummary.cancelled);
+  const completionRate = totalAppointmentsForRate
+    ? Math.round((appointmentStatusSummary.completed / totalAppointmentsForRate) * 100)
     : 0;
   const roleContext = toString(overview?.role_context ?? overview?.roleContext) || null;
 
