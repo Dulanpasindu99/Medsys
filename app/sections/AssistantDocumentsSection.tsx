@@ -145,7 +145,7 @@ function UploadPanel({ patientId, patientName }: { patientId: number; patientNam
         <input
           ref={fileRef}
           type="file"
-          accept="application/pdf,image/jpeg,image/png"
+          accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic,.heif,.webp"
           className="hidden"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />

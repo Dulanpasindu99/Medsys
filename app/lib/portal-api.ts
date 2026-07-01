@@ -60,8 +60,34 @@ export interface PortalDocument {
   contentType: string;
   sizeBytes: number;
   uploadedAt: string;
+  reviewedAt?: string | null;
   doctorName: string;
   clinicName: string;
+}
+
+export interface PortalReceivedDocument {
+  id: number;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  reviewedAt?: string | null;
+  note?: string | null;
+  uploadedByName: string;
+  clinicName: string;
+}
+
+export interface PortalProfileMatch {
+  matched: boolean;
+  profile?: {
+    firstName: string | null;
+    lastName: string | null;
+    dob: string | null;
+    gender: "male" | "female" | "other" | null;
+    phone: string | null;
+    address: string | null;
+    bloodGroup: string | null;
+  };
 }
 
 export interface PortalProfileInput {
@@ -121,8 +147,15 @@ export const portalEncounter = (encounterId: number) =>
 
 // --- documents ---
 export const portalDocuments = () => portalFetch<PortalDocument[]>("documents");
+export const portalReceivedDocuments = () => portalFetch<PortalReceivedDocument[]>("documents/received");
 export const portalDocumentDownloadUrl = (id: number) =>
   portalFetch<{ url: string }>(`documents/${id}/download-url`);
+export const portalProfileMatch = (params: { nic?: string; phone?: string }) => {
+  const q = new URLSearchParams();
+  if (params.nic?.trim()) q.set("nic", params.nic.trim());
+  if (params.phone?.trim()) q.set("phone", params.phone.trim());
+  return portalFetch<PortalProfileMatch>(`profile/match?${q.toString()}`);
+};
 export async function portalUploadDocument(doctorUserId: number, file: File): Promise<PortalDocument> {
   const fd = new FormData();
   fd.append("file", file);
