@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ViewportBody, ViewportFrame, ViewportPage } from "../components/ui/ViewportLayout";
 import { usePatientProfilePopup } from "../hooks/usePatientProfilePopup";
 import { canAccessRoute } from "../lib/authorization";
@@ -106,12 +106,33 @@ export default function DoctorSection() {
     saveState,
     saveFeedback,
     handlePatientSelect,
+    selectPatientByIdentity,
     handleSaveRecord,
     handleSaveAndComplete,
     handlePrintPrescription,
     canPrintPrescription,
   } = useDoctorWorkspaceData(clinicalWorkflow, visitPlanner);
   const popup = usePatientProfilePopup();
+
+  // When arriving from Report Review, a patient identity is handed off via sessionStorage
+  // (kept out of the URL to avoid PHI in browser history). Select it once on mount.
+  const appliedReviewPatientRef = useRef(false);
+  useEffect(() => {
+    if (appliedReviewPatientRef.current) return;
+    appliedReviewPatientRef.current = true;
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem("medlink:reviewPatient");
+    if (!raw) return;
+    window.sessionStorage.removeItem("medlink:reviewPatient");
+    try {
+      const identity = JSON.parse(raw) as Parameters<typeof selectPatientByIdentity>[0];
+      if (identity && typeof identity.patientId === "number") {
+        selectPatientByIdentity(identity);
+      }
+    } catch {
+      /* ignore malformed handoff */
+    }
+  }, [selectPatientByIdentity]);
   const canOpenAssistantRegistration =
     !!currentUserQuery.data &&
     canAccessRoute(currentUserQuery.data, "assistantWorkspace");

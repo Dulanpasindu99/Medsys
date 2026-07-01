@@ -236,6 +236,7 @@ function buildWorkspaceState(overrides?: Partial<MockDoctorWorkspaceData>): Mock
     transitionState: idleMutationState(),
     transitionFeedback: null,
     handlePatientSelect: vi.fn(),
+    selectPatientByIdentity: vi.fn(),
     handleStartConsultation: vi.fn(),
     handleSaveRecord: vi.fn(),
     handleSaveAndComplete: vi.fn(),

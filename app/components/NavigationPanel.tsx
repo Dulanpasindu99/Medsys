@@ -112,6 +112,23 @@ export const OwnerIcon: IconRenderer = (props) => (
   </svg>
 );
 
+export const DocumentsIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M7 3.5h7l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" />
+    <path d="M13.5 3.5V8H18" />
+    <path d="M9 12.5h6M9 15.5h4" />
+  </svg>
+);
+
+export const ReportReviewIcon: IconRenderer = (props) => (
+  <svg {...iconProps} {...props}>
+    <path d="M6 3.5h8l4 4V17a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" />
+    <path d="M13.5 3.5V8H18" />
+    <path d="M8.5 12.5l1.6 1.6 3-3.2" />
+    <path d="M8 21h9" />
+  </svg>
+);
+
 type NavigationItem = {
   id: NavigationItemId;
   label: string;
@@ -128,6 +145,8 @@ const ICONS_BY_NAV_ID: Record<NavigationItemId, IconRenderer> = {
   inventory: InventoryIcon,
   ai: ChatIcon,
   assistant: AssistantIcon,
+  documents: DocumentsIcon,
+  reportReview: ReportReviewIcon,
   owner: OwnerIcon,
 };
 

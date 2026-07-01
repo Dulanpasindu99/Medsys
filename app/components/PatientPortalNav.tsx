@@ -50,11 +50,15 @@ const ITEMS: NavItem[] = [
   }
 ];
 
-export function PatientPortalNav() {
+export function PatientPortalNav({ hidden = false }: { hidden?: boolean }) {
   const pathname = usePathname();
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <nav
+      className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-all duration-300 ease-out ${
+        hidden ? "translate-y-[140%] opacity-0" : "translate-y-0 opacity-100"
+      }`}
+    >
       <div className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-1 rounded-full border border-white/70 bg-white/90 p-1.5 shadow-[0_18px_44px_rgba(15,23,42,0.18)] ring-1 ring-slate-100 backdrop-blur-xl">
         {ITEMS.map((item) => {
           const active = item.href === "/portal" ? pathname === "/portal" : pathname.startsWith(item.href);

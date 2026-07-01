@@ -36,6 +36,9 @@ function buildDirectoryState(overrides?: Partial<ReturnType<typeof usePatientDir
     setAgeRange: vi.fn(),
     gender: "all" as const,
     setGender: vi.fn(),
+    registration: "all" as const,
+    setRegistration: vi.fn(),
+    registrationCounts: { all: 1, online: 0, clinic: 1 },
     patients: [
       {
         patientId: 7,
@@ -53,6 +56,7 @@ function buildDirectoryState(overrides?: Partial<ReturnType<typeof usePatientDir
         conditions: ["Hypertension"],
         diagnoses: ["Hypertension"],
         profileId: "7",
+        selfRegistered: false,
       },
     ],
     filteredPatients: [
@@ -72,6 +76,7 @@ function buildDirectoryState(overrides?: Partial<ReturnType<typeof usePatientDir
         conditions: ["Hypertension"],
         diagnoses: ["Hypertension"],
         profileId: "7",
+        selfRegistered: false,
       },
     ],
     families: ["All Families", "Doe"],
