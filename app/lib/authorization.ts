@@ -51,6 +51,8 @@ export type AppRouteId =
   | "inventoryBoard"
   | "aiWorkspace"
   | "assistantWorkspace"
+  | "documentsBoard"
+  | "reportReviewBoard"
   | "ownerWorkspace";
 
 export type NavigationItemId =
@@ -62,6 +64,8 @@ export type NavigationItemId =
   | "inventory"
   | "ai"
   | "assistant"
+  | "documents"
+  | "reportReview"
   | "owner";
 
 export type PermissionSubject =
@@ -137,6 +141,20 @@ const ROUTE_POLICIES: RoutePolicy[] = [
     href: "/assistant",
     label: "Assistant Panel",
     permission: "assistant.workspace.view",
+  },
+  {
+    routeId: "documentsBoard",
+    navId: "documents",
+    href: "/documents",
+    label: "Documents",
+    permission: "assistant.workspace.view",
+  },
+  {
+    routeId: "reportReviewBoard",
+    navId: "reportReview",
+    href: "/report-review",
+    label: "Report Review",
+    permission: "doctor.workspace.view",
   },
   {
     routeId: "ownerWorkspace",

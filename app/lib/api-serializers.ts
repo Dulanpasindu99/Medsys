@@ -30,6 +30,7 @@ type PatientRecord = {
   nextAppointment?: Record<string, unknown> | null;
   allergyHighlights?: unknown;
   majorActiveCondition?: string | null;
+  selfRegistered?: boolean | null;
 };
 
 type UserRecord = {
@@ -112,6 +113,7 @@ export function serializePatient(patient: PatientRecord) {
     ...(patient.majorActiveCondition != null
       ? { major_active_condition: patient.majorActiveCondition }
       : {}),
+    self_registered: patient.selfRegistered ?? false,
   };
 }
 

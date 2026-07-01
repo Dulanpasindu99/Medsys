@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AGE_BUCKETS } from "../constants";
-import type { AgeBucketId, Gender } from "../types";
+import { AGE_BUCKETS, REGISTRATION_FILTERS } from "../constants";
+import type { AgeBucketId, Gender, RegistrationFilterId } from "../types";
 import { FilterChip } from "./PatientPrimitives";
 
 type PatientFiltersProps = {
@@ -18,6 +18,9 @@ type PatientFiltersProps = {
   diagnoses: string[];
   ageRange: AgeBucketId;
   setAgeRange: (value: AgeBucketId) => void;
+  registration: RegistrationFilterId;
+  setRegistration: (value: RegistrationFilterId) => void;
+  registrationCounts: Record<RegistrationFilterId, number>;
   filteredCount: number;
 };
 
@@ -142,6 +145,9 @@ export function PatientFilters({
   diagnoses,
   ageRange,
   setAgeRange,
+  registration,
+  setRegistration,
+  registrationCounts,
   filteredCount,
 }: PatientFiltersProps) {
   return (
@@ -215,9 +221,20 @@ export function PatientFilters({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {AGE_BUCKETS.map((bucket) => (
           <FilterChip key={bucket.id} label={bucket.label} active={ageRange === bucket.id} onClick={() => setAgeRange(bucket.id)} />
+        ))}
+
+        <span className="mx-1 hidden h-6 w-px self-center bg-slate-200 sm:block" aria-hidden />
+
+        {REGISTRATION_FILTERS.map((option) => (
+          <FilterChip
+            key={option.id}
+            label={`${option.label} · ${registrationCounts[option.id]}`}
+            active={registration === option.id}
+            onClick={() => setRegistration(option.id)}
+          />
         ))}
       </div>
     </>

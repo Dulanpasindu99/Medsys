@@ -210,6 +210,8 @@ function normalizePatientRecord(record: AnyRecord) {
     allergy_highlights: allergyHighlights,
     majorActiveCondition: majorActiveCondition || null,
     major_active_condition: majorActiveCondition || null,
+    selfRegistered: Boolean(record.self_registered ?? record.selfRegistered),
+    self_registered: Boolean(record.self_registered ?? record.selfRegistered),
   };
 }
 

@@ -1836,6 +1836,42 @@ export function useDoctorWorkspaceData(
     setAllergySaveState((current) => (current.status === "idle" ? current : idleMutationState()));
   }, []);
 
+  // Select a patient by identity (used when deep-linking from Report Review, where the
+  // patient may not be in the doctor-scoped queue). Prefers the richer queue entry when
+  // present; otherwise builds a minimal record from the passed identity. Either way the
+  // clinical auto-fill runs off selectedPatientId, so prior visits still load.
+  const selectPatientByIdentity = useCallback(
+    (identity: {
+      patientId: number;
+      name: string;
+      patientCode?: string | null;
+      nic?: string | null;
+      phone?: string | null;
+      age?: number | null;
+      dateOfBirth?: string | null;
+      gender?: string | null;
+    }) => {
+      const existing = patients.find((patient) => patient.patientId === identity.patientId);
+      if (existing) {
+        handlePatientSelect(existing);
+        return;
+      }
+      handlePatientSelect({
+        patientId: identity.patientId,
+        name: identity.name,
+        patientCode: identity.patientCode ?? "",
+        nic: identity.nic ?? "",
+        phone: identity.phone ?? undefined,
+        dateOfBirth: identity.dateOfBirth ?? undefined,
+        age: identity.age ?? 0,
+        gender: identity.gender ?? "Unspecified",
+        time: "",
+        reason: "",
+      });
+    },
+    [patients, handlePatientSelect]
+  );
+
   // ---- Auto-fill the clinical draft from the patient's most recent consultation ----
   const autoFilledPatientRef = useRef<number | null>(null);
   // True only when an existing patient's last record was actually auto-filled into the draft.
@@ -2822,6 +2858,7 @@ export function useDoctorWorkspaceData(
     transitionState,
     transitionFeedback,
     handlePatientSelect,
+    selectPatientByIdentity,
     handleStartConsultation: handleSaveRecord,
     handleSaveRecord,
     handleSaveAndComplete,

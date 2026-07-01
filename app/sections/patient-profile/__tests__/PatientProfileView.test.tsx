@@ -1,8 +1,16 @@
+import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { emptyLoadState, errorLoadState, loadingLoadState, readyLoadState } from "../../../lib/async-state";
 import { PatientProfileView } from "../PatientProfileView";
 import { usePatientProfileData } from "../hooks/usePatientProfileData";
+
+// PatientProfileView now mounts ReportsCard, which uses react-query, so renders need a client.
+function renderView(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 vi.mock("../hooks/usePatientProfileData", () => ({
   usePatientProfileData: vi.fn(),
@@ -39,7 +47,7 @@ describe("PatientProfileView", () => {
       reload: vi.fn(),
     });
 
-    render(<PatientProfileView profileId="12" />);
+    renderView(<PatientProfileView profileId="12" />);
 
     expect(screen.getByText("Loading patient profile")).toBeInTheDocument();
   });
@@ -54,7 +62,7 @@ describe("PatientProfileView", () => {
       reload: vi.fn(),
     });
 
-    render(<PatientProfileView profileId="999" />);
+    renderView(<PatientProfileView profileId="999" />);
 
     expect(screen.getByText("Profile not found")).toBeInTheDocument();
   });
@@ -70,7 +78,7 @@ describe("PatientProfileView", () => {
       reload,
     });
 
-    render(<PatientProfileView profileId="12" />);
+    renderView(<PatientProfileView profileId="12" />);
 
     expect(screen.getByText("Patient profile could not be loaded")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /retry profile/i })).toBeInTheDocument();
@@ -100,7 +108,7 @@ describe("PatientProfileView", () => {
       reload: vi.fn(),
     });
 
-    render(<PatientProfileView profileId="12" />);
+    renderView(<PatientProfileView profileId="12" />);
 
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText(/patient identity, latest clinical summary/i)).toBeInTheDocument();
@@ -130,7 +138,7 @@ describe("PatientProfileView", () => {
       reload: vi.fn(),
     });
 
-    render(<PatientProfileView profileId="12" />);
+    renderView(<PatientProfileView profileId="12" />);
 
     expect(screen.getByText(/no completed consultations yet/i)).toBeInTheDocument();
     expect(screen.getByText(/consultation details will appear here after the doctor completes a visit/i)).toBeInTheDocument();

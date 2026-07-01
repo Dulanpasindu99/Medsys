@@ -1165,10 +1165,50 @@ export async function listPatientDocuments(patientId: number | string) {
   return expectApiRecordArray(response, "patient documents");
 }
 
-export async function getPatientDocumentUrl(documentId: number | string) {
-  return apiFetch<{ url: string }>(`/api/backend/v1/documents/${documentId}/download-url`, {
-    method: "GET",
+// Same-origin URL that streams a document inline (works for both S3 and local storage).
+// Navigating a new tab here carries the session cookie, which the BFF turns into auth.
+export function documentRawUrl(documentId: number | string) {
+  return `/api/backend/v1/documents/${documentId}/raw`;
+}
+
+// Org-wide review inbox of staff-uploaded reports for the doctor.
+export async function listDocumentReviewQueue(input?: { limit?: number; offset?: number; source?: "assistant" | "patient" }) {
+  const params = new URLSearchParams();
+  if (input?.limit != null) params.set("limit", String(input.limit));
+  if (input?.offset != null) params.set("offset", String(input.offset));
+  if (input?.source) params.set("source", input.source);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await apiFetch<unknown>(`/api/backend/v1/documents/review${query}`, { method: "GET" });
+  return expectApiRecordArray(response, "document review queue");
+}
+
+// Staff upload of a document (PDF/JPG/PNG) for a clinic patient. Uses a raw fetch so
+// the browser sets the multipart boundary itself (apiFetch would force JSON).
+export async function uploadPatientDocument(
+  patientId: number | string,
+  file: File,
+  note?: string
+): Promise<{ id: number; uploadedAt: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const query = note && note.trim() ? `?note=${encodeURIComponent(note.trim())}` : "";
+  const response = await fetch(`/api/backend/v1/documents/patient/${patientId}${query}`, {
+    method: "POST",
+    body: form,
+    credentials: "same-origin",
+    headers: { "x-request-id": generateRequestId() },
   });
+  if (!response.ok) {
+    let message = "Unable to upload the document.";
+    try {
+      const body = (await response.json()) as { message?: string; error?: string };
+      message = body.message ?? body.error ?? message;
+    } catch {
+      /* keep default */
+    }
+    throw new Error(message);
+  }
+  return response.json() as Promise<{ id: number; uploadedAt: string }>;
 }
 
 export async function getEncounter(encounterId: number | string) {

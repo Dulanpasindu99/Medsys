@@ -8,6 +8,7 @@ import { ProfileHeader } from './components/ProfileHeader';
 import { TimelineCard } from './components/TimelineCard';
 import { AllergyCard } from './components/AllergyCard';
 import { ProfileEditCard } from './components/ProfileEditCard';
+import { ReportsCard } from './components/ReportsCard';
 import { VitalsCard } from './components/VitalsCard';
 
 export function PatientProfileView({ profileId }: { profileId: string }) {
@@ -87,12 +88,15 @@ export function PatientProfileView({ profileId }: { profileId: string }) {
                     <TimelineCard timeline={timeline} formatDate={formatDate} />
                 </SurfaceCard>
 
-                <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
+                <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4">
                     <SurfaceCard className="flex h-full min-h-0 flex-col p-5 md:p-6">
                         <VitalsCard profile={profile} formatDate={formatDate} />
                     </SurfaceCard>
                     <SurfaceCard className="flex h-full min-h-0 flex-col p-5 md:p-6">
                         <AllergyCard profile={profile} />
+                    </SurfaceCard>
+                    <SurfaceCard className="flex h-full min-h-0 flex-col p-5 md:p-6">
+                        <ReportsCard profileId={profileId} />
                     </SurfaceCard>
                 </div>
             </div>

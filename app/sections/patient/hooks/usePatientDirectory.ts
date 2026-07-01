@@ -13,7 +13,7 @@ import {
   type LoadState,
 } from "../../../lib/async-state";
 import { queryKeys } from "../../../lib/query-keys";
-import type { AgeBucketId, Gender, Patient } from "../types";
+import type { AgeBucketId, Gender, Patient, RegistrationFilterId } from "../types";
 
 type AnyRecord = Record<string, unknown>;
 const EMPTY_PATIENTS: Patient[] = [];
@@ -133,6 +133,7 @@ export function usePatientDirectory() {
   const [diagnosis, setDiagnosis] = useState("All Diagnoses");
   const [ageRange, setAgeRange] = useState<AgeBucketId>("all");
   const [gender, setGender] = useState<Gender | "all">("all");
+  const [registration, setRegistration] = useState<RegistrationFilterId>("all");
   const patients = directoryQuery.data?.patients ?? EMPTY_PATIENTS;
   let loadState: LoadState;
   if (directoryQuery.isPending || directoryQuery.isFetching) {
@@ -165,7 +166,9 @@ export function usePatientDirectory() {
     return ["All Diagnoses", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [patients, dictionaryDiagnosesQuery.data]);
 
-  const filteredPatients = useMemo(() => {
+  // Everything except the registration-source filter — so the source counts can
+  // reflect the currently narrowed set (search/age/gender/family/diagnosis).
+  const baseFilteredPatients = useMemo(() => {
     const diagnosisNeedle = diagnosis.toLowerCase();
     return patients.filter((patient) => {
       const matchesSearch = `${patient.name} ${patient.patientCode} ${patient.nic} ${patient.mobile} ${patient.family} ${patient.guardianName ?? ""} ${patient.guardianNic ?? ""} ${patient.guardianRelationship ?? ""}`
@@ -187,6 +190,17 @@ export function usePatientDirectory() {
     });
   }, [ageRange, diagnosis, family, gender, patients, search]);
 
+  const registrationCounts = useMemo(() => {
+    const online = baseFilteredPatients.filter((patient) => patient.selfRegistered).length;
+    return { all: baseFilteredPatients.length, online, clinic: baseFilteredPatients.length - online };
+  }, [baseFilteredPatients]);
+
+  const filteredPatients = useMemo(() => {
+    if (registration === "all") return baseFilteredPatients;
+    const wantSelfRegistered = registration === "online";
+    return baseFilteredPatients.filter((patient) => patient.selfRegistered === wantSelfRegistered);
+  }, [baseFilteredPatients, registration]);
+
   return {
     search,
     setSearch,
@@ -199,6 +213,9 @@ export function usePatientDirectory() {
     setAgeRange,
     gender,
     setGender,
+    registration,
+    setRegistration,
+    registrationCounts,
     patients,
     filteredPatients,
     families,
@@ -282,6 +299,7 @@ async function fetchPatientDirectorySnapshot(): Promise<{
         conditions: [...allergyHighlights, ...conditionAlerts],
         diagnoses,
         profileId: patientId ? String(patientId) : undefined,
+        selfRegistered: Boolean(row.self_registered ?? row.selfRegistered),
       } satisfies Patient;
     });
 

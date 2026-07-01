@@ -59,13 +59,12 @@ export default function PortalHomePage() {
                   <p className="text-xs text-slate-500">{doctor.clinicName}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {doctor.status === "self_registered" ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                      Pending verification
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Verified</span>
-                  )}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Sharing
+                  </span>
                   <button
                     type="button"
                     onClick={() => unlink.mutate(doctor.linkId)}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PatientProfileModal } from "../../../components/PatientProfileModal";
 import { ConsultationSuccessOverlay } from "./ConsultationSuccessOverlay";
 import type { MutationFeedback, MutationState } from "../../../lib/async-state";
@@ -167,9 +168,15 @@ export function DoctorWorkspace({
   saveFeedback = null,
   saveState,
 }: DoctorWorkspaceProps) {
+  // Deep link from Report Review: /doctor?tab=documents opens the Documents tab. Read at
+  // mount from the URL (lazy initializer) so we never setState inside an effect.
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
     "clinical" | "prescription" | "notes" | "documents"
-  >("clinical");
+  >(() => {
+    const tab = searchParams.get("tab");
+    return tab === "documents" || tab === "prescription" || tab === "notes" || tab === "clinical" ? tab : "clinical";
+  });
   const [showSuccessTick, setShowSuccessTick] = useState(false);
   const prevSaveStatusRef = useRef(saveState?.status);
 
