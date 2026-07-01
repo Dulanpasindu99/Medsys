@@ -1158,6 +1158,19 @@ export async function listEncounters(input?: ListQueryInput) {
   return expectApiRecordArray(response, "encounters");
 }
 
+export async function listPatientDocuments(patientId: number | string) {
+  const response = await apiFetch<unknown>(`/api/backend/v1/documents/patient/${patientId}`, {
+    method: "GET",
+  });
+  return expectApiRecordArray(response, "patient documents");
+}
+
+export async function getPatientDocumentUrl(documentId: number | string) {
+  return apiFetch<{ url: string }>(`/api/backend/v1/documents/${documentId}/download-url`, {
+    method: "GET",
+  });
+}
+
 export async function getEncounter(encounterId: number | string) {
   const response = await apiFetch<unknown>(`/api/encounters/${encounterId}`, { method: "GET" });
   return expectApiRecord(response, "encounter");

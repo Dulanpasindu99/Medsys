@@ -7,6 +7,7 @@ import { DoctorHeader } from "./DoctorHeader";
 import { DiseaseSearch } from "./DiseaseSearch";
 import { RxEditor } from "./RxEditor";
 import { VisitPlanner } from "./VisitPlanner";
+import { DocumentsPanel } from "./DocumentsPanel";
 import type { useDoctorClinicalWorkflow } from "../hooks/useDoctorClinicalWorkflow";
 import type { useVisitPlanner } from "../hooks/useVisitPlanner";
 
@@ -167,7 +168,7 @@ export function DoctorWorkspace({
   saveState,
 }: DoctorWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<
-    "clinical" | "prescription" | "notes"
+    "clinical" | "prescription" | "notes" | "documents"
   >("clinical");
   const [showSuccessTick, setShowSuccessTick] = useState(false);
   const prevSaveStatusRef = useRef(saveState?.status);
@@ -270,12 +271,13 @@ export function DoctorWorkspace({
               { key: "clinical", label: "Clinical" },
               { key: "prescription", label: "Prescription" },
               { key: "notes", label: "Complete" },
+              { key: "documents", label: "Documents" },
             ].map((tab) => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() =>
-                  setActiveTab(tab.key as "clinical" | "prescription" | "notes")
+                  setActiveTab(tab.key as "clinical" | "prescription" | "notes" | "documents")
                 }
                 className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition lg:px-4 lg:py-2 lg:text-[11px] lg:tracking-[0.14em] ${
                   activeTab === tab.key
@@ -388,6 +390,9 @@ export function DoctorWorkspace({
               summaryTests={summaryTests}
               summaryPrescriptions={summaryPrescriptions}
             />
+          ) : null}
+          {activeTab === "documents" ? (
+            <DocumentsPanel patientId={selectedPatientProfileId} />
           ) : null}
         </div>
       </div>
