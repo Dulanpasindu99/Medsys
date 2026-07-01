@@ -6,6 +6,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import { FiRotateCcw, FiSearch } from "react-icons/fi";
 import { appMuiSelectSx } from "../../../components/ui/muiFieldStyles";
+import { ExpiryIndicator } from "./ExpiryIndicator";
 import type {
   FamilyOption,
   GuardianCaptureMode,
@@ -471,13 +472,12 @@ export function DoctorHeader({
               New patient draft
             </span>
           ) : null}
-          {onClearForm ? (
+          {onClearForm && canClearForm ? (
             <button
               type="button"
               onClick={onClearForm}
-              disabled={!canClearForm}
               title="Clear all fields"
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[999px] border border-rose-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 xl:h-10 xl:px-4"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[999px] border border-rose-200 bg-white px-3.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-rose-600 transition hover:bg-rose-50 xl:h-10 xl:px-4"
             >
               <FiRotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
               Clear
@@ -486,10 +486,11 @@ export function DoctorHeader({
         </div>
       </div>
       <div
-        className={`flex justify-center lg:col-start-2 lg:row-start-1 lg:min-w-[13rem] lg:justify-end xl:min-w-[15rem] ${
+        className={`flex items-center justify-center gap-2 lg:col-start-2 lg:row-start-1 lg:min-w-[13rem] lg:justify-end xl:min-w-[15rem] ${
           showSelectedPatientIdentity ? "lg:row-span-2" : "lg:row-span-1"
         }`}
       >
+        <ExpiryIndicator />
         <Image
           src="/assets/medlink-logo-optimized.png"
           alt="Medlink Logo"

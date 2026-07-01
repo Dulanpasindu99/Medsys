@@ -1880,6 +1880,8 @@ export default function InventorySection() {
                   label: "Expiry date checking",
                   active: activeTab === "expiry",
                   onClick: () => setActiveTab("expiry"),
+                  // Red by default when any drug is near/at expiry, to draw attention.
+                  tone: items.some((item) => item.expiryRisk) ? ("danger" as const) : undefined,
                 },
                 {
                   key: "reports",
