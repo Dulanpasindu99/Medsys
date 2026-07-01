@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   adjustInventoryStock,
   createInventoryItem,
@@ -576,7 +577,16 @@ export function useInventoryBoard(
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
   const inventoryQuery = useInventoryQuery();
-  const [activeTab, setActiveTab] = useState<InventoryTab>("overview");
+  // Open a specific tab when deep-linked (e.g. /inventory?tab=expiry from the doctor page
+  // expiry indicator). Read at mount via useSearchParams so it's consistent across SSR +
+  // client hydration — no setState-in-effect.
+  const inventorySearchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<InventoryTab>(() => {
+    const requested = inventorySearchParams.get("tab");
+    const valid: InventoryTab[] = ["overview", "inventory", "detail", "movements", "batches", "alerts", "expiry", "reports"];
+    if (requested && (valid as string[]).includes(requested)) return requested as InventoryTab;
+    return "overview";
+  });
   const [selectedItemId, setSelectedItemIdState] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState<InventoryFormState>(EMPTY_FORM);
   const [movementForm, setMovementForm] = useState<MovementFormState>(EMPTY_MOVEMENT_FORM);

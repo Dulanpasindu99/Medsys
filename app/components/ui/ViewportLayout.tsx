@@ -19,6 +19,8 @@ type ViewportTabsProps = {
     label: string;
     active?: boolean;
     onClick: () => void;
+    // "danger" flags a tab that needs attention (e.g. drugs near expiry) — rendered red.
+    tone?: "danger";
   }>;
   className?: string;
 };
@@ -92,9 +94,13 @@ export function ViewportTabs({ tabs, className = "" }: ViewportTabsProps) {
           type="button"
           onClick={tab.onClick}
           className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition xl:px-4 xl:py-2 xl:text-[11px] xl:tracking-[0.16em] ${
-            tab.active
-              ? "bg-slate-800 text-white shadow-md"
-              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            tab.tone === "danger"
+              ? tab.active
+                ? "bg-rose-600 text-white shadow-[0_8px_20px_rgba(244,63,94,0.28)]"
+                : "border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100"
+              : tab.active
+                ? "bg-slate-800 text-white shadow-md"
+                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
           }`}
           aria-pressed={tab.active}
         >
