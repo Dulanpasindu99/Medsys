@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { markDocumentReviewed } from "../../../lib/api-client";
 import { PatientProfileModal } from "../../../components/PatientProfileModal";
 import { ConsultationSuccessOverlay } from "./ConsultationSuccessOverlay";
 import type { MutationFeedback, MutationState } from "../../../lib/async-state";
@@ -180,6 +182,31 @@ export function DoctorWorkspace({
   const [showSuccessTick, setShowSuccessTick] = useState(false);
   const prevSaveStatusRef = useRef(saveState?.status);
 
+  // Report-review workflow: when leaving the Documents tab with reports still unreviewed,
+  // offer to mark them reviewed (which clears them from the review queue).
+  const queryClient = useQueryClient();
+  const unreviewedDocIdsRef = useRef<number[]>([]);
+  const requestTab = (next: "clinical" | "prescription" | "notes" | "documents") => {
+    if (
+      activeTab === "documents" &&
+      next !== "documents" &&
+      unreviewedDocIdsRef.current.length > 0 &&
+      typeof window !== "undefined" &&
+      window.confirm("Mark this patient's report(s) as reviewed?")
+    ) {
+      const ids = unreviewedDocIdsRef.current;
+      void Promise.all(ids.map((id) => markDocumentReviewed(id, true)))
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ["patient-documents", selectedPatientProfileId] });
+          void queryClient.invalidateQueries({ queryKey: ["document-review"] });
+        })
+        .catch(() => {
+          /* surfaced by the panel on next load */
+        });
+    }
+    setActiveTab(next);
+  };
+
   // After every successful consultation save, jump back to the Clinical tab and flash a
   // confirmation tick so the doctor clearly sees the save landed before the next patient.
   useEffect(() => {
@@ -284,7 +311,7 @@ export function DoctorWorkspace({
                 key={tab.key}
                 type="button"
                 onClick={() =>
-                  setActiveTab(tab.key as "clinical" | "prescription" | "notes" | "documents")
+                  requestTab(tab.key as "clinical" | "prescription" | "notes" | "documents")
                 }
                 className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] transition lg:px-4 lg:py-2 lg:text-[11px] lg:tracking-[0.14em] ${
                   activeTab === tab.key
@@ -399,7 +426,12 @@ export function DoctorWorkspace({
             />
           ) : null}
           {activeTab === "documents" ? (
-            <DocumentsPanel patientId={selectedPatientProfileId} />
+            <DocumentsPanel
+              patientId={selectedPatientProfileId}
+              onUnreviewedChange={(ids) => {
+                unreviewedDocIdsRef.current = ids;
+              }}
+            />
           ) : null}
         </div>
       </div>

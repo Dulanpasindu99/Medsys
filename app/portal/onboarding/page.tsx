@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { portalUpdateProfile, type PortalProfileInput } from "@/app/lib/portal-api";
+import { portalProfileMatch, portalUpdateProfile, type PortalProfileInput } from "@/app/lib/portal-api";
 import { usePortalAccount } from "../usePortalAccount";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
@@ -37,6 +37,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [welcome, setWelcome] = useState(false);
+  const [matchNotice, setMatchNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (account.isError) router.replace("/portal/login");
@@ -51,6 +52,37 @@ export default function OnboardingPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account.data]);
+
+  // If the NIC/phone matches an existing clinic record, pre-fill the blanks so the
+  // patient only fills what's missing. (Debounced; only fills empty fields.)
+  useEffect(() => {
+    const id = nic.trim();
+    const ph = phone.trim();
+    if (id.length < 4 && ph.length < 6) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      portalProfileMatch({ nic: id || undefined, phone: ph || undefined })
+        .then((res) => {
+          if (cancelled || !res.matched || !res.profile) return;
+          const p = res.profile;
+          setFirstName((prev) => prev || p.firstName || "");
+          setLastName((prev) => prev || p.lastName || "");
+          setDob((prev) => prev || p.dob || "");
+          setGender((prev) => prev || (p.gender ?? ""));
+          setPhone((prev) => prev || p.phone || "");
+          setAddress((prev) => prev || p.address || "");
+          setBloodGroup((prev) => prev || p.bloodGroup || "");
+          setMatchNotice("We found your existing clinic record — we've filled in what we could. Just complete the rest.");
+        })
+        .catch(() => {
+          /* ignore — pre-fill is best-effort */
+        });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [nic, phone]);
 
   const age = useMemo(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return null;
@@ -128,6 +160,11 @@ export default function OnboardingPage() {
       </div>
 
       <div className="mt-6 flex-1 rounded-[26px] border border-white/80 bg-white/95 p-5 shadow-[0_18px_44px_rgba(15,23,42,0.10)] ring-1 ring-slate-100 sm:p-6">
+        {matchNotice ? (
+          <div className="mb-4 rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+            {matchNotice}
+          </div>
+        ) : null}
         {step === 0 ? (
           <div className="space-y-3">
             <Heading title="What's your name?" subtitle="As it should appear on your records." />

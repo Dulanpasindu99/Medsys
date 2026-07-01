@@ -1171,15 +1171,31 @@ export function documentRawUrl(documentId: number | string) {
   return `/api/backend/v1/documents/${documentId}/raw`;
 }
 
-// Org-wide review inbox of staff-uploaded reports for the doctor.
-export async function listDocumentReviewQueue(input?: { limit?: number; offset?: number; source?: "assistant" | "patient" }) {
+// Org-wide review inbox of uploaded reports (assistant + patient) for the doctor.
+// Pass reviewed:true for the reviewed (past reports) list.
+export async function listDocumentReviewQueue(input?: {
+  limit?: number;
+  offset?: number;
+  source?: "assistant" | "patient";
+  reviewed?: boolean;
+}) {
   const params = new URLSearchParams();
   if (input?.limit != null) params.set("limit", String(input.limit));
   if (input?.offset != null) params.set("offset", String(input.offset));
   if (input?.source) params.set("source", input.source);
+  if (input?.reviewed) params.set("reviewed", "true");
   const query = params.toString() ? `?${params.toString()}` : "";
   const response = await apiFetch<unknown>(`/api/backend/v1/documents/review${query}`, { method: "GET" });
   return expectApiRecordArray(response, "document review queue");
+}
+
+// Mark a document reviewed (or undo). Doctor/owner only.
+export async function markDocumentReviewed(documentId: number | string, reviewed = true) {
+  const query = reviewed ? "" : "?reviewed=false";
+  return apiFetch<{ ok: boolean; reviewedAt: string | null }>(
+    `/api/backend/v1/documents/${documentId}/review${query}`,
+    { method: "POST" }
+  );
 }
 
 // Staff upload of a document (PDF/JPG/PNG) for a clinic patient. Uses a raw fetch so

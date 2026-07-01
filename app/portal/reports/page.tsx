@@ -6,11 +6,18 @@ import {
   portalDocumentDownloadUrl,
   portalDocuments,
   portalMyDoctors,
+  portalReceivedDocuments,
   portalUploadDocument
 } from "@/app/lib/portal-api";
 import { usePortalGuard } from "../usePortalAccount";
 
-const ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
+// Broad accept so phone camera captures (iPhone HEIC etc.) don't get filtered out.
+const ACCEPT = "image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic,.heif,.webp";
+
+async function openDocument(id: number) {
+  const { url } = await portalDocumentDownloadUrl(id);
+  window.open(url, "_blank", "noopener");
+}
 
 export default function PortalReportsPage() {
   const account = usePortalGuard();
@@ -22,6 +29,7 @@ export default function PortalReportsPage() {
 
   const doctors = useQuery({ queryKey: ["portal", "doctors"], queryFn: portalMyDoctors, enabled: !!account.data?.profileCompleted });
   const documents = useQuery({ queryKey: ["portal", "documents"], queryFn: portalDocuments, enabled: !!account.data?.profileCompleted });
+  const received = useQuery({ queryKey: ["portal", "received"], queryFn: portalReceivedDocuments, enabled: !!account.data?.profileCompleted });
 
   const upload = useMutation({
     mutationFn: () => portalUploadDocument(Number(doctorUserId), file as File),
@@ -104,16 +112,16 @@ export default function PortalReportsPage() {
               <li key={doc.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3.5 py-2.5">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-800">{doc.fileName}</p>
-                  <p className="text-xs text-slate-500">
-                    {doc.doctorName} · {new Date(doc.uploadedAt).toLocaleDateString()}
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                    <span>{doc.doctorName} · {new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                    {doc.reviewedAt ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Doctor reviewed</span>
+                    ) : null}
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={async () => {
-                    const { url } = await portalDocumentDownloadUrl(doc.id);
-                    window.open(url, "_blank", "noopener");
-                  }}
+                  onClick={() => openDocument(doc.id)}
                   className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-100"
                 >
                   Open
@@ -123,6 +131,39 @@ export default function PortalReportsPage() {
           </ul>
         ) : (
           <p className="text-sm text-slate-500">Nothing sent yet.</p>
+        )}
+      </section>
+
+      <section className="rounded-[24px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 sm:p-5">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">Received from your clinic</h2>
+        {received.isLoading ? (
+          <p className="text-sm text-slate-400">Loading…</p>
+        ) : received.data && received.data.length > 0 ? (
+          <ul className="space-y-2">
+            {received.data.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3.5 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800">{doc.fileName}</p>
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                    <span>{doc.clinicName} · {new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                    {doc.reviewedAt ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Doctor reviewed</span>
+                    ) : null}
+                  </p>
+                  {doc.note ? <p className="mt-0.5 truncate text-xs text-slate-400">“{doc.note}”</p> : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openDocument(doc.id)}
+                  className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-100"
+                >
+                  Open
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-slate-500">Reports your clinic shares with you will appear here.</p>
         )}
       </section>
     </div>
