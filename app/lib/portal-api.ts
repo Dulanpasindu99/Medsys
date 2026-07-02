@@ -131,6 +131,56 @@ export const portalGetProfile = () => portalFetch<PortalAccount>("profile");
 export const portalUpdateProfile = (input: PortalProfileInput) =>
   portalFetch<PortalAccount>("profile", { method: "PUT", json: input });
 
+// ---- Family ----
+export const FAMILY_RELATIONSHIPS = [
+  "father",
+  "mother",
+  "son",
+  "daughter",
+  "brother",
+  "sister",
+  "grandfather",
+  "grandmother",
+  "husband",
+  "wife",
+  "guardian",
+  "other"
+] as const;
+export type FamilyRelationship = (typeof FAMILY_RELATIONSHIPS)[number];
+
+export interface PortalFamilyMemberInput {
+  firstName: string;
+  lastName: string;
+  relationship: FamilyRelationship;
+  dob?: string | null;
+  gender?: "male" | "female" | "other" | null;
+  nic?: string | null;
+  phone?: string | null;
+  bloodGroup?: string | null;
+  allergies?: Array<{ name: string; severity?: "low" | "moderate" | "high" }>;
+}
+
+export interface PortalFamilyMember extends PortalFamilyMemberInput {
+  id: number;
+  age: number | null;
+  effectiveNic: string | null;
+}
+
+export interface PortalFamily {
+  familyName: string | null;
+  members: PortalFamilyMember[];
+}
+
+export const portalGetFamily = () => portalFetch<PortalFamily>("family");
+export const portalUpdateFamilyName = (familyName: string | null) =>
+  portalFetch<{ familyName: string | null }>("family", { method: "PUT", json: { familyName } });
+export const portalAddFamilyMember = (input: PortalFamilyMemberInput) =>
+  portalFetch<{ id: number }>("family/members", { method: "POST", json: input });
+export const portalUpdateFamilyMember = (id: number, input: PortalFamilyMemberInput) =>
+  portalFetch<{ ok: true }>(`family/members/${id}`, { method: "PATCH", json: input });
+export const portalDeleteFamilyMember = (id: number) =>
+  portalFetch<{ ok: true }>(`family/members/${id}`, { method: "DELETE" });
+
 // --- doctors ---
 export const portalDoctorDirectory = () => portalFetch<PortalDirectoryDoctor[]>("doctors/directory");
 export const portalMyDoctors = () => portalFetch<PortalLinkedDoctor[]>("doctors");
