@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { portalEncounter, portalGetFamily, portalHistory, type PortalFamilyMember } from "@/app/lib/portal-api";
+import { useT } from "@/app/lib/i18n";
 import { usePortalGuard } from "../usePortalAccount";
 
 type Profile = { memberId: number | null; name: string; relationship: string };
 
 export default function PortalHistoryPage() {
   const account = usePortalGuard();
+  const t = useT();
   const enabled = !!account.data?.profileCompleted;
   const family = useQuery({ queryKey: ["portal", "family"], queryFn: portalGetFamily, enabled });
   const [selected, setSelected] = useState<Profile | null>(null);
@@ -34,8 +36,8 @@ export default function PortalHistoryPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">My History</h1>
-        <p className="text-sm text-slate-500">Pick a family member to see their prescription timeline.</p>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">{t("My History")}</h1>
+        <p className="text-sm text-slate-500">{t("Pick a family member to see their prescription timeline.")}</p>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
@@ -55,10 +57,10 @@ export default function PortalHistoryPage() {
               </span>
               <span className="mt-1 truncate text-sm font-bold text-slate-900">{p.name}</span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                {isYou ? "You" : p.relationship}
+                {isYou ? t("You") : p.relationship}
               </span>
               <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600">
-                View timeline →
+                {t("View timeline →")}
               </span>
             </button>
           );
@@ -69,6 +71,7 @@ export default function PortalHistoryPage() {
 }
 
 function MemberHistory({ profile, onBack }: { profile: Profile; onBack: () => void }) {
+  const t = useT();
   const [openId, setOpenId] = useState<number | null>(null);
   const history = useQuery({
     queryKey: ["portal", "history", profile.memberId ?? "self"],
@@ -79,16 +82,16 @@ function MemberHistory({ profile, onBack }: { profile: Profile; onBack: () => vo
     <div className="space-y-5">
       <header>
         <button type="button" onClick={onBack} className="text-xs font-semibold text-slate-400 hover:text-slate-600">
-          ← All family
+          ← {t("All family")}
         </button>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">{profile.name}</h1>
         <p className="text-sm text-slate-500">
-          Prescription timeline · {profile.relationship === "you" ? "You" : profile.relationship}
+          {t("Prescription timeline")} · {profile.relationship === "you" ? t("You") : profile.relationship}
         </p>
       </header>
 
       {history.isLoading ? (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-slate-400">{t("Loading…")}</p>
       ) : history.data && history.data.length > 0 ? (
         <ol className="relative space-y-4 border-l-2 border-slate-100 pl-5">
           {history.data.map((card) => (
@@ -102,7 +105,7 @@ function MemberHistory({ profile, onBack }: { profile: Profile; onBack: () => vo
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-400">{new Date(card.date).toLocaleDateString()}</span>
                   <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
-                    {card.drugCount} {card.drugCount === 1 ? "medicine" : "medicines"}
+                    {card.drugCount} {card.drugCount === 1 ? t("medicine") : t("medicines")}
                   </span>
                 </div>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{card.clinicName ?? "Clinic"}</p>
@@ -115,7 +118,7 @@ function MemberHistory({ profile, onBack }: { profile: Profile; onBack: () => vo
           ))}
         </ol>
       ) : (
-        <p className="text-sm text-slate-500">No prescriptions recorded for {profile.name} yet.</p>
+        <p className="text-sm text-slate-500">{t("No prescriptions recorded for {name} yet.", { name: profile.name })}</p>
       )}
 
       {openId != null ? <EncounterDetail encounterId={openId} onClose={() => setOpenId(null)} /> : null}

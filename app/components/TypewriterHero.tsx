@@ -1,19 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const TITLE = "Welcome to MedLink";
-const SUB = "Choose how you would like to continue.";
+import { useT } from "@/app/lib/i18n";
 
 // Continuously types out the heading + subheading, holds, erases, and repeats — with a
 // blinking caret on whichever line is active. Heights are reserved so the cards below never
-// jump as the text grows and shrinks.
+// jump as the text grows and shrinks. Restarts (with translated text) when the language changes.
 export function TypewriterHero() {
-  const [state, setState] = useState<{ title: number; sub: number; active: "title" | "sub" }>({
+  const t = useT();
+  const TITLE = t("Welcome to MedLink");
+  const SUB = t("Choose how you would like to continue.");
+
+  const [state, setState] = useState<{ title: number; sub: number; active: "title" | "sub"; forTitle: string }>({
     title: 0,
     sub: 0,
-    active: "title"
+    active: "title",
+    forTitle: TITLE
   });
+  // Reset to the start when the language (and thus the text) changes — render-phase, no effect.
+  if (state.forTitle !== TITLE) {
+    setState({ title: 0, sub: 0, active: "title", forTitle: TITLE });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +38,7 @@ export function TypewriterHero() {
       if (phase === 0) {
         if (title < TITLE.length) {
           title += 1;
-          setState({ title, sub, active: "title" });
+          setState({ title, sub, active: "title", forTitle: TITLE });
           at(75);
         } else {
           phase = 1;
@@ -40,7 +47,7 @@ export function TypewriterHero() {
       } else if (phase === 1) {
         if (sub < SUB.length) {
           sub += 1;
-          setState({ title, sub, active: "sub" });
+          setState({ title, sub, active: "sub", forTitle: TITLE });
           at(32);
         } else {
           phase = 2;
@@ -52,7 +59,7 @@ export function TypewriterHero() {
       } else if (phase === 3) {
         if (sub > 0) {
           sub -= 1;
-          setState({ title, sub, active: "sub" });
+          setState({ title, sub, active: "sub", forTitle: TITLE });
           at(16);
         } else {
           phase = 4;
@@ -61,7 +68,7 @@ export function TypewriterHero() {
       } else {
         if (title > 0) {
           title -= 1;
-          setState({ title, sub, active: "title" });
+          setState({ title, sub, active: "title", forTitle: TITLE });
           at(28);
         } else {
           phase = 0;
@@ -75,7 +82,7 @@ export function TypewriterHero() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, []);
+  }, [TITLE, SUB]);
 
   return (
     <>

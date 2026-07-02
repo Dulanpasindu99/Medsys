@@ -1,11 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { LandingParticles } from "./components/LandingParticles";
+import { FloatingLanguageBar } from "./components/LanguageBar";
 import { TypewriterHero } from "./components/TypewriterHero";
 import { redirectAuthenticated } from "./lib/page-auth";
+import { isLang, translate, type Lang } from "./lib/translations";
 
 export default async function LandingPage() {
   await redirectAuthenticated();
+  const raw = (await cookies()).get("medlink_lang")?.value;
+  const lang: Lang = isLang(raw) ? raw : "en";
+  const t = (key: string) => translate(lang, key);
 
   return (
     <main className="relative isolate min-h-dvh overflow-hidden bg-slate-50 text-slate-900">
@@ -15,7 +21,7 @@ export default async function LandingPage() {
         <LandingParticles />
       </div>
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl flex-col items-center justify-center px-4 pb-24 pt-6 sm:px-6 sm:pb-28 sm:pt-10">
         <Image
           src="/assets/medlink-logo-optimized.png"
           alt="Medlink logo"
@@ -39,13 +45,13 @@ export default async function LandingPage() {
               </svg>
             </span>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Login as General Public</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t("Login as General Public")}</h2>
               <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                Patients: view your records, prescriptions and share reports with your doctors.
+                {t("Patients: view your records, prescriptions and share reports with your doctors.")}
               </p>
             </div>
             <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition group-hover:bg-sky-700">
-              Continue
+              {t("Continue")}
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -64,13 +70,13 @@ export default async function LandingPage() {
               </svg>
             </span>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Login as a Doctor</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t("Login as a Doctor")}</h2>
               <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                Owners, doctors and assistants sign in to the clinic workspace.
+                {t("Owners, doctors and assistants sign in to the clinic workspace.")}
               </p>
             </div>
             <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm transition group-hover:bg-slate-800">
-              Continue
+              {t("Continue")}
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -79,7 +85,7 @@ export default async function LandingPage() {
         </div>
 
         <div className="mt-4 flex items-center gap-2 sm:mt-10">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Built by</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">{t("Built by")}</span>
           <Image
             src="/assets/aldtan-logo-optimized.png"
             alt="ALDTAN company logo"
@@ -89,6 +95,8 @@ export default async function LandingPage() {
           />
         </div>
       </div>
+
+      <FloatingLanguageBar />
     </main>
   );
 }

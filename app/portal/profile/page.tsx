@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { portalLogout, portalUpdateProfile, type PortalProfileInput } from "@/app/lib/portal-api";
 import { PortalFamilySection } from "@/app/components/PortalFamilySection";
+import { LanguageBar } from "@/app/components/LanguageBar";
+import { useT } from "@/app/lib/i18n";
 import { usePortalGuard } from "../usePortalAccount";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
@@ -13,6 +15,7 @@ export default function PortalProfilePage() {
   const account = usePortalGuard();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const t = useT();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -80,13 +83,18 @@ export default function PortalProfilePage() {
     <div className="space-y-5">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">My Profile</h1>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">{t("My Profile")}</h1>
           <p className="text-sm text-slate-500">{account.data?.email}</p>
         </div>
         <button type="button" onClick={logout} className="rounded-full bg-rose-50 px-3.5 py-1.5 text-xs font-semibold text-rose-600 ring-1 ring-rose-100">
-          Log out
+          {t("Sign out")}
         </button>
       </header>
+
+      <section className="rounded-[24px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 sm:p-5">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t("Language")}</p>
+        <LanguageBar className="flex-wrap" />
+      </section>
 
       <section className="space-y-3 rounded-[24px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 sm:p-5">
         <div className="grid grid-cols-2 gap-3">
