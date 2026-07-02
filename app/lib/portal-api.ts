@@ -30,6 +30,10 @@ export interface PortalLinkedDoctor {
   organizationId: string;
   patientId: number;
   status: string;
+  label: string | null;
+  memberId: number | null;
+  profileName: string;
+  profileRelationship: string | null;
   doctorName: string;
   clinicName: string;
 }
@@ -63,6 +67,7 @@ export interface PortalDocument {
   reviewedAt?: string | null;
   doctorName: string;
   clinicName: string;
+  profileName?: string;
 }
 
 export interface PortalReceivedDocument {
@@ -184,12 +189,19 @@ export const portalDeleteFamilyMember = (id: number) =>
 // --- doctors ---
 export const portalDoctorDirectory = () => portalFetch<PortalDirectoryDoctor[]>("doctors/directory");
 export const portalMyDoctors = () => portalFetch<PortalLinkedDoctor[]>("doctors");
-export const portalLinkDoctor = (doctorUserId: number) =>
-  portalFetch<{ linkId: number }>("doctors/link", { method: "POST", json: { doctorUserId } });
+export const portalLinkDoctor = (input: { doctorUserId: number; memberId?: number | null; label?: string | null }) =>
+  portalFetch<{ linkId: number }>("doctors/link", { method: "POST", json: input });
 export const portalUnlinkDoctor = (linkId: number) =>
   portalFetch<{ ok: true }>(`doctors/${linkId}`, { method: "DELETE" });
 
 // --- clinical ---
+export interface PortalProfileSummary {
+  timeline: PortalTimelineEntry[];
+  sentDocuments: PortalDocument[];
+  receivedDocuments: PortalReceivedDocument[];
+}
+export const portalProfileSummary = (memberId: number | null) =>
+  portalFetch<PortalProfileSummary>(`profiles/${memberId ?? "self"}/summary`);
 export const portalHome = () => portalFetch<{ timeline: PortalTimelineEntry[] }>("home");
 export const portalHistory = () => portalFetch<PortalHistoryCard[]>("history");
 export const portalEncounter = (encounterId: number) =>
@@ -206,10 +218,16 @@ export const portalProfileMatch = (params: { nic?: string; phone?: string }) => 
   if (params.phone?.trim()) q.set("phone", params.phone.trim());
   return portalFetch<PortalProfileMatch>(`profile/match?${q.toString()}`);
 };
-export async function portalUploadDocument(doctorUserId: number, file: File): Promise<PortalDocument> {
+export async function portalUploadDocument(
+  doctorUserId: number,
+  file: File,
+  memberId?: number | null
+): Promise<PortalDocument> {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await fetch(`/api/portal/documents?doctorUserId=${doctorUserId}`, {
+  const q = new URLSearchParams({ doctorUserId: String(doctorUserId) });
+  if (memberId != null) q.set("memberId", String(memberId));
+  const res = await fetch(`/api/portal/documents?${q.toString()}`, {
     method: "POST",
     body: fd,
     cache: "no-store"

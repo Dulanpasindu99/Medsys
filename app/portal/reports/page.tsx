@@ -24,15 +24,18 @@ export default function PortalReportsPage() {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [doctorUserId, setDoctorUserId] = useState<number | "">("");
+  // Selected link = which profile + doctor to send to (links are per-profile now).
+  const [linkId, setLinkId] = useState<number | "">("");
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const doctors = useQuery({ queryKey: ["portal", "doctors"], queryFn: portalMyDoctors, enabled: !!account.data?.profileCompleted });
   const documents = useQuery({ queryKey: ["portal", "documents"], queryFn: portalDocuments, enabled: !!account.data?.profileCompleted });
   const received = useQuery({ queryKey: ["portal", "received"], queryFn: portalReceivedDocuments, enabled: !!account.data?.profileCompleted });
 
+  const selectedLink = (doctors.data ?? []).find((d) => d.linkId === linkId);
+
   const upload = useMutation({
-    mutationFn: () => portalUploadDocument(Number(doctorUserId), file as File),
+    mutationFn: () => portalUploadDocument(selectedLink!.doctorUserId, file as File, selectedLink!.memberId),
     onSuccess: () => {
       setFeedback("Sent to your doctor ✓");
       setFile(null);
@@ -42,7 +45,7 @@ export default function PortalReportsPage() {
     onError: (err) => setFeedback(err instanceof Error ? err.message : "Upload failed")
   });
 
-  const canSend = file && doctorUserId !== "" && !upload.isPending;
+  const canSend = file && selectedLink && !upload.isPending;
 
   return (
     <div className="space-y-5">
@@ -67,16 +70,16 @@ export default function PortalReportsPage() {
         </label>
 
         <label className="mt-4 block">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Send to doctor</span>
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Send for profile → doctor</span>
           <select
-            value={doctorUserId}
-            onChange={(e) => setDoctorUserId(e.target.value ? Number(e.target.value) : "")}
+            value={linkId}
+            onChange={(e) => setLinkId(e.target.value ? Number(e.target.value) : "")}
             className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
           >
-            <option value="">Select a doctor…</option>
+            <option value="">Select a profile &amp; doctor…</option>
             {(doctors.data ?? []).map((doctor) => (
-              <option key={doctor.linkId} value={doctor.doctorUserId}>
-                {doctor.doctorName} — {doctor.clinicName}
+              <option key={doctor.linkId} value={doctor.linkId}>
+                {doctor.profileName} → {doctor.doctorName}{doctor.label ? ` (${doctor.label})` : ""} — {doctor.clinicName}
               </option>
             ))}
           </select>
@@ -111,7 +114,12 @@ export default function PortalReportsPage() {
             {documents.data.map((doc) => (
               <li key={doc.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3.5 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800">{doc.fileName}</p>
+                  <p className="truncate text-sm font-semibold text-slate-800">
+                    {doc.fileName}
+                    {doc.profileName ? (
+                      <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600">for {doc.profileName}</span>
+                    ) : null}
+                  </p>
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
                     <span>{doc.doctorName} · {new Date(doc.uploadedAt).toLocaleDateString()}</span>
                     {doc.reviewedAt ? (
