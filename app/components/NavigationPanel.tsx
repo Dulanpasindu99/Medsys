@@ -4,8 +4,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalSto
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { logoutUser, setActiveRole, type ApiClientError, type LoginResponse } from '../lib/api-client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getClinicSettings, logoutUser, setActiveRole, type ApiClientError, type LoginResponse } from '../lib/api-client';
 import { getDefaultRouteForSubject, getNavigationItemsForSubject, type AppPermission, type NavigationItemId } from '../lib/authorization';
 import type { AppRole } from '../lib/roles';
 import { useCurrentUserQuery } from '../lib/query-hooks';
@@ -181,15 +181,32 @@ export default function NavigationPanel({
   const effectiveRole = currentUser?.active_role ?? currentUser?.role ?? sessionRole;
   const effectivePermissions = currentUser?.permissions ?? sessionPermissions;
   const availableRoles = currentUser?.roles?.length ? currentUser.roles : [effectiveRole];
+  // Owner-controlled per-clinic assistant page access (null = all pages). Only matters
+  // for assistants, so only fetch then.
+  const clinicSettingsQuery = useQuery({
+    queryKey: ['clinicSettings'],
+    queryFn: getClinicSettings,
+    enabled: shouldFetchCurrentUser && effectiveRole === 'assistant',
+    staleTime: 60_000,
+  });
+  const assistantAccess = clinicSettingsQuery.data?.assistant_access ?? null;
+
   const navigationItems: NavigationItem[] = getNavigationItemsForSubject({
     role: effectiveRole,
     permissions: effectivePermissions,
-  }).map((item) => ({
-    id: item.id,
-    label: item.label,
-    href: item.href,
-    icon: ICONS_BY_NAV_ID[item.id],
-  }));
+  })
+    // For assistants, hide pages the owner hasn't granted (null = all pages).
+    .filter((item) =>
+      effectiveRole === 'assistant' && Array.isArray(assistantAccess)
+        ? assistantAccess.includes(item.id)
+        : true,
+    )
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      href: item.href,
+      icon: ICONS_BY_NAV_ID[item.id],
+    }));
   const displayName = (currentUser?.name ?? userName).trim() || 'Medlink User';
 
   // Dictionary lives in the bottom panel (next to logout), not the main icon list.
