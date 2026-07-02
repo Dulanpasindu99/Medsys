@@ -30,16 +30,16 @@ export function LandingParticles() {
     let height = 0;
     let particles: Particle[] = [];
     const mouse = { x: -9999, y: -9999, active: false };
-    const REPEL_RADIUS = 130;
+    const REPEL_RADIUS = 200;
 
     const buildParticles = () => {
-      const count = Math.max(60, Math.min(260, Math.floor((width * height) / 6500)));
+      const count = Math.max(120, Math.min(460, Math.floor((width * height) / 3400)));
       particles = Array.from({ length: count }, () => ({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.28,
-        vy: (Math.random() - 0.5) * 0.28,
-        r: Math.random() * 1.6 + 0.5,
+        vx: (Math.random() - 0.5) * 0.32,
+        vy: (Math.random() - 0.5) * 0.32,
+        r: Math.random() * 1.7 + 0.6,
         color: palette[Math.floor(Math.random() * palette.length)]
       }));
     };
@@ -71,7 +71,7 @@ export function LandingParticles() {
           const distSq = dx * dx + dy * dy;
           if (distSq < REPEL_RADIUS * REPEL_RADIUS && distSq > 0.01) {
             const dist = Math.sqrt(distSq);
-            const force = (1 - dist / REPEL_RADIUS) * 1.4;
+            const force = (1 - dist / REPEL_RADIUS) * 2.6;
             p.x += (dx / dist) * force;
             p.y += (dy / dist) * force;
           }

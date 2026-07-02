@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { LandingParticles } from "./components/LandingParticles";
+import { TypewriterHero } from "./components/TypewriterHero";
 import { redirectAuthenticated } from "./lib/page-auth";
 
 export default async function LandingPage() {
@@ -23,12 +24,7 @@ export default async function LandingPage() {
           className="h-10 w-auto object-contain sm:h-14"
           priority
         />
-        <h1 className="mt-3 text-center text-[clamp(1.5rem,4vw,2.4rem)] font-black leading-tight tracking-tight text-slate-900 sm:mt-6">
-          Welcome to MedLink
-        </h1>
-        <p className="mt-2 max-w-xl text-center text-sm leading-relaxed text-slate-600 sm:text-base">
-          Choose how you would like to continue.
-        </p>
+        <TypewriterHero />
 
         <div className="mt-5 grid w-full max-w-3xl grid-cols-1 gap-3 sm:mt-9 sm:grid-cols-2 sm:gap-6">
           {/* General public / patient */}
