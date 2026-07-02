@@ -14,6 +14,7 @@ import {
   type PortalFamilyMember,
   type PortalLinkedDoctor,
 } from "@/app/lib/portal-api";
+import { useT } from "@/app/lib/i18n";
 import { usePortalGuard } from "./usePortalAccount";
 
 type Profile = { memberId: number | null; name: string; relationship: string };
@@ -21,6 +22,7 @@ type Profile = { memberId: number | null; name: string; relationship: string };
 export default function PortalHomePage() {
   const account = usePortalGuard();
   const queryClient = useQueryClient();
+  const t = useT();
   const [picker, setPicker] = useState<Profile | null>(null);
   const [selected, setSelected] = useState<Profile | null>(null);
 
@@ -56,13 +58,13 @@ export default function PortalHomePage() {
   return (
     <div className="space-y-5">
       <header>
-        <p className="text-sm text-slate-500">Welcome back</p>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">Hi, {firstName} 👋</h1>
+        <p className="text-sm text-slate-500">{t("Welcome back")}</p>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">{t("Hi, {name}", { name: firstName })} 👋</h1>
       </header>
 
       {/* Family grid */}
       <section>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">My Family</h2>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">{t("My Family")}</h2>
         <div className="grid grid-cols-2 gap-3">
           {profiles.map((p) => {
             const isYou = p.memberId === null;
@@ -81,9 +83,9 @@ export default function PortalHomePage() {
                 </span>
                 <span className="mt-1 truncate text-sm font-bold text-slate-900">{p.name}</span>
                 <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  {isYou ? "You" : p.relationship}
+                  {isYou ? t("You") : p.relationship}
                 </span>
-                <span className="text-[11px] text-slate-500">{count} doctor{count === 1 ? "" : "s"}</span>
+                <span className="text-[11px] text-slate-500">{count} {count === 1 ? t("doctor") : t("doctors")}</span>
               </button>
             );
           })}
@@ -92,7 +94,7 @@ export default function PortalHomePage() {
 
       {/* My doctors — grouped by profile */}
       <section className="rounded-[24px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 sm:p-5">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">My Doctors</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">{t("My Doctors")}</h2>
         {doctorsQuery.isLoading ? (
           <p className="text-sm text-slate-400">Loading…</p>
         ) : (
@@ -110,7 +112,7 @@ export default function PortalHomePage() {
                       onClick={() => setPicker(p)}
                       className="rounded-full bg-sky-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-sky-700"
                     >
-                      + Add doctor
+                      + {t("Add doctor")}
                     </button>
                   </div>
                   {docs.length > 0 ? (
@@ -137,7 +139,7 @@ export default function PortalHomePage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-slate-400">No doctors linked yet.</p>
+                    <p className="text-xs text-slate-400">{t("No doctors linked yet.")}</p>
                   )}
                 </div>
               );
@@ -148,7 +150,7 @@ export default function PortalHomePage() {
 
       {/* Diagnosis timeline */}
       <section className="rounded-[24px] border border-white/80 bg-white/95 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 sm:p-5">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">Diagnosis Summary (whole family)</h2>
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-600">{t("Diagnosis Summary (whole family)")}</h2>
         {homeQuery.isLoading ? (
           <p className="text-sm text-slate-400">Loading…</p>
         ) : homeQuery.data && homeQuery.data.timeline.length > 0 ? (

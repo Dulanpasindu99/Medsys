@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/app/lib/i18n";
 
 type NavItem = {
   href: string;
@@ -52,6 +53,7 @@ const ITEMS: NavItem[] = [
 
 export function PatientPortalNav({ hidden = false }: { hidden?: boolean }) {
   const pathname = usePathname();
+  const t = useT();
 
   return (
     <nav
@@ -73,7 +75,7 @@ export function PatientPortalNav({ hidden = false }: { hidden?: boolean }) {
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
                 {item.icon}
               </svg>
-              <span className="leading-none">{item.label}</span>
+              <span className="leading-none">{t(item.label)}</span>
             </Link>
           );
         })}
