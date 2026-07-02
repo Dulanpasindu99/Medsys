@@ -107,6 +107,17 @@ export interface PortalProfileInput {
   allergies?: Array<{ name: string; severity?: "low" | "moderate" | "high" }>;
 }
 
+// Errors carry the HTTP status so the global query-error toast can suppress expected 401s
+// (e.g. the /me probe on the login screen) instead of flashing "Unauthorized." to the user.
+class PortalApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "PortalApiError";
+    this.status = status;
+  }
+}
+
 async function portalFetch<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const headers = new Headers(init?.headers);
   let body = init?.body;
@@ -118,7 +129,7 @@ async function portalFetch<T>(path: string, init?: RequestInit & { json?: unknow
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    throw new Error((data && (data.error || data.message)) || `Request failed (${res.status})`);
+    throw new PortalApiError((data && (data.error || data.message)) || `Request failed (${res.status})`, res.status);
   }
   return data as T;
 }
@@ -234,6 +245,6 @@ export async function portalUploadDocument(
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new Error((data && (data.error || data.message)) || "Upload failed");
+  if (!res.ok) throw new PortalApiError((data && (data.error || data.message)) || "Upload failed", res.status);
   return data as PortalDocument;
 }
