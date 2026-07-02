@@ -12,6 +12,7 @@ export default function PortalLoginPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [nic, setNic] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,12 @@ export default function PortalLoginPage() {
       const result =
         mode === "login"
           ? await portalLogin({ email: email.trim(), password })
-          : await portalSignup({ email: email.trim(), phone: phone.trim() || undefined, password });
+          : await portalSignup({
+              email: email.trim(),
+              phone: phone.trim() || undefined,
+              nic: nic.trim() || undefined,
+              password
+            });
       onSuccess(result.account);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -83,7 +89,10 @@ export default function PortalLoginPage() {
         <form className="mt-5 space-y-3" onSubmit={submit}>
           <Field label="Email" type="email" value={email} onChange={setEmail} required placeholder="you@email.com" />
           {mode === "signup" ? (
-            <Field label="Phone (optional)" type="tel" value={phone} onChange={setPhone} placeholder="+94 7X XXX XXXX" />
+            <>
+              <Field label="Phone (optional)" type="tel" value={phone} onChange={setPhone} placeholder="+94 7X XXX XXXX" />
+              <Field label="NIC (optional)" type="text" value={nic} onChange={setNic} placeholder="Connects your existing records" />
+            </>
           ) : null}
           <Field label="Password" type="password" value={password} onChange={setPassword} required placeholder="••••••••" />
           {mode === "signup" ? (
