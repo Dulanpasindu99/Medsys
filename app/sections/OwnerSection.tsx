@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AsyncStatePanel } from '../components/ui/AsyncStatePanel';
 import { ViewportFrame, ViewportHeader, ViewportPage, ViewportScrollBody } from '../components/ui/ViewportLayout';
 import { OwnerBadge } from './owner/components/OwnerBadge';
-import { OwnerClinicModeCard } from './owner/components/OwnerClinicModeCard';
+import { AssistantAccessCard } from './owner/components/AssistantAccessCard';
 import { OwnerStaffFormCard } from './owner/components/OwnerStaffFormCard';
 import { OwnerStaffListCard } from './owner/components/OwnerStaffListCard';
 import { useOwnerAccess } from './owner/hooks/useOwnerAccess';
@@ -75,7 +75,7 @@ export default function OwnerSection() {
             </span>
           </div>
 
-          <OwnerClinicModeCard />
+          <AssistantAccessCard />
 
           <div className="grid items-start gap-6 lg:grid-cols-[1.32fr_0.68fr]">
             <OwnerStaffFormCard

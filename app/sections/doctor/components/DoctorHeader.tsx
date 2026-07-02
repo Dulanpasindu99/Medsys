@@ -209,7 +209,6 @@ export function DoctorHeader({
   isCreatingPatientInline,
   patientLookupNotice = null,
   selectedPatientProfileId = null,
-  workflowType = "walk_in",
   patientCode,
   nicNumber,
   onNicNumberChange,
@@ -250,7 +249,6 @@ export function DoctorHeader({
   nicIdentityLabel = null,
   onClearForm,
   canClearForm = false,
-  isStepUpMode = false,
 }: DoctorHeaderProps) {
   const showSelectedPatientIdentity = Boolean(
     selectedPatientProfileId && !isCreatingPatientInline,
@@ -270,15 +268,6 @@ export function DoctorHeader({
   const [queueFilter, setQueueFilter] = useState<QueueFilterKey>("all");
   const [queueSearch, setQueueSearch] = useState("");
   const [queuePopupOpen, setQueuePopupOpen] = useState(false);
-  const isAppointmentMode = workflowType === "appointment";
-  const modeLabel = isStepUpMode
-    ? "Step Up Mode"
-    : isAppointmentMode
-      ? "Appointment Mode"
-      : "Walk-In Mode";
-  const modeToneClass = isAppointmentMode
-    ? "bg-sky-50 text-sky-700 ring-sky-100"
-    : "bg-emerald-50 text-emerald-700 ring-emerald-100";
   const hasHeaderMetaRow =
     Boolean(selectedQueuePatient?.queueOrder) ||
     Boolean(selectedQueuePatient?.time) ||
@@ -371,10 +360,10 @@ export function DoctorHeader({
   };
 
   useEffect(() => {
-    if (!isAppointmentMode || queuePatients.length === 0) {
+    if (queuePatients.length === 0) {
       setQueuePopupOpen(false);
     }
-  }, [isAppointmentMode, queuePatients.length]);
+  }, [queuePatients.length]);
 
   return (
     <div className="grid gap-x-2.5 gap-y-1.5 p-2 sm:gap-x-3 sm:gap-y-2 sm:p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-3 xl:gap-x-4 xl:p-4">
@@ -435,12 +424,7 @@ export function DoctorHeader({
               </div>
             ) : null}
           </div>
-          <span
-            className={`inline-flex h-9 shrink-0 items-center rounded-[999px] px-3.5 text-[11px] font-bold uppercase tracking-[0.16em] ring-1 xl:h-10 xl:px-4 ${modeToneClass}`}
-          >
-            {modeLabel}
-          </span>
-          {isAppointmentMode ? (
+          {hasQueuePatients ? (
             <button
               type="button"
               onClick={() => hasQueuePatients && setQueuePopupOpen(true)}
@@ -515,7 +499,7 @@ export function DoctorHeader({
         </div>
       ) : null}
 
-      {isAppointmentMode && queuePatients.length > 0 && queuePopupOpen ? (
+      {queuePatients.length > 0 && queuePopupOpen ? (
         <div
           className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/30 p-4"
           onClick={() => setQueuePopupOpen(false)}
@@ -585,8 +569,7 @@ export function DoctorHeader({
                 {filteredQueuePatients.map((patient) => {
                   const isActive =
                     selectedPatientProfileId !== null &&
-                    patient.profileId === selectedPatientProfileId &&
-                    isAppointmentMode;
+                    patient.profileId === selectedPatientProfileId;
                   const displayIdentity =
                     patient.patientCode || (patient.nic && patient.nic !== "No NIC" ? patient.nic : "No NIC");
                   const normalizedStatus = normalizeQueueStatus(patient.appointmentStatus);

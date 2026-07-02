@@ -825,12 +825,30 @@ export type ClinicSettings = {
   slug: string;
   name: string;
   operating_mode: OperatingMode;
+  // null = all pages allowed for assistants.
+  assistant_access?: string[] | null;
+  assistant_toggleable_pages?: string[];
 };
 
 export async function updateClinicOperatingMode(operatingMode: OperatingMode) {
   return apiFetch<{ organization: ClinicSettings }>("/api/organizations/current", {
     method: "PATCH",
     body: JSON.stringify({ operatingMode }),
+  });
+}
+
+export async function getClinicSettings() {
+  const response = await apiFetch<{ organization: ClinicSettings }>("/api/backend/v1/organizations/current", {
+    method: "GET",
+  });
+  return response.organization;
+}
+
+// Owner: set which pages this clinic's assistants can access (null = all pages).
+export async function updateAssistantAccess(assistantAccess: string[] | null) {
+  return apiFetch<{ organization: ClinicSettings }>("/api/backend/v1/organizations/current/assistant-access", {
+    method: "PATCH",
+    body: JSON.stringify({ assistantAccess }),
   });
 }
 
