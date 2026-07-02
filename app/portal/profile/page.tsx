@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { portalLogout, portalUpdateProfile, type PortalProfileInput } from "@/app/lib/portal-api";
+import { PortalFamilySection } from "@/app/components/PortalFamilySection";
 import { usePortalGuard } from "../usePortalAccount";
 
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
@@ -146,6 +147,8 @@ export default function PortalProfilePage() {
           {busy ? "Saving…" : "Save changes"}
         </button>
       </section>
+
+      <PortalFamilySection />
     </div>
   );
 }
