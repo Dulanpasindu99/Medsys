@@ -49,6 +49,8 @@ export default function OnboardingPage() {
       setFirstName(account.data.firstName ?? "");
       setLastName(account.data.lastName ?? "");
       setPhone(account.data.phone ?? "");
+      // Carry over the NIC captured at signup so completing the profile doesn't clear it.
+      if (account.data.nic) setNic(account.data.nic);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account.data]);

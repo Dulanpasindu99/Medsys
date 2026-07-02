@@ -135,7 +135,7 @@ async function portalFetch<T>(path: string, init?: RequestInit & { json?: unknow
 }
 
 // --- auth ---
-export const portalSignup = (input: { email: string; phone?: string; password: string }) =>
+export const portalSignup = (input: { email: string; phone?: string; nic?: string; password: string }) =>
   portalFetch<{ account: PortalAccount }>("auth/signup", { method: "POST", json: input });
 export const portalLogin = (input: { email: string; password: string }) =>
   portalFetch<{ account: PortalAccount }>("auth/login", { method: "POST", json: input });
