@@ -13,7 +13,6 @@ export function LandingParticles() {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     // Mostly faint slate dots with a few sky-blue accents, echoing the brand palette.
@@ -105,12 +104,11 @@ export function LandingParticles() {
     };
 
     resize();
-    draw(); // paint one frame immediately so particles show even before rAF ticks (e.g. background tab)
-    if (!reduceMotion) {
-      raf = requestAnimationFrame(tick);
-      window.addEventListener("mousemove", onMove, { passive: true });
-      window.addEventListener("mouseout", onLeave);
-    }
+    draw(); // paint one frame immediately so particles show even before rAF ticks
+    // Always animate + react to the cursor (decorative hero effect, requested behaviour).
+    raf = requestAnimationFrame(tick);
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("mouseout", onLeave);
     window.addEventListener("resize", onResize);
 
     return () => {
