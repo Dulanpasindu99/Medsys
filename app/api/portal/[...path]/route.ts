@@ -4,7 +4,6 @@ import {
   clearPortalAuthCookies,
   readPortalAuthCookies
 } from "@/app/lib/portal-auth-cookies";
-import { readTokenClaims } from "@/app/lib/token-claims";
 import { getBackendOrigin } from "@/app/lib/backend-origin";
 import { generateRequestId } from "@/app/lib/request-id";
 
@@ -58,10 +57,18 @@ async function proxyRequest(request: NextRequest, backendPath: string, accessTok
 async function handle(request: NextRequest, params: Promise<{ path: string[] }>) {
   const { path } = await params;
   const backendPath = `/v1/portal/${path.join("/")}`;
-  const { accessToken, refreshToken } = readPortalAuthCookies(request);
+  const { accessToken, refreshToken, deadlineMs } = readPortalAuthCookies(request);
 
   if (!accessToken) {
     const response = NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    clearPortalAuthCookies(response);
+    return response;
+  }
+
+  // Hard 15-minute session cap: past the deadline we refuse the request and end the session,
+  // so a long-idle window (or one reopened before the browser fully closed) is logged out.
+  if (deadlineMs !== null && Date.now() > deadlineMs) {
+    const response = NextResponse.json({ error: "Session expired." }, { status: 401 });
     clearPortalAuthCookies(response);
     return response;
   }
@@ -77,10 +84,9 @@ async function handle(request: NextRequest, params: Promise<{ path: string[] }>)
         status: backendResponse.status,
         headers: buildResponseHeaders(backendResponse.headers)
       });
-      attachPortalAuthCookies(response, refreshed, {
-        accessExpiresAt: readTokenClaims(refreshed.accessToken).exp,
-        refreshExpiresAt: readTokenClaims(refreshed.refreshToken).exp
-      });
+      // Preserve the original absolute deadline — refreshing the token must not extend the
+      // 15-minute session (fall back to a fresh window only if the deadline cookie was lost).
+      attachPortalAuthCookies(response, refreshed, { deadlineMs: deadlineMs ?? Date.now() });
       return response;
     } catch {
       const response = NextResponse.json({ error: "Unauthorized." }, { status: 401 });

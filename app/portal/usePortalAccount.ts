@@ -5,8 +5,18 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { portalMe } from "@/app/lib/portal-api";
 
-export function usePortalAccount() {
-  return useQuery({ queryKey: ["portal", "me"], queryFn: portalMe, retry: false, staleTime: 30_000 });
+export function usePortalAccount(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["portal", "me"],
+    queryFn: portalMe,
+    retry: false,
+    staleTime: 30_000,
+    enabled: options?.enabled ?? true,
+    // Re-check often enough to notice the 15-minute server-side session cap, and whenever the
+    // user returns to the tab — so an expired session bounces to login promptly.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true
+  });
 }
 
 // Gate a dashboard page: bounce to login if unauthenticated, to onboarding if the

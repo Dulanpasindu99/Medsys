@@ -33,7 +33,7 @@ export function LandingParticles() {
     const REPEL_RADIUS = 130;
 
     const buildParticles = () => {
-      const count = Math.max(28, Math.min(120, Math.floor((width * height) / 13000)));
+      const count = Math.max(60, Math.min(260, Math.floor((width * height) / 6500)));
       particles = Array.from({ length: count }, () => ({
         x: Math.random() * width,
         y: Math.random() * height,
