@@ -1073,7 +1073,9 @@ export function useDoctorWorkspaceData(
   visitPlanner: VisitPlannerState
 ) {
   const queryClient = useQueryClient();
-  const patientsQuery = usePatientsQuery();
+  // Org-wide so the search bar can suggest every patient, not only this doctor's own
+  // (the appointment queue below still scopes to the doctor by doctorId).
+  const patientsQuery = usePatientsQuery({ scope: "organization" });
   const familiesQuery = useFamiliesQuery();
   const waitingAppointmentsQuery = useAppointmentsQuery({ status: "waiting" });
   const currentUserQuery = useCurrentUserQuery();
@@ -1336,7 +1338,8 @@ export function useDoctorWorkspaceData(
   const workflowType: ConsultationWorkflowType = isStepUpMode
     ? "walk_in"
     : explicitWorkflowType ?? derivedWorkflowType;
-  const searchablePatients = workflowType === "appointment" ? waitingQueuePatients : patients;
+  // Search always suggests every loaded patient (modes are gone) — not just the queue.
+  const searchablePatients = patients;
   const searchMatches = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return [];
