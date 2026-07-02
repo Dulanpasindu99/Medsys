@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { attachPortalAuthCookies } from "@/app/lib/portal-auth-cookies";
-import { readTokenClaims } from "@/app/lib/token-claims";
+import { attachPortalAuthCookies, freshPortalDeadline } from "@/app/lib/portal-auth-cookies";
 import { getBackendOrigin } from "@/app/lib/backend-origin";
 
 export async function POST(request: NextRequest) {
@@ -33,10 +32,7 @@ export async function POST(request: NextRequest) {
   attachPortalAuthCookies(
     response,
     { accessToken: payload.accessToken, refreshToken: payload.refreshToken },
-    {
-      accessExpiresAt: readTokenClaims(payload.accessToken).exp,
-      refreshExpiresAt: readTokenClaims(payload.refreshToken).exp
-    }
+    { deadlineMs: freshPortalDeadline() }
   );
   return response;
 }
