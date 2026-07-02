@@ -214,7 +214,8 @@ export interface PortalProfileSummary {
 export const portalProfileSummary = (memberId: number | null) =>
   portalFetch<PortalProfileSummary>(`profiles/${memberId ?? "self"}/summary`);
 export const portalHome = () => portalFetch<{ timeline: PortalTimelineEntry[] }>("home");
-export const portalHistory = () => portalFetch<PortalHistoryCard[]>("history");
+export const portalHistory = (memberId?: number | null) =>
+  portalFetch<PortalHistoryCard[]>(memberId === undefined ? "history" : `history?memberId=${memberId ?? "self"}`);
 export const portalEncounter = (encounterId: number) =>
   portalFetch<Record<string, unknown>>(`encounters/${encounterId}`);
 

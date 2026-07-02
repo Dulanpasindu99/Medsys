@@ -1,33 +1,99 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { portalEncounter, portalHistory } from "@/app/lib/portal-api";
+import { portalEncounter, portalGetFamily, portalHistory, type PortalFamilyMember } from "@/app/lib/portal-api";
 import { usePortalGuard } from "../usePortalAccount";
+
+type Profile = { memberId: number | null; name: string; relationship: string };
 
 export default function PortalHistoryPage() {
   const account = usePortalGuard();
-  const [openId, setOpenId] = useState<number | null>(null);
+  const enabled = !!account.data?.profileCompleted;
+  const family = useQuery({ queryKey: ["portal", "family"], queryFn: portalGetFamily, enabled });
+  const [selected, setSelected] = useState<Profile | null>(null);
 
-  const history = useQuery({
-    queryKey: ["portal", "history"],
-    queryFn: portalHistory,
-    enabled: !!account.data?.profileCompleted
-  });
+  // Profiles = "You" + each family member. Scoping history per profile keeps the timeline
+  // readable as records pile up, instead of one ever-growing mixed list.
+  const profiles: Profile[] = useMemo(() => {
+    const you: Profile = {
+      memberId: null,
+      name: `${account.data?.firstName ?? ""} ${account.data?.lastName ?? ""}`.trim() || "You",
+      relationship: "you"
+    };
+    const members = (family.data?.members ?? []).map((m: PortalFamilyMember) => ({
+      memberId: m.id,
+      name: `${m.firstName} ${m.lastName}`.trim(),
+      relationship: m.relationship
+    }));
+    return [you, ...members];
+  }, [account.data, family.data]);
+
+  if (selected) return <MemberHistory profile={selected} onBack={() => setSelected(null)} />;
 
   return (
     <div className="space-y-5">
       <header>
         <h1 className="text-2xl font-black tracking-tight text-slate-900">My History</h1>
-        <p className="text-sm text-slate-500">Your prescriptions from every linked clinic.</p>
+        <p className="text-sm text-slate-500">Pick a family member to see their prescription timeline.</p>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3">
+        {profiles.map((p) => {
+          const isYou = p.memberId === null;
+          return (
+            <button
+              key={p.memberId ?? "you"}
+              type="button"
+              onClick={() => setSelected(p)}
+              className={`flex flex-col items-start gap-1 rounded-[22px] border p-4 text-left shadow-[0_10px_28px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 ${
+                isYou ? "border-sky-200 bg-sky-50" : "border-white/80 bg-white/95 ring-1 ring-slate-100"
+              }`}
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-600 text-sm font-bold uppercase text-white">
+                {(p.name[0] ?? "?").toUpperCase()}
+              </span>
+              <span className="mt-1 truncate text-sm font-bold text-slate-900">{p.name}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                {isYou ? "You" : p.relationship}
+              </span>
+              <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600">
+                View timeline →
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MemberHistory({ profile, onBack }: { profile: Profile; onBack: () => void }) {
+  const [openId, setOpenId] = useState<number | null>(null);
+  const history = useQuery({
+    queryKey: ["portal", "history", profile.memberId ?? "self"],
+    queryFn: () => portalHistory(profile.memberId)
+  });
+
+  return (
+    <div className="space-y-5">
+      <header>
+        <button type="button" onClick={onBack} className="text-xs font-semibold text-slate-400 hover:text-slate-600">
+          ← All family
+        </button>
+        <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900">{profile.name}</h1>
+        <p className="text-sm text-slate-500">
+          Prescription timeline · {profile.relationship === "you" ? "You" : profile.relationship}
+        </p>
       </header>
 
       {history.isLoading ? (
         <p className="text-sm text-slate-400">Loading…</p>
       ) : history.data && history.data.length > 0 ? (
-        <ul className="space-y-3">
+        <ol className="relative space-y-4 border-l-2 border-slate-100 pl-5">
           {history.data.map((card) => (
-            <li key={card.prescriptionId}>
+            <li key={card.prescriptionId} className="relative">
+              <span className="absolute -left-[1.6rem] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-sky-500 shadow" />
               <button
                 type="button"
                 onClick={() => setOpenId(card.encounterId)}
@@ -47,9 +113,9 @@ export default function PortalHistoryPage() {
               </button>
             </li>
           ))}
-        </ul>
+        </ol>
       ) : (
-        <p className="text-sm text-slate-500">No prescriptions yet.</p>
+        <p className="text-sm text-slate-500">No prescriptions recorded for {profile.name} yet.</p>
       )}
 
       {openId != null ? <EncounterDetail encounterId={openId} onClose={() => setOpenId(null)} /> : null}
